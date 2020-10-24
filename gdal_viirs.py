@@ -1,12 +1,14 @@
-from collections import namedtuple
+import inspect
 from typing import List, Dict, Tuple, Union, TypeVar, NamedTuple, Optional
 
+import pyproj
 from loguru import logger
 import gdal
 import numpy as np
 from datetime import datetime, time
 import os
 import re
+import h5py
 
 # region types
 
@@ -24,6 +26,7 @@ class Point(NamedTuple):
 class GeoPoint(NamedTuple):
     lat: Number
     lon: Number
+
 
 # endregion
 
@@ -45,6 +48,7 @@ class DatasetNotFoundException(ViirsException):
 class SubDatasetNotFound(DatasetNotFoundException):
     pass
 
+
 # endregion
 
 # region constants
@@ -64,18 +68,40 @@ def is_nodata(v):
     return v >= _ND_MIN_VALUE
 
 
+PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
+     GEOGCS["GCS_WGS_1984",
+         DATUM["WGS_1984",
+             SPHEROID["WGS_84",6378137.0,298.252223563]
+         ],
+         PRIMEM["Greenwich",0.0],
+         UNIT["Degree",0.0174532925199433]
+     ],
+     PROJECTION["Lambert_Conformal_Conic_2SP"],
+     PARAMETER["False_Easting",0.0],
+     PARAMETER["False_Northing",0.0],
+     PARAMETER["Central_Meridian",79.950619],
+     PARAMETER["Standard_Parallel_1",67.41206675],
+     PARAMETER["Standard_Parallel_2",43.58046825],
+     PARAMETER["Scale_Factor",1.0],
+     PARAMETER["Latitude_Of_Origin",55.4962675],
+     UNIT["Meter",1000]
+ ]'''
+PROJ_WGS = '''GEOGCS["WGS 84",
+DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
+AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],
+UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]
+'''
+
 # endregion
 
 # region utility functions
 
-@logger.catch
 def require_driver(name: str) -> gdal.Driver:
     driver = gdal.GetDriverByName(name)
     assert driver is not None, f'GDAL driver {name} is required, but missing!'
     return driver
 
 
-@logger.catch
 def get_lat_long_data(file: DatasetLike, ret_file: bool = True):
     """
     Открывает датасет для широты и долготы.
@@ -253,11 +279,12 @@ def find_viirs_filesets(root, geoloc_types) -> Dict[str, Tuple[GeofileInfo, List
             band_file_types = GeofileInfo.I_BAND_EDR + GeofileInfo.M_BAND_EDR
         band_files = list(filter(
             lambda info:
-                info.file_type in band_file_types and
-                info.t_start == fileinfo.t_start and
-                info.t_end == fileinfo.t_end and
-                info.orbit_number == fileinfo.orbit_number,
+            info.file_type in band_file_types and
+            info.t_start == fileinfo.t_start and
+            info.t_end == fileinfo.t_end and
+            info.orbit_number == fileinfo.orbit_number,
             files))
+        band_files = sorted(band_files, key=lambda f: f.file_type)
         result[fileinfo.name] = fileinfo, band_files
     return result
 
@@ -303,16 +330,23 @@ def get_pass_data(data: np.ndarray, pass_value=0, replacement=255):
     return data
 
 
-def trim_data(arr: np.ndarray, trim_value=None, ret_mask=False) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+def trim_data(arr: np.ndarray, trim_value=None, ret_mask=False, ret_offset=False) -> Tuple[
+    np.ndarray, Optional[np.ndarray], Optional[Point]]:
     """
     Обрезает nodata сверху и снизу
     """
-    mask = arr >= _ND_MIN_VALUE if trim_value is None else arr == trim_value
+    if inspect.isfunction(trim_value):
+        mask = trim_value(arr)
+    else:
+        mask = arr >= _ND_MIN_VALUE if trim_value is None else arr == trim_value
+    offset = None
     mask = ~np.all(mask, axis=1)
-    return arr[mask], mask if ret_mask else None
+    if ret_offset:
+        line_idx = np.where(mask)[0]
+        offset = Point(0, np.min(line_idx))
+    return arr[mask], mask if ret_mask else None, offset if ret_offset else None
 
 
-@logger.catch
 def fill_nodata(arr: np.ndarray, nd_value=ND_OBPT, smoothing_iterations=5,
                 max_search_dist=100):
     memfile = require_driver('MEM').Create('', arr.shape[1], arr.shape[0], 1, gdal.GDT_UInt16)
@@ -352,21 +386,9 @@ def find_place_stereo(lon_0: Number, lat: TNumpyOperable, lon: TNumpyOperable) -
     return ro * np.sin(d_lon), -ro * np.cos(d_lon)
 
 
-def calculate_latlon_pos(lat: np.ndarray, lon: np.ndarray, lon_0: Number, scale: Number, point: Point, geopoint: GeoPoint):
-    logger.debug(f'lat.shape={lat.shape} lon_0={lon_0} scale={scale} point={point} geopoint={geopoint}')
-    x, y = find_place_stereo(lon_0, lat, lon)
-    geo_proj_pt = find_place_stereo(lon_0, geopoint.lat, geopoint.lon)
-    x: np.ndarray = geo_proj_pt[0] - x
-    y: np.ndarray = geo_proj_pt[1] - y
-    n = np.round(np.float_(point.x) + np.sign(x) * (np.fabs(x) // scale))
-    m = np.round(np.float_(point.y) + np.sign(y) * (np.fabs(y) // scale))
-    n, m = np.int_(n), np.int_(m)
-    m = -m
-    return n, m
-
 # endregion
 
-# region gdal functions
+# region "get data" functions
 
 
 def gdal_open(file: DatasetLike, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
@@ -398,11 +420,24 @@ def gdal_read_subdataset(file: gdal.Dataset, dataset_lastname: str, mode=gdal.GA
     :return:
     """
     try:
-        name = next(sub[0] for sub in file.GetSubDatasets() if isinstance(sub[0], str) and sub[0].endswith('/' + dataset_lastname))
+        name = next(sub[0] for sub in file.GetSubDatasets() if
+                    isinstance(sub[0], str) and sub[0].endswith('/' + dataset_lastname))
     except StopIteration:
         raise SubDatasetNotFound(dataset_lastname)
     file = gdal_open(name, mode)
     return file
+
+
+def h5py_get_dataset(filename: str, dataset_lastname: str):
+    f = h5py.File(filename, 'r')
+    datasets = []
+    f.visit(datasets.append)
+    try:
+        ds = next(ds for ds in datasets if ds == dataset_lastname or ds.endswith('/' + dataset_lastname))
+        data = f[ds][()]
+        return data
+    except StopIteration:
+        return None
 
 
 # endregion
@@ -414,14 +449,15 @@ class ProcessedGeolocFile(NamedTuple):
     info: GeofileInfo
     lat: np.ndarray
     lon: np.ndarray
-    point0geo: GeoPoint
-    point0: Point
-    x_index: Optional[np.ndarray]
-    y_index: Optional[np.ndarray]
+    x_index: np.ndarray
+    y_index: np.ndarray
+    lonlat_mask: np.ndarray
+    geotransform: List[Number]
+    projection: pyproj.Proj
 
 
-@logger.catch
-def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='Latitude', lon_dataset='Longitude') -> ProcessedGeolocFile:
+def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='Latitude',
+                            lon_dataset='Longitude') -> ProcessedGeolocFile:
     """
     Обробатывает файл геолокаци, на данный момент поддерживается только GIMGO
     """
@@ -431,18 +467,59 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
     gdal_file = gdal_open(geofile)
     lat = gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
     lon = gdal_read_subdataset(gdal_file, lon_dataset).ReadAsArray()
-    p0 = Point(lat.shape[0] // 2, lat.shape[1] // 2)
-    gp0 = GeoPoint(lat[p0], lon[p0])
-    x_index, y_index = calculate_latlon_pos(lat*(-1), lon*(-1), gp0.lon, scale, geopoint=gp0, point=p0)
+    logger.debug(f'lat.shape={lat.shape} lon.shape={lon.shape}')
+    lonlat_mask = (lon > -200) * (lat > -200)
+    nodata_values = len(lonlat_mask[lonlat_mask == False])
+    logger.debug(f'Обнаружено {nodata_values} значений nodata в массивах широты и долготы')
+
+    projection = pyproj.Proj(f'''PROJCS["Lambert_Conformal_Conic",
+         GEOGCS["GCS_WGS_1984",
+             DATUM["WGS_1984",
+                 SPHEROID["WGS_84",6378137.0,298.252223563]
+             ],
+             PRIMEM["Greenwich",0.0],
+             UNIT["Degree",0.0174532925199433]
+         ],
+         PROJECTION["Lambert_Conformal_Conic_2SP"],
+         PARAMETER["False_Easting",0.0],
+         PARAMETER["False_Northing",0.0],
+         PARAMETER["Central_Meridian",79.950619],
+         PARAMETER["Standard_Parallel_1",67.41206675],
+         PARAMETER["Standard_Parallel_2",43.58046825],
+         PARAMETER["Scale_Factor",1.0],
+         PARAMETER["Latitude_Of_Origin",55.4962675],
+         UNIT["Meter",{scale}]
+    ]''')
+
+    lat_masked = lat[lonlat_mask]
+    lon_masked = lon[lonlat_mask]
+    lat_min, lat_max = np.min(lat_masked), np.max(lat_masked)
+    lon_min, lon_max = np.min(lon_masked), np.max(lon_masked)
+
+    z = projection(
+        [lat_max, lon_min, lon_max, lon_min, lon_max],
+        [lat_min, lat_max, lat_max, lat_min, lat_min])
+    z = np.array(list(zip(*z)))
+    x_min, y_max = z[-2, 0], z[1:3, 1].max()
+    y_min = z[1:3, 1].min()
+    geotransform = [x_min, scale, 0, y_max - y_min, 0, -scale]
+
+    logger.debug(f'geotransform={geotransform}')
+    started_at = datetime.now()
+    logger.debug('reprojecting...')
+    x_index, y_index = projection(lon_masked, lat_masked)
+    logger.debug(f'reprojection done: {(datetime.now() - started_at).seconds}s')
+    assert x_index.shape == y_index.shape, 'x_index.shape != y_index.shape'
+    assert np.all(np.isfinite(x_index)), 'x_index contains non-finite numbers'
+    assert np.all(np.isfinite(x_index)), 'y_index contains non-finite numbers'
+    x_index, y_index = np.int_(x_index), np.int_(y_index)
+
     logger.info('ОБРАБОТКА ЗАВЕРШЕНА ' + geofile.name)
+    return ProcessedGeolocFile(info=geofile, lat=lat, lon=lon, x_index=x_index, y_index=y_index,
+                               lonlat_mask=lonlat_mask, geotransform=geotransform, projection=projection)
 
-    return ProcessedGeolocFile(info=geofile, lat=lat, lon=lon, point0=p0,
-                               point0geo=gp0, x_index=x_index, y_index=y_index)
 
-
-@logger.catch
-def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile,
-                          iband_dataset='Reflectance', mband_dataset=''):
+def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile) -> Optional[np.ndarray]:
     """
     Обрабатывает band-файл, на данный момент работает только с SDR I-band файлами.
     """
@@ -452,22 +529,50 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
         raise NotImplementedError()
     f = gdal_open(geofile)
     if geofile.file_type in GeofileInfo.I_BAND_SDR:
+        iband_dataset = 'Reflectance' if geofile.file_type in GeofileInfo.I_BAND_SDR__REFLECTANCE else 'BrightnessTemperature'
         sub = gdal_read_subdataset(f, iband_dataset)
         arr = sub.ReadAsArray()
-        arr, data_mask = trim_data(arr, ret_mask=True)
-        # arr = get_pass_data(arr) # ???
-        mask = arr > 0
-        x_idx_masked = geoloc_file.x_index[data_mask][mask]
-        x_idx_masked -= x_idx_masked.min()
-        y_idx_masked = geoloc_file.y_index[data_mask][mask]
-        y_idx_masked -= y_idx_masked.min()
-        image_shape = (y_idx_masked.max() + 1, x_idx_masked.max() + 1)
+        arr = arr[geoloc_file.lonlat_mask]
+
+        x_index = geoloc_file.x_index
+        y_index = geoloc_file.y_index
+
+        assert x_index.shape == arr.shape, 'x_index.shape != arr.shape'
+        assert y_index.shape == arr.shape, 'y_index.shape != arr.shape'
+
+        x_index -= np.min(x_index)
+        y_index -= np.min(y_index)
+        image_shape = (np.max(y_index) + 1, np.max(x_index) + 1)
+
+        '''
+                arr, data_mask, offset = trim_data(arr, ret_mask=True, ret_offset=True)
+                # arr = get_pass_data(arr) # ???
+                x_idx_masked = geoloc_file.x_index[data_mask]
+                x_idx_masked -= np.min(x_idx_masked)
+                y_idx_masked = geoloc_file.y_index[data_mask]
+                y_idx_masked -= np.min(y_idx_masked)
+                image_shape = (y_idx_masked.max() + 1, x_idx_masked.max() + 1)
+        '''
+
         image = np.zeros(image_shape, 'uint16') + ND_NA
-        image[y_idx_masked, x_idx_masked] = arr[mask]
+        image[y_index, x_index] = arr
+        del arr
         image = np.flip(image, 0)
         image = fill_nodata(image)
         image = np.float_(image)
-        image[is_nodata(image)] = np.nan
+        # Поменять nodata на nan, применить ReflectanceFactors
+        mask = is_nodata(image)
+        image[mask] = np.nan
+
+        factors = 'ReflectanceFactors' if iband_dataset == 'Reflectance' else 'BrightnessTemperatureFactors'
+        data = h5py_get_dataset(geofile.path, factors)
+        if data is not None:
+            mask = ~mask
+            image[mask] *= data[0]
+            image[mask] += data[1]
+        else:
+            logger.warning('Не удалось получить ' + factors)
+
         return image
 
     logger.warning('На данный момент поддерживаются только типы файлов: ' +
@@ -476,19 +581,45 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     return None
 
 
-@logger.catch
-def hlf_process_fileset(geoloc: GeofileInfo, band_files: List[GeofileInfo], scale=3000, band_types=None
-                        ) -> Tuple[ProcessedGeolocFile, List[Tuple[np.ndarray, GeofileInfo]]]:
+def hlf_process_fileset(geoloc: GeofileInfo, band_files: List[GeofileInfo], scale=1700, band_types=None
+                        ) -> Tuple[ProcessedGeolocFile, List[Tuple[np.ndarray, GeofileInfo, Point]]]:
     if band_types:
         band_files = list(filter(lambda bf: bf.file_type in band_types, band_files))
     if len(band_files) == 0:
         raise ValueError('Band-файлы не найдены')
     geoloc_file = hlf_process_geoloc_file(geoloc, scale)
     results = []
+
+    required_width = -1
+    required_height = -1
+
     for file in band_files:
         processed = hlf_process_band_file(file, geoloc_file)
-        results.append((processed, file))
+        if processed is None:
+            results.append(None)
+            continue
+
+        # TODO trim_data по горизонтали
+
+        processed, _, offset = trim_data(processed, trim_value=np.isnan, ret_offset=True)
+
+        required_width = max(required_width, processed.shape[1] + offset.x)
+        required_height = max(required_height, processed.shape[0] + offset.y)
+
+        results.append((processed, file, offset))
+
+    # Теперь нужно изменить размер каждого band'а, так чтобы он был минимальный, но одинаковый для всех band'ов
+    for i in range(len(results)):
+        if results[i] is None:
+            continue
+        processed, info, offset = results[i]
+        processed = np.pad(processed, (
+            (offset.y, required_height - offset.y - processed.shape[0]),
+            (offset.x, required_width - offset.x - processed.shape[1])), constant_values=(np.nan,))
+        results[i] = processed, info, offset
+
     return geoloc_file, results
+
 
 # endregion
 
@@ -505,6 +636,7 @@ def _require_band_notimpl(info: GeofileInfo):
     if not info.is_band:
         logger.error('Поддерживаются только band-файлы')
         raise AssertionError('Поддерживаются только band-файлы')
+
 
 # region repr helper functions
 
@@ -530,15 +662,20 @@ class _Repr:
         else:
             return f'{mode}/{name}'
 
+
 # endregion
 
 # region tiff functions
 
 
-def save_as_tiff(path: str, bands: List[np.ndarray]):
+def save_as_tiff(path: str, geoloc: ProcessedGeolocFile, bands: List[np.ndarray]):
     assert len(bands) != 0, 'bands list is empty!'
     driver = require_driver('GTiff')
     file: gdal.Dataset = driver.Create(path, bands[0].shape[1], bands[0].shape[0], len(bands), gdal.GDT_Float32)
+    wkt = geoloc.projection.crs.to_wkt()
+    logger.debug('SetProjection: ' + wkt)
+    file.SetProjection(wkt)
+    file.SetGeoTransform(geoloc.geotransform)
     for bi in range(len(bands)):
         file.GetRasterBand(bi + 1).WriteArray(bands[bi])
 
