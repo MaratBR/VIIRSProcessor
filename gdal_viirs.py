@@ -10,6 +10,8 @@ import os
 import re
 import h5py
 
+TRIM = False
+
 # region types
 
 
@@ -95,6 +97,7 @@ UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","43
 # endregion
 
 # region utility functions
+
 
 def require_driver(name: str) -> gdal.Driver:
     driver = gdal.GetDriverByName(name)
@@ -465,12 +468,18 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
 
     logger.info('ОБРАБОТКА ' + geofile.name)
     gdal_file = gdal_open(geofile)
+    v = gdal_file.GetGeoTransform()
     lat = gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
     lon = gdal_read_subdataset(gdal_file, lon_dataset).ReadAsArray()
     logger.debug(f'lat.shape={lat.shape} lon.shape={lon.shape}')
     lonlat_mask = (lon > -200) * (lat > -200)
     nodata_values = len(lonlat_mask[lonlat_mask == False])
     logger.debug(f'Обнаружено {nodata_values} значений nodata в массивах широты и долготы')
+
+    lat_masked = lat[lonlat_mask]
+    lon_masked = lon[lonlat_mask]
+    lat_min, lat_max = np.min(lat_masked), np.max(lat_masked)
+    lon_min, lon_max = np.min(lon_masked), np.max(lon_masked)
 
     projection = pyproj.Proj(f'''PROJCS["Lambert_Conformal_Conic",
          GEOGCS["GCS_WGS_1984",
@@ -484,25 +493,34 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
          PARAMETER["False_Easting",0.0],
          PARAMETER["False_Northing",0.0],
          PARAMETER["Central_Meridian",79.950619],
-         PARAMETER["Standard_Parallel_1",67.41206675],
-         PARAMETER["Standard_Parallel_2",43.58046825],
+         PARAMETER["Standard_Parallel_1",{lat_max}],
+         PARAMETER["Standard_Parallel_2",{lat_min}],
          PARAMETER["Scale_Factor",1.0],
-         PARAMETER["Latitude_Of_Origin",55.4962675],
+         PARAMETER["Latitude_Of_Origin",{(lat_max + lat_min)/2}],
          UNIT["Meter",{scale}]
     ]''')
 
-    lat_masked = lat[lonlat_mask]
-    lon_masked = lon[lonlat_mask]
-    lat_min, lat_max = np.min(lat_masked), np.max(lat_masked)
-    lon_min, lon_max = np.min(lon_masked), np.max(lon_masked)
+    use_old = False
 
-    z = projection(
-        [lat_max, lon_min, lon_max, lon_min, lon_max],
-        [lat_min, lat_max, lat_max, lat_min, lat_min])
-    z = np.array(list(zip(*z)))
-    x_min, y_max = z[-2, 0], z[1:3, 1].max()
-    y_min = z[1:3, 1].min()
-    geotransform = [x_min, scale, 0, y_max - y_min, 0, -scale]
+    if use_old:
+        z = projection(
+            [lat_max, lon_min, lon_max, lon_min, lon_max],
+            [lat_min, lat_max, lat_max, lat_min, lat_min])
+        z = np.array(list(zip(*z)))
+        y_min = z[1:4, 1].min()
+        x_min, y_max = z[-2, 0], z[1:3, 1].max()
+    else:
+        z = projection(
+            [lon_min, lon_min, lon_max, lon_max],
+            [lat_max, lat_min, lat_max, lat_min])
+        z = np.array(list(zip(*z)))
+        x_min = z[:, 0].min()
+        #x_min = z[-1, 0]
+        x_max = z[:, 0].max()
+        y_max = z[:, 1].max()
+        y_min = z[:, 1].min()
+
+    geotransform = [x_min + y_min * scale, scale, 0, y_max * scale, 0, -scale]
 
     logger.debug(f'geotransform={geotransform}')
     started_at = datetime.now()
@@ -581,7 +599,7 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     return None
 
 
-def hlf_process_fileset(geoloc: GeofileInfo, band_files: List[GeofileInfo], scale=1700, band_types=None
+def hlf_process_fileset(geoloc: GeofileInfo, band_files: List[GeofileInfo], scale=2000, band_types=None
                         ) -> Tuple[ProcessedGeolocFile, List[Tuple[np.ndarray, GeofileInfo, Point]]]:
     if band_types:
         band_files = list(filter(lambda bf: bf.file_type in band_types, band_files))
@@ -601,7 +619,10 @@ def hlf_process_fileset(geoloc: GeofileInfo, band_files: List[GeofileInfo], scal
 
         # TODO trim_data по горизонтали
 
-        processed, _, offset = trim_data(processed, trim_value=np.isnan, ret_offset=True)
+        if TRIM:
+            processed, _, offset = trim_data(processed, trim_value=np.isnan, ret_offset=True)
+        else:
+            offset = Point(0, 0)
 
         required_width = max(required_width, processed.shape[1] + offset.x)
         required_height = max(required_height, processed.shape[0] + offset.y)
@@ -609,14 +630,15 @@ def hlf_process_fileset(geoloc: GeofileInfo, band_files: List[GeofileInfo], scal
         results.append((processed, file, offset))
 
     # Теперь нужно изменить размер каждого band'а, так чтобы он был минимальный, но одинаковый для всех band'ов
-    for i in range(len(results)):
-        if results[i] is None:
-            continue
-        processed, info, offset = results[i]
-        processed = np.pad(processed, (
-            (offset.y, required_height - offset.y - processed.shape[0]),
-            (offset.x, required_width - offset.x - processed.shape[1])), constant_values=(np.nan,))
-        results[i] = processed, info, offset
+    if TRIM:
+        for i in range(len(results)):
+            if results[i] is None:
+                continue
+            processed, info, offset = results[i]
+            processed = np.pad(processed, (
+                (offset.y, required_height - offset.y - processed.shape[0]),
+                (offset.x, required_width - offset.x - processed.shape[1])), constant_values=(np.nan,))
+            results[i] = processed, info, offset
 
     return geoloc_file, results
 
