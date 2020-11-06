@@ -1,13 +1,15 @@
 import os
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import gdal
 import h5py
+
+from gdal_viirs import GIMGO, GITCO, GMTCO, GMODO, GIGTO, GMGTO
 from gdal_viirs.exceptions import DatasetNotFoundException, SubDatasetNotFound
 from loguru import logger
 
-from gdal_viirs.types import DatasetLike, ViirsFileSet, GeofileInfo
+from gdal_viirs.types import DatasetLike, ViirsFileSet, GeofileInfo, GDNBO
 
 
 def require_driver(name: str) -> gdal.Driver:
@@ -132,20 +134,17 @@ def find_viirs_files(root) -> List[GeofileInfo]:
     return files
 
 
-def find_viirs_filesets(root, geoloc_types) -> Dict[str, ViirsFileSet]:
+def find_sdr_viirs_filesets(root, geoloc_types: Optional[List[str]] = None) -> Dict[str, ViirsFileSet]:
     """
     Возвращает dictionary где ключами являются названия файлов геолокации (с широтой и долготой),
     а занчение - кортеж из двух элементов, первый - информация о файле геолокации, второй - список band-файлов
     """
     result = {}
     files = find_viirs_files(root)
+    geoloc_types = GeofileInfo.GEOLOC_SDR
     geoloc_files = list(filter(lambda info: info.file_type in geoloc_types, files))
     for fileinfo in geoloc_files:
-        rtype = fileinfo.record_type
-        if rtype == 'SDR':
-            band_file_types = GeofileInfo.I_BAND_SDR + GeofileInfo.M_BAND_SDR
-        elif rtype == 'EDR':
-            band_file_types = GeofileInfo.I_BAND_EDR + GeofileInfo.M_BAND_EDR
+        band_file_types = fileinfo.get_band_files_types()
         band_files = list(filter(
             lambda info:
             info.file_type in band_file_types and
@@ -153,9 +152,6 @@ def find_viirs_filesets(root, geoloc_types) -> Dict[str, ViirsFileSet]:
             info.t_end == fileinfo.t_end and
             info.orbit_number == fileinfo.orbit_number,
             files))
-        i_band = filter(lambda bf: bf.band == 'I', band_files)
-        m_band = filter(lambda bf: bf.band == 'M', band_files)
-        i_band = sorted(i_band, key=lambda f: f.file_type)
-        m_band = sorted(m_band, key=lambda f: f.file_type)
-        result[fileinfo.name] = ViirsFileSet(geoloc_file=fileinfo, m_band=m_band, i_band=i_band)
+        band_files = sorted(band_files, key=lambda f: f.file_type)
+        result[fileinfo.name] = ViirsFileSet(geoloc_file=fileinfo, band_files=band_files)
     return result

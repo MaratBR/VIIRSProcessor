@@ -12,17 +12,14 @@ def save_as_tiff(root_path: str,
     driver = require_driver('GTiff')
     wkt = fileset.geoloc_file.projection.crs.to_wkt()
 
-    for band in fileset.bands:
-        if band is None:
-            continue
-        filename = os.path.join(root_path, f'{fileset.geoloc_file.info.name}--{band.band}_BAND.tiff')
-        logger.info('Записываем: ' + filename)
-        file: gdal.Dataset = driver.Create(
-            filename,
-            band.bands[0][0].data.shape[1], band.bands[0][0].data.shape[0], len(band.bands), gdal.GDT_Float32)
-        file.SetProjection(wkt)
-        file.SetGeoTransform(band.geotransform)
-        for bi in range(len(band.bands)):
-            processed, _ = band.bands[bi]
-            file.GetRasterBand(bi + 1).WriteArray(processed.data)
+    filename = os.path.join(root_path, f'{fileset.geoloc_file.info.name}--{fileset.geoloc_file.info.band}')
+    logger.info('Записываем: ' + filename)
+    bands_set = fileset.bands_set
+    shape = bands_set.bands[0][0].data.shape
+    file: gdal.Dataset = driver.Create(filename, shape[1], shape[0], len(bands_set.bands), gdal.GDT_Float32)
+    file.SetProjection(wkt)
+    file.SetGeoTransform(bands_set.geotransform)
+    for bi in range(len(bands_set.bands)):
+        processed, _ = bands_set.bands[bi]
+        file.GetRasterBand(bi + 1).WriteArray(processed.data)
 

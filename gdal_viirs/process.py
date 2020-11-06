@@ -49,12 +49,10 @@ def fill_nodata(arr: np.ndarray, nd_value=ND_OBPT, smoothing_iterations=5,
 
 
 def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='Latitude',
-                            lon_dataset='Longitude') -> ProcessedGeolocFile:
+                            lon_dataset='Longitude') -> Optional[ProcessedGeolocFile]:
     """
     Обробатывает файл геолокаци, на данный момент поддерживается только GIMGO
     """
-    _require_file_type_notimpl(geofile, GIMGO)
-
     logger.info('ОБРАБОТКА ' + geofile.name)
     gdal_file = gdal_open(geofile)
     lat = gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
@@ -70,9 +68,9 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
     projection = pyproj.Proj(lcc_proj(scale))
 
     started_at = datetime.now()
-    logger.debug('reprojecting...')
+    logger.info('ПРОЕКЦИЯ...')
     x_index, y_index = projection(lon_masked, lat_masked)
-    logger.debug(f'reprojection done: {(datetime.now() - started_at).seconds}s')
+    logger.info(f'ПРОЕКЦИЯ. ГОТОВО: {(datetime.now() - started_at).seconds}s')
     assert x_index.shape == y_index.shape, 'x_index.shape != y_index.shape'
     assert np.all(np.isfinite(x_index)), 'x_index contains non-finite numbers'
     assert np.all(np.isfinite(x_index)), 'y_index contains non-finite numbers'
@@ -93,78 +91,70 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     """
     _require_band_notimpl(geofile)
 
-    if geofile.is_edr:
-        raise NotImplementedError()
+    logger.info(f'ОБРАБОТКА {geofile.band_verbose}: {geofile.name}')
+    time = datetime.now()
+
     f = gdal_open(geofile)
-    if geofile.file_type in GeofileInfo.I_BAND_SDR:
-        iband_dataset = 'Reflectance' if geofile.file_type in GeofileInfo.I_BAND_SDR__REFLECTANCE else 'BrightnessTemperature'
-        sub = gdal_read_subdataset(f, iband_dataset)
-        arr = sub.ReadAsArray()
-        arr = arr[geoloc_file.lonlat_mask]
+    dataset_name = geofile.get_band_dataset()
+    sub = gdal_read_subdataset(f, dataset_name)
+    arr = sub.ReadAsArray()
+    arr = arr[geoloc_file.lonlat_mask]
 
-        x_index = np.int_(geoloc_file.x_index / scale)
-        y_index = np.int_(geoloc_file.y_index / scale)
+    x_index = np.int_(geoloc_file.x_index / scale)
+    y_index = np.int_(geoloc_file.y_index / scale)
 
-        assert x_index.shape == arr.shape, 'x_index.shape != arr.shape'
-        assert y_index.shape == arr.shape, 'y_index.shape != arr.shape'
+    assert x_index.shape == arr.shape, 'x_index.shape != arr.shape'
+    assert y_index.shape == arr.shape, 'y_index.shape != arr.shape'
 
-        x_index -= np.min(x_index)
-        y_index -= np.min(y_index)
-        image_shape = (np.max(y_index) + 1, np.max(x_index) + 1)
-        logger.debug(f'hlf_process_band_file: image_shape={image_shape}')
-        assert len(image_shape) == 2
-        assert all(d > 1 for d in image_shape)
+    x_index -= np.min(x_index)
+    y_index -= np.min(y_index)
+    image_shape = (np.max(y_index) + 1, np.max(x_index) + 1)
+    logger.debug(f'hlf_process_band_file: image_shape={image_shape}')
+    assert len(image_shape) == 2
+    assert all(d > 1 for d in image_shape)
 
-        image = np.zeros(image_shape, 'uint16') + ND_NA
-        image[y_index, x_index] = arr
-        del arr
-        image = np.flip(image, 0)
-        image = fill_nodata(image)
-        image = np.float_(image)
-        # Поменять nodata на nan, применить ReflectanceFactors
-        mask = is_nodata(image)
-        image[mask] = np.nan
+    image = np.zeros(image_shape, 'uint16') + ND_NA
+    image[y_index, x_index] = arr
+    del arr
+    image = np.flip(image, 0)
+    image = fill_nodata(image)
+    image = np.float_(image)
+    # Поменять nodata на nan, применить ReflectanceFactors
+    mask = is_nodata(image)
+    image[mask] = np.nan
 
-        factors = 'ReflectanceFactors' if iband_dataset == 'Reflectance' else 'BrightnessTemperatureFactors'
-        data = h5py_get_dataset(geofile.path, factors)
-        if data is not None:
-            mask = ~mask
-            image[mask] *= data[0]
-            image[mask] += data[1]
-        else:
-            logger.warning('Не удалось получить ' + factors)
-
-        return ProcessedBandFile(data=image, resolution=resolution)
-
-    logger.warning('На данный момент поддерживаются только типы файлов: ' +
-                   ', '.join(GeofileInfo.I_BAND_SDR__REFLECTANCE) + ' файл с типом ' + geofile.file_type +
-                   ' проигнорирован')
-    return None
+    data = h5py_get_dataset(geofile.path, dataset_name + "Factors")
+    if data is not None:
+        mask = ~mask
+        image[mask] *= data[0]
+        image[mask] += data[1]
+    else:
+        logger.warning('Не удалось получить ' + dataset_name + "Factors")
+    time = datetime.now() - time
+    logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {time.microseconds / 1000}ms')
+    return ProcessedBandFile(data=image, resolution=resolution)
 
 
-def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, do_trim=False) -> ProcessedFileSet:
-    if len(fileset.i_band) + len(fileset.m_band) == 0:
+def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, do_trim=False) -> Optional[ProcessedFileSet]:
+    if len(fileset.band_files) == 0:
         raise ValueError('Band-файлы не найдены')
     geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, 1)
+    if geoloc_file is None:
+        return None
     required_width = -1
     required_height = -1
 
-    i_band = _hlf_process_band_files(geoloc_file, fileset.i_band, scale, do_trim) if len(fileset.i_band) != 0 else None
-    m_band = _hlf_process_band_files(geoloc_file, fileset.m_band, scale, do_trim) if len(fileset.m_band) != 0 else None
-
+    band_files = _hlf_process_band_files(geoloc_file, fileset.band_files, scale, do_trim)
     # Теперь нужно изменить размер каждого band'а, так чтобы он был минимальный, но одинаковый для всех band'ов
     if do_trim:
-        for band, out in (i_band, m_band):
-            if band is None:
+        for i in range(len(fileset.band_files)):
+            if fileset.band_files[i] is None:
                 continue
-            for i in range(len(band)):
-                if band[i] is None:
-                    continue
-                processed, offset = band[i]
-                processed.data = np.pad(processed, (
-                    (offset.y, required_height - offset.y - processed.data.shape[0]),
-                    (offset.x, required_width - offset.x - processed.data.shape[1])), constant_values=(np.nan,))
-    return ProcessedFileSet(geoloc_file=geoloc_file, i_band=i_band, m_band=m_band)
+            processed, offset = band_files[i]
+            processed.data = np.pad(processed, (
+                (offset.y, required_height - offset.y - processed.data.shape[0]),
+                (offset.x, required_width - offset.x - processed.data.shape[1])), constant_values=(np.nan,))
+    return ProcessedFileSet(geoloc_file=geoloc_file, bands_set=band_files)
 
 
 def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,

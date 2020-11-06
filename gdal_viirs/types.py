@@ -6,6 +6,9 @@ import gdal
 import numpy as np
 import pyproj
 
+from .const import *
+from .exceptions import InvalidFileType
+
 DatasetLike = Union[gdal.Dataset, str, 'GeofileInfo']
 TNumpyOperable = TypeVar('TNumpyOperable', np.ndarray, float, int)
 Number = Union[int, float]
@@ -22,18 +25,15 @@ class GeoPoint(NamedTuple):
 
 
 class GeofileInfo:
-    GEOLOC_SDR = ['GITCO', 'GMTCO', 'GIMGO', 'GMODO', 'GDNBO']
-    GEOLOC_EDR = ['GIGTO', 'GMGTO', 'GNCCO']
-    GEOLOC = GEOLOC_EDR + GEOLOC_SDR
+    GEOLOC_SDR = [GITCO, GMTCO, GIMGO, GMODO, GDNBO]
+    GEOLOC_EDR = [GIGTO, GMGTO, GNCCO]
 
-    I_BAND_SDR__REFLECTANCE = ['SVI01', 'SVI02', 'SVI03']
-    I_BAND_SDR__BRIGHT_TEMP = ['SVI04', 'SVI05']
-    I_BAND_SDR = I_BAND_SDR__REFLECTANCE + I_BAND_SDR__BRIGHT_TEMP
+    _GEOLOC_SDR_I = GIMGO, GITCO
+    _GEOLOC_SDR_M = GMODO, GMTCO
 
-    M_BAND_SDR__REFLECTANCE = ['SVM01', 'SVM02', 'SVM03', 'SVM04', 'SVM05', 'SVM06', 'SVM07', 'SVM08', 'SVM09', 'SVM10',
-                               'SVM11']
-    M_BAND_SDR__BRIGHT_TEMP = ['SVM12', 'SVM13', 'SVM14', 'SVM15', 'SVM16']
-    M_BAND_SDR = M_BAND_SDR__REFLECTANCE + M_BAND_SDR__BRIGHT_TEMP
+    I_BAND_SDR = ['SVI01', 'SVI02', 'SVI03', 'SVI04', 'SVI05']
+    M_BAND_SDR = ['SVM01', 'SVM02', 'SVM03', 'SVM04', 'SVM05', 'SVM06', 'SVM07', 'SVM08', 'SVM09', 'SVM10', 'SVM11',
+                  'SVM12', 'SVM13', 'SVM14', 'SVM15', 'SVM16']
 
     I_BAND_EDR = ['VI1BO', 'VI2BO', 'VI3BO', 'VI4BO', 'VI5BO']
     M_BAND_EDR = ['VM01O', 'VM02O', 'VM03O', 'VM04O', 'VM05O', 'VM06O']
@@ -41,7 +41,7 @@ class GeofileInfo:
     DNB_SDR = 'SVDNB'
     NCC_EDR = 'VNCCO'
 
-    KNOWN_TYPES = GEOLOC + I_BAND_SDR + M_BAND_SDR + I_BAND_EDR + M_BAND_EDR + [DNB_SDR, NCC_EDR]
+    KNOWN_TYPES = GEOLOC_EDR + GEOLOC_SDR + I_BAND_SDR + M_BAND_SDR + I_BAND_EDR + M_BAND_EDR + [DNB_SDR, NCC_EDR]
 
     path: str
     name: str
@@ -67,7 +67,7 @@ class GeofileInfo:
         self.date = datetime.strptime(parts[2][1:], '%Y%m%d')
         self.t_start = self._parse_time(parts[3][1:])
         self.t_end = self._parse_time(parts[4][1:])
-        self.orbit_number = parts[5]
+        self.orbit_number = parts[5][1:]
         self.file_ts = parts[6]
         self.data_source = parts[7]
 
@@ -84,6 +84,35 @@ class GeofileInfo:
             info += ', type=' + self.file_type
 
         return f'<GeofileInfo {info}>'
+
+    def get_band_dataset(self):
+        if self.is_geoloc:
+            raise InvalidFileType('expected: band filetype, got: ' + self.file_type)
+        if self.file_type in self.I_BAND_SDR:
+            return 'Reflectance' if int(self.file_type[-1]) < 4 else 'BrightnessTemperature'
+        elif self.file_type in self.M_BAND_SDR:
+            return 'Reflectance' if int(self.file_type[-2:]) < 12 else 'BrightnessTemperature'
+        elif self.file_type in (self.DNB_SDR, self.NCC_EDR):
+            return 'Radiance'
+        return None
+
+    def get_band_files_types(self):
+        if not self.is_geoloc:
+            raise InvalidFileType('got: ' + self.file_type + ', required: geolocation filetype, one of ' + ', '.join(self.GEOLOC_SDR + self.GEOLOC_EDR))
+        if self.file_type in (GIMGO, GITCO):
+            return self.I_BAND_SDR
+        elif self.file_type in (GMODO, GMTCO):
+            return self.M_BAND_SDR
+        elif self.file_type == GDNBO:
+            return [self.DNB_SDR]
+        elif self.file_type == GIGTO:
+            return self.I_BAND_EDR
+        elif self.file_type == GMGTO:
+            return self.M_BAND_EDR
+        elif self.file_type == GNCCO:
+            return [self.NCC_EDR]
+        else:
+            raise ValueError('invalid file time')
 
     @property
     def is_sdr(self):
@@ -113,11 +142,24 @@ class GeofileInfo:
 
     @property
     def band(self):
-        if self.file_type in self.I_BAND_EDR or self.file_type in self.I_BAND_SDR:
+        if self.file_type in self.I_BAND_EDR or self.file_type in self.I_BAND_SDR or self.file_type in self._GEOLOC_SDR_I:
             return 'I'
-        if self.file_type in self.M_BAND_EDR or self.file_type in self.M_BAND_SDR:
+        if self.file_type in self.M_BAND_EDR or self.file_type in self.M_BAND_SDR or self.file_type in self._GEOLOC_SDR_M:
             return 'M'
+        if self.file_type in (self.NCC_EDR, self.DNB_SDR, GDNBO, GNCCO):
+            return 'DN'
         return None
+
+    @property
+    def band_verbose(self):
+        b = self.band
+        if b == 'M':
+            return 'M-band'
+        elif b == 'I':
+            return 'I-band'
+        elif b == 'DN':
+            return 'Day/Night'
+        return b
 
     @property
     def is_known_type(self):
@@ -125,7 +167,7 @@ class GeofileInfo:
 
     @property
     def is_geoloc(self):
-        return self.file_type in self.GEOLOC
+        return self.file_type in self.GEOLOC_EDR or self.file_type in self.GEOLOC_SDR
 
 
 class ProcessedBandFile(NamedTuple):
@@ -153,19 +195,22 @@ class ProcessedGeolocFile(NamedTuple):
 
 class ViirsFileSet(NamedTuple):
     geoloc_file: GeofileInfo
-    m_band: List[GeofileInfo]
-    i_band: List[GeofileInfo]
+    band_files: List[GeofileInfo]
+
+    def is_full(self):
+        b = self.geoloc_file.band
+        if b == 'M':
+            return len(self.band_files) == 16
+        elif b == 'I':
+            return len(self.band_files) == 5
+        elif b == 'DN':
+            return len(self.band_files) == 1
+        else:
+            raise InvalidFileType('could not detect band name, geoloc file type: ' + self.geoloc_file.file_type)
 
 
 class ProcessedFileSet(NamedTuple):
     geoloc_file: ProcessedGeolocFile
-    i_band: Optional[ProcessedBandsSet]
-    m_band: Optional[ProcessedBandsSet]
+    bands_set: ProcessedBandsSet
 
-    @property
-    def bands(self):
-        return [
-            self.i_band,
-            self.m_band
-        ]
 

@@ -1,4 +1,3 @@
-from gdal_viirs.types import Number
 
 ND_NA = 65535
 ND_MISS = 65534
@@ -40,7 +39,7 @@ UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","43
 '''
 
 
-def lcc_proj(scale: Number):
+def lcc_proj(scale):
     return PROJ_LCC % {'scale': scale}
 
 
