@@ -5,7 +5,6 @@ from typing import List, Dict, Optional
 import gdal
 import h5py
 
-from gdal_viirs import GIMGO, GITCO, GMTCO, GMODO, GIGTO, GMGTO
 from gdal_viirs.exceptions import DatasetNotFoundException, SubDatasetNotFound
 from loguru import logger
 
@@ -47,7 +46,6 @@ def get_lat_long_data(file: DatasetLike, ret_file: bool = True):
     if lon_ds:
         lon_ds = gdal.Open(lon_ds, gdal.GA_ReadOnly)
     return lat_ds, lon_ds, file if ret_file else None
-
 
 
 def gdal_open(file: DatasetLike, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
@@ -134,7 +132,7 @@ def find_viirs_files(root) -> List[GeofileInfo]:
     return files
 
 
-def find_sdr_viirs_filesets(root, geoloc_types: Optional[List[str]] = None) -> Dict[str, ViirsFileSet]:
+def find_sdr_viirs_filesets(root, geoloc_types: Optional[List[str]] = None, prefer_parallax_corrected: Optional[bool] = False) -> Dict[str, ViirsFileSet]:
     """
     Возвращает dictionary где ключами являются названия файлов геолокации (с широтой и долготой),
     а занчение - кортеж из двух элементов, первый - информация о файле геолокации, второй - список band-файлов
@@ -142,6 +140,12 @@ def find_sdr_viirs_filesets(root, geoloc_types: Optional[List[str]] = None) -> D
     result = {}
     files = find_viirs_files(root)
     geoloc_types = GeofileInfo.GEOLOC_SDR
+    if prefer_parallax_corrected is not None:
+        if prefer_parallax_corrected:
+            geoloc_types = filter(lambda t: t not in GeofileInfo.GEOLOC_SMOOTH_ELLIPSOID, geoloc_types)
+        else:
+            geoloc_types = filter(lambda t: t not in GeofileInfo.GEOLOC_PARALLAX_CORRECTED, geoloc_types)
+        geoloc_types = list(geoloc_types)
     geoloc_files = list(filter(lambda info: info.file_type in geoloc_types, files))
     for fileinfo in geoloc_files:
         band_file_types = fileinfo.get_band_files_types()

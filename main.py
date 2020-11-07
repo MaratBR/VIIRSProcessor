@@ -33,7 +33,13 @@ def main():
     process_parser.set_defaults(func=process)
 
     process_parser.add_argument('src_dir', help='Папка с VIIRS файлами')
-    process_parser.add_argument('-o', help='Папка, куда поместить готовые файлы', required=False)
+    process_parser.add_argument('--prefer',
+                                choices=('e', 'p', 'b'),
+                                default='e',
+                                help='Определяет какой датасет выбрать, если есть альтернативы, p - обрабатывать '
+                                     'параллакс-скорректированные сеты, e - спроецированные на еллипсоид WGS84, '
+                                     'b - оба')
+    process_parser.add_argument('-o', '--out_dir', default='/tmp', help='Папка, куда поместить готовые файлы', required=False)
     process_parser.add_argument('-E', '--no_exc', help='Не вызывать gdal.UseExceptions() при старте',
                                 action="store_true")
     process_parser.add_argument('--ext', help='Расширение выходных файлов', default='tiff')
@@ -47,6 +53,12 @@ def main():
     analyze_parser.add_argument('src_dir', help='Папка с VIIRS файлами')
     analyze_parser.add_argument('-b', '--bands', help='Вывести список band-файлов', action='store_true')
     analyze_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
+    analyze_parser.add_argument('--prefer',
+                                choices=('e', 'p', 'b'),
+                                default='e',
+                                help='Определяет какой датасет выбрать, если есть альтернативы, p - обрабатывать '
+                                     'параллакс-скорректированные сеты, e - спроецированные на еллипсоид WGS84, '
+                                     'b - оба')
 
     args: argparse.Namespace = parser.parse_args(sys.argv[1:])
 
@@ -57,12 +69,21 @@ def shorten_name(s: str, max_len: int) -> str:
     return s if len(s) <= max_len else s[:max_len-2] + '..'
 
 
+def cnv_prefer_tag(v: str):
+    if v == 'b':
+        return None
+    elif v == 'e':
+        return False
+    elif v == 'p':
+        return True
+
+
 def analyze(args):
     if args.no_colors:
         global is_color_output_enabled
         is_color_output_enabled = False
 
-    files = viirs.find_sdr_viirs_filesets(args.src_dir)
+    files = viirs.find_sdr_viirs_filesets(args.src_dir, prefer_parallax_corrected=cnv_prefer_tag(args.prefer))
 
     files_total = 0
 
@@ -92,6 +113,9 @@ def analyze(args):
 
 
 def process(args):
+    print(f'Папка с файлами: {args.src_dir}')
+    print(f'Папка вывода: {args.out_dir}')
+
     if not args.no_exc:
         gdal.UseExceptions()
 
@@ -103,13 +127,13 @@ def process(args):
         loguru.logger.remove()
         loguru.logger.add(sys.stdout, colorize=not args.no_colors, level='INFO')
 
-    files = viirs.find_sdr_viirs_filesets('/home/marat/Documents/npp')
+    files = viirs.find_sdr_viirs_filesets(args.src_dir, prefer_parallax_corrected=cnv_prefer_tag(args.prefer))
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():
         processed_fileset = viirs.hlf_process_fileset(dataset)
         if processed_fileset is None:
             continue
-        viirs.save_as_tiff('/tmp', processed_fileset)
+        viirs.save_as_tiff(args.out_dir, processed_fileset)
 
 
 if __name__ == '__main__':
