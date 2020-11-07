@@ -47,13 +47,13 @@ def main():
     process_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
     process_parser.add_argument('-v', '--verbose', help='Подробный вывод в консоль', action='store_true')
 
-    analyze_parser = subcommands.add_parser('analyze', help='Анализ данных')
-    analyze_parser.set_defaults(func=analyze)
+    show_parser = subcommands.add_parser('show', help='Анализ данных')
+    show_parser.set_defaults(func=show)
 
-    analyze_parser.add_argument('src_dir', help='Папка с VIIRS файлами')
-    analyze_parser.add_argument('-b', '--bands', help='Вывести список band-файлов', action='store_true')
-    analyze_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
-    analyze_parser.add_argument('--prefer',
+    show_parser.add_argument('src_dir', help='Папка с VIIRS файлами')
+    show_parser.add_argument('-b', '--bands', help='Вывести список band-файлов', action='store_true')
+    show_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
+    show_parser.add_argument('--prefer',
                                 choices=('e', 'p', 'b'),
                                 default='e',
                                 help='Определяет какой датасет выбрать, если есть альтернативы, p - обрабатывать '
@@ -78,7 +78,7 @@ def cnv_prefer_tag(v: str):
         return True
 
 
-def analyze(args):
+def show(args):
     if args.no_colors:
         global is_color_output_enabled
         is_color_output_enabled = False
