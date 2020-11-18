@@ -10,7 +10,7 @@ import pyproj
 from loguru import logger
 
 from gdal_viirs.const import GIMGO, is_nodata, ND_OBPT, lcc_proj, ND_NA
-from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Point, Number, TNumpyOperable, \
+from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Point, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
 from gdal_viirs.utility import require_driver, gdal_read_subdataset, gdal_open, h5py_get_dataset
 
@@ -82,10 +82,10 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
     logger.info('ОБРАБОТКА ЗАВЕРШЕНА ' + geofile.name)
     return ProcessedGeolocFile(info=geofile, lat=lat, lon=lon, x_index=x_index, y_index=y_index,
                                lonlat_mask=lonlat_mask, geotransform_max_y=y_max, geotransform_min_x=x_min,
-                               projection=projection)
+                               projection=projection, scale=scale)
 
 
-def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile, resolution: int, scale: int) -> Optional[ProcessedBandFile]:
+def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile) -> Optional[ProcessedBandFile]:
     """
     Обрабатывает band-файл, на данный момент работает только с SDR I-band файлами.
     """
@@ -100,8 +100,8 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     arr = sub.ReadAsArray()
     arr = arr[geoloc_file.lonlat_mask]
 
-    x_index = np.int_(geoloc_file.x_index / scale)
-    y_index = np.int_(geoloc_file.y_index / scale)
+    x_index = np.int_(geoloc_file.x_index)
+    y_index = np.int_(geoloc_file.y_index)
 
     assert x_index.shape == arr.shape, 'x_index.shape != arr.shape'
     assert y_index.shape == arr.shape, 'y_index.shape != arr.shape'
@@ -132,19 +132,20 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
         logger.warning('Не удалось получить ' + dataset_name + "Factors")
     time = datetime.now() - time
     logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {time.microseconds / 1000}ms')
-    return ProcessedBandFile(data=image, resolution=resolution)
+    return ProcessedBandFile(data=image, geoloc_file=geoloc_file)
 
 
-def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, do_trim=False) -> Optional[ProcessedFileSet]:
+def hlf_process_fileset(fileset: ViirsFileSet, scale=15000, do_trim=False) -> Optional[ProcessedFileSet]:
     if len(fileset.band_files) == 0:
         raise ValueError('Band-файлы не найдены')
-    geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, 1)
+    logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
+    geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale)
     if geoloc_file is None:
         return None
     required_width = -1
     required_height = -1
 
-    band_files = _hlf_process_band_files(geoloc_file, fileset.band_files, scale, do_trim)
+    band_files = _hlf_process_band_files(geoloc_file, fileset.band_files, do_trim)
     # Теперь нужно изменить размер каждого band'а, так чтобы он был минимальный, но одинаковый для всех band'ов
     if do_trim:
         for i in range(len(fileset.band_files)):
@@ -159,7 +160,6 @@ def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, do_trim=False) -> Opt
 
 def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
                             files: List[GeofileInfo],
-                            scale: int,
                             do_trim: bool) -> ProcessedBandsSet:
     results = []
 
@@ -174,9 +174,7 @@ def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
     for file in files:
         processed = hlf_process_band_file(
             file,
-            geoloc_file,
-            resolution,
-            scale
+            geoloc_file
         )
         if processed is None:
             results.append(None)
@@ -195,12 +193,12 @@ def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
         results.append((processed, offset))
 
     geotransform = [
-        geoloc_file.geotransform_min_x,
-        scale,
+        geoloc_file.geotransform_min_x * geoloc_file.scale,
+        geoloc_file.scale,
         0,
-        geoloc_file.geotransform_max_y,
+        geoloc_file.geotransform_max_y * geoloc_file.scale,
         0,
-        -scale
+        -geoloc_file.scale
     ]
     return ProcessedBandsSet(bands=results, geotransform=geotransform, band=files[0].band)
 

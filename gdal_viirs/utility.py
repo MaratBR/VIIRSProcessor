@@ -132,10 +132,12 @@ def find_viirs_files(root) -> List[GeofileInfo]:
     return files
 
 
-def find_sdr_viirs_filesets(root, geoloc_types: Optional[List[str]] = None, prefer_parallax_corrected: Optional[bool] = False) -> Dict[str, ViirsFileSet]:
+def find_sdr_viirs_filesets(root,
+                            geoloc_types: Optional[List[str]] = None,
+                            prefer_parallax_corrected: Optional[bool] = False) -> Dict[str, ViirsFileSet]:
     """
     Возвращает dictionary где ключами являются названия файлов геолокации (с широтой и долготой),
-    а занчение - кортеж из двух элементов, первый - информация о файле геолокации, второй - список band-файлов
+    а занчение - кортеж из двух элемFентов, первый - информация о файле геолокации, второй - список band-файлов
     """
     result = {}
     files = find_viirs_files(root)

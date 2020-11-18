@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, time
-from typing import NamedTuple, List, Optional, TypeVar, Union, Tuple
+from typing import NamedTuple, List, TypeVar, Union, Tuple
 
 import gdal
 import numpy as np
@@ -173,17 +173,6 @@ class GeofileInfo:
         return self.file_type in self.GEOLOC_EDR or self.file_type in self.GEOLOC_SDR
 
 
-class ProcessedBandFile(NamedTuple):
-    data: np.ndarray
-    resolution: int
-
-
-class ProcessedBandsSet(NamedTuple):
-    geotransform: List[Number]
-    bands: List[Tuple[ProcessedBandFile, Point]]
-    band: str
-
-
 class ProcessedGeolocFile(NamedTuple):
     info: GeofileInfo
     lat: np.ndarray
@@ -194,7 +183,18 @@ class ProcessedGeolocFile(NamedTuple):
     geotransform_min_x: Number
     geotransform_max_y: Number
     projection: pyproj.Proj
+    scale: Number
 
+
+class ProcessedBandFile(NamedTuple):
+    data: np.ndarray
+    geoloc_file: ProcessedGeolocFile
+
+
+class ProcessedBandsSet(NamedTuple):
+    geotransform: List[Number]
+    bands: List[Tuple[ProcessedBandFile, Point]]
+    band: str
 
 class ViirsFileSet(NamedTuple):
     geoloc_file: GeofileInfo

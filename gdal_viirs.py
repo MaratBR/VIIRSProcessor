@@ -24,6 +24,21 @@ except ImportError:
         return text
 
 
+def check_int(value):
+    try:
+        int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%s is not an int value" % value)
+    return int(value)
+
+
+def check_scale_int(value):
+    v = check_int(value)
+    if v < 1:
+        raise argparse.ArgumentTypeError("%s is an invalid scale int value (must be 1 or greater)" % value)
+    return v
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -46,6 +61,7 @@ def main():
     process_parser.add_argument('--types', help='Типы файлов для обработки')
     process_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
     process_parser.add_argument('-v', '--verbose', help='Подробный вывод в консоль', action='store_true')
+    process_parser.add_argument('-S', '--scale', help='Масштаб выходного файла', default=2000, type=check_scale_int)
 
     show_parser = subcommands.add_parser('show', help='Анализ данных')
     show_parser.set_defaults(func=show)
@@ -54,11 +70,11 @@ def main():
     show_parser.add_argument('-b', '--bands', help='Вывести список band-файлов', action='store_true')
     show_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
     show_parser.add_argument('--prefer',
-                                choices=('e', 'p', 'b'),
-                                default='e',
-                                help='Определяет какой датасет выбрать, если есть альтернативы, p - обрабатывать '
-                                     'параллакс-скорректированные сеты, e - спроецированные на еллипсоид WGS84, '
-                                     'b - оба')
+                             choices=('e', 'p', 'b'),
+                             default='e',
+                             help='Определяет какой датасет выбрать, если есть альтернативы, p - обрабатывать '
+                                  'параллакс-скорректированные сеты, e - спроецированные на еллипсоид WGS84, '
+                                  'b - оба')
 
     args: argparse.Namespace = parser.parse_args(sys.argv[1:])
 
@@ -115,6 +131,7 @@ def show(args):
 def process(args):
     print(f'Папка с файлами: {args.src_dir}')
     print(f'Папка вывода: {args.out_dir}')
+    print(f'Масштаб: {args.scale} метров/пиксель')
 
     if not args.no_exc:
         gdal.UseExceptions()
@@ -127,10 +144,13 @@ def process(args):
         loguru.logger.remove()
         loguru.logger.add(sys.stdout, colorize=not args.no_colors, level='INFO')
 
-    files = viirs.find_sdr_viirs_filesets(args.src_dir, prefer_parallax_corrected=cnv_prefer_tag(args.prefer))
+    files = viirs.find_sdr_viirs_filesets(
+        args.src_dir,
+        prefer_parallax_corrected=cnv_prefer_tag(args.prefer)
+    )
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():
-        processed_fileset = viirs.hlf_process_fileset(dataset)
+        processed_fileset = viirs.hlf_process_fileset(dataset, scale=args.scale)
         if processed_fileset is None:
             continue
         viirs.save_as_tiff(args.out_dir, processed_fileset)
