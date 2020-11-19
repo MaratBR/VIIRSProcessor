@@ -62,6 +62,8 @@ def main():
     process_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
     process_parser.add_argument('-v', '--verbose', help='Подробный вывод в консоль', action='store_true')
     process_parser.add_argument('-S', '--scale', help='Масштаб выходного файла', default=2000, type=check_scale_int)
+    process_parser.add_argument('-p', '--proj', help='Проекция, передоваемая в pyproj', default=viirs.PROJ_LCC)
+    process_parser.add_argument('--proj_src', help='Файл с проекцией, если указано, флаг --proj игнорируется')
 
     show_parser = subcommands.add_parser('show', help='Анализ данных')
     show_parser.set_defaults(func=show)
@@ -133,6 +135,16 @@ def process(args):
     print(f'Папка вывода: {args.out_dir}')
     print(f'Масштаб: {args.scale} метров/пиксель')
 
+    if args.proj_src:
+        try:
+            with open(args.proj_src) as f:
+                proj = f.read()
+                print(f'Файл с проекцией: {args.proj_src}')
+        except FileNotFoundError:
+            proj = args.proj
+    else:
+        proj = args.proj
+
     if not args.no_exc:
         gdal.UseExceptions()
 
@@ -150,7 +162,7 @@ def process(args):
     )
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():
-        processed_fileset = viirs.hlf_process_fileset(dataset, scale=args.scale)
+        processed_fileset = viirs.hlf_process_fileset(dataset, scale=args.scale, proj=proj)
         if processed_fileset is None:
             continue
         viirs.save_as_tiff(args.out_dir, processed_fileset)

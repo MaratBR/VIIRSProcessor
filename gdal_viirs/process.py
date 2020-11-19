@@ -9,10 +9,15 @@ from typing import List, Tuple, Optional
 import pyproj
 from loguru import logger
 
-from gdal_viirs.const import GIMGO, is_nodata, ND_OBPT, lcc_proj, ND_NA
+from gdal_viirs.const import GIMGO, is_nodata, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Point, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
 from gdal_viirs.utility import require_driver, gdal_read_subdataset, gdal_open, h5py_get_dataset
+
+
+def get_projection(proj) -> pyproj.Proj:
+    proj = proj or PROJ_LCC
+    return pyproj.Proj(proj)
 
 
 def trim_data(arr: np.ndarray, trim_value=None,
@@ -49,10 +54,13 @@ def fill_nodata(arr: np.ndarray, nd_value=ND_OBPT, smoothing_iterations=5,
 
 
 def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='Latitude',
-                            lon_dataset='Longitude') -> Optional[ProcessedGeolocFile]:
+                            lon_dataset='Longitude', proj=None) -> Optional[ProcessedGeolocFile]:
     """
     Обробатывает файл геолокаци, на данный момент поддерживается только GIMGO
     """
+
+    projection = get_projection(proj)
+
     logger.info('ОБРАБОТКА ' + geofile.name)
     gdal_file = gdal_open(geofile)
     lat = gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
@@ -64,8 +72,6 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
 
     lat_masked = lat[lonlat_mask]
     lon_masked = lon[lonlat_mask]
-
-    projection = pyproj.Proj(lcc_proj(scale))
 
     started_at = datetime.now()
     logger.info('ПРОЕКЦИЯ...')
@@ -100,8 +106,9 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     arr = sub.ReadAsArray()
     arr = arr[geoloc_file.lonlat_mask]
 
-    x_index = np.int_(geoloc_file.x_index)
-    y_index = np.int_(geoloc_file.y_index)
+    # TODO оптимизировать (это можно просто заранее вычислить)
+    x_index = np.int_(geoloc_file.x_index / geoloc_file.scale)
+    y_index = np.int_(geoloc_file.y_index / geoloc_file.scale)
 
     assert x_index.shape == arr.shape, 'x_index.shape != arr.shape'
     assert y_index.shape == arr.shape, 'y_index.shape != arr.shape'
@@ -135,11 +142,11 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     return ProcessedBandFile(data=image, geoloc_file=geoloc_file)
 
 
-def hlf_process_fileset(fileset: ViirsFileSet, scale=15000, do_trim=False) -> Optional[ProcessedFileSet]:
+def hlf_process_fileset(fileset: ViirsFileSet, scale=15000, do_trim=False, proj=None) -> Optional[ProcessedFileSet]:
     if len(fileset.band_files) == 0:
         raise ValueError('Band-файлы не найдены')
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
-    geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale)
+    geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     if geoloc_file is None:
         return None
     required_width = -1
@@ -193,10 +200,10 @@ def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
         results.append((processed, offset))
 
     geotransform = [
-        geoloc_file.geotransform_min_x * geoloc_file.scale,
+        geoloc_file.geotransform_min_x,
         geoloc_file.scale,
         0,
-        geoloc_file.geotransform_max_y * geoloc_file.scale,
+        geoloc_file.geotransform_max_y,
         0,
         -geoloc_file.scale
     ]

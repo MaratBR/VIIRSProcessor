@@ -1,3 +1,4 @@
+import pyproj
 
 ND_NA = 65535
 ND_MISS = 65534
@@ -13,6 +14,7 @@ _ND_MIN_VALUE = 65528
 def is_nodata(v):
     return v >= _ND_MIN_VALUE
 
+
 PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
      GEOGCS["GCS_WGS_1984",
          DATUM["WGS_1984",
@@ -27,10 +29,11 @@ PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
      PARAMETER["Central_Meridian",79.950619],
      PARAMETER["Standard_Parallel_1",67.41206675],
      PARAMETER["Standard_Parallel_2",43.58046825],
-     PARAMETER["Scale_Factor",1.0],
+     PARAMETER["Scale_Factor",0.0001],
      PARAMETER["Latitude_Of_Origin",55.4962675],
-     UNIT["Meter",%(scale)d]
+     UNIT["Meter",1.0]
 ]'''
+PROJ_LCC_PROJ4 = pyproj.Proj(PROJ_LCC)
 
 PROJ_WGS = '''GEOGCS["WGS 84",
 DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
