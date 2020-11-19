@@ -136,12 +136,9 @@ def process(args):
     print(f'Масштаб: {args.scale} метров/пиксель')
 
     if args.proj_src:
-        try:
-            with open(args.proj_src) as f:
-                proj = f.read()
-                print(f'Файл с проекцией: {args.proj_src}')
-        except FileNotFoundError:
-            proj = args.proj
+        with open(args.proj_src) as f:
+            proj = f.read()
+            print(f'Файл с проекцией: {args.proj_src}')
     else:
         proj = args.proj
 
