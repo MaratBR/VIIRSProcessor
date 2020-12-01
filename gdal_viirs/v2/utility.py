@@ -5,10 +5,10 @@ from typing import List, Dict, Optional
 import gdal
 import h5py
 
-from gdal_viirs.exceptions import DatasetNotFoundException, SubDatasetNotFound
+from gdal_viirs.v2.exceptions import DatasetNotFoundException, SubDatasetNotFound
 from loguru import logger
 
-from gdal_viirs.types import DatasetLike, ViirsFileSet, GeofileInfo, GDNBO
+from gdal_viirs.v2.types import DatasetLike, ViirsFileSet, GeofileInfo, GDNBO
 
 
 def require_driver(name: str) -> gdal.Driver:

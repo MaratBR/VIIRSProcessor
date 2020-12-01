@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, time
-from typing import NamedTuple, List, TypeVar, Union, Tuple
+from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
 
 import gdal
 import numpy as np
@@ -175,25 +175,38 @@ class GeofileInfo:
 
 class ProcessedGeolocFile(NamedTuple):
     info: GeofileInfo
-    lat: np.ndarray
-    lon: np.ndarray
-    x_index: np.ndarray
-    y_index: np.ndarray
     lonlat_mask: np.ndarray
     geotransform_min_x: Number
     geotransform_max_y: Number
     projection: pyproj.Proj
     scale: Number
+    indexes_count: int
+    out_image_shape: Tuple[int, int]
+
+    indexes_ds: gdal.Dataset
+
+    @property
+    def x_index(self):
+        return self.indexes_ds.GetRasterBand(1).ReadAsArray()[0]
+
+    @property
+    def y_index(self):
+        return self.indexes_ds.GetRasterBand(1).ReadAsArray()[1]
 
 
 class ProcessedBandFile(NamedTuple):
-    data: np.ndarray
+    data_ds: gdal.Dataset
+    data_ds_band_index: int
     geoloc_file: ProcessedGeolocFile
+
+    @property
+    def data(self):
+        return self.data_ds.GetRasterBand(self.data_ds_band_index).ReadAsArray()
 
 
 class ProcessedBandsSet(NamedTuple):
     geotransform: List[Number]
-    bands: List[Tuple[ProcessedBandFile, Point]]
+    bands: List[Optional[ProcessedBandFile]]
     band: str
 
 class ViirsFileSet(NamedTuple):

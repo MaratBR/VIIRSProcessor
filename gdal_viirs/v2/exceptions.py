@@ -16,3 +16,7 @@ class SubDatasetNotFound(DatasetNotFoundException):
 
 class InvalidFileType(ViirsException):
     pass
+
+
+class InvalidData(ViirsException):
+    pass

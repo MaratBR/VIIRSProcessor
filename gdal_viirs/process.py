@@ -60,7 +60,6 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
     """
 
     projection = get_projection(proj)
-
     logger.info('ОБРАБОТКА ' + geofile.name)
     gdal_file = gdal_open(geofile)
     lat = gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
@@ -93,7 +92,7 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
 
 def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile) -> Optional[ProcessedBandFile]:
     """
-    Обрабатывает band-файл, на данный момент работает только с SDR I-band файлами.
+    Обрабатывает band-файл
     """
     _require_band_notimpl(geofile)
 

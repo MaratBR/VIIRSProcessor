@@ -85,7 +85,7 @@ def gdal_read_subdataset(file: gdal.Dataset, dataset_lastname: str, mode=gdal.GA
     return file
 
 
-def h5py_get_dataset(filename: str, dataset_lastname: str):
+def h5py_get_dataset(filename: str, dataset_lastname: str) -> h5py.File:
     f = h5py.File(filename, 'r')
     datasets = []
     f.visit(datasets.append)

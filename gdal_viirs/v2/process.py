@@ -4,15 +4,16 @@ from datetime import datetime
 import gdal
 import numpy as np
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 
 import pyproj
 from loguru import logger
 
-from gdal_viirs.const import GIMGO, is_nodata, ND_OBPT, PROJ_LCC, ND_NA
-from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Point, Number, \
+from gdal_viirs.v2.const import GIMGO, is_nodata, ND_OBPT, PROJ_LCC, ND_NA
+from gdal_viirs.v2.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Point, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
-from gdal_viirs.utility import require_driver, gdal_read_subdataset, gdal_open, h5py_get_dataset
+from gdal_viirs.v2.utility import gdal_read_subdataset, gdal_open, h5py_get_dataset
+from gdal_viirs.v2 import cache
 
 
 def get_projection(proj) -> pyproj.Proj:
@@ -20,11 +21,16 @@ def get_projection(proj) -> pyproj.Proj:
     return pyproj.Proj(proj)
 
 
-def trim_data(arr: np.ndarray, trim_value=None,
+def trim_data(ds: Union[np.ndarray, gdal.Dataset], trim_value=None,
               ret_mask=False, ret_offset=False) -> Tuple[np.ndarray, Optional[np.ndarray], Optional[Point]]:
     """
     Обрезает nodata сверху и снизу
     """
+    if isinstance(ds, np.ndarray):
+        arr = ds
+    else:
+        arr = ds.ReadAsArray()
+
     if inspect.isfunction(trim_value):
         mask = trim_value(arr)
     else:
@@ -37,28 +43,64 @@ def trim_data(arr: np.ndarray, trim_value=None,
     return arr[mask], mask if ret_mask else None, offset if ret_offset else None
 
 
-def fill_nodata(arr: np.ndarray, nd_value=ND_OBPT, smoothing_iterations=5,
-                max_search_dist=100):
-    memfile = require_driver('MEM').Create('', arr.shape[1], arr.shape[0], 1, gdal.GDT_UInt16)
-    memfile.GetRasterBand(1).SetNoDataValue(nd_value)
-    memfile.GetRasterBand(1).WriteArray(arr)
+def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT, smoothing_iterations=5,
+                max_search_dist=100, band_index: int = 1):
+    """
+    Принимает на вход датасет как класс из GDAL'а или как "сырой массив", заполняет
+    значения nodata используя функцию gdal.FillNodata
+
+    :param ds_or_arr: датасет (класс gdal.Dataset) или массив numpy (ndarray)
+    :param nd_value:
+        значение nodata.
+        Если указано и ds_or_arr - это датасет, сохранит значение nodata из датасета, заменит его на
+        указанное значение, а затем, после завершения операции вернет старое значение (если текущее значение
+        отличается от указанного)
+    :param smoothing_iterations: количество итераций сглаживания
+    :param max_search_dist: максимальная дистанция поиска, передаваемая в gdal.FillNodata
+    :param band_index: индекс band'а (НАЧИНАЕТСЯ СТРОГО С 1)
+    :return: gdal.Dataset если передан gdal.Dataset, иначе numpy массив
+    """
+    if isinstance(ds_or_arr, np.ndarray):
+        arr = ds_or_arr
+        ds = cache.create(arr.shape[1], arr.shape[0], use_memory=True)
+    else:
+        ds = ds_or_arr
+        arr = None
+
+    band: gdal.Band = ds.GetRasterBand(band_index)
+    assert band is not None, f'band №{band_index} не найден'
+
+    if arr is not None:
+        band.SetNoDataValue(nd_value)
+        band.WriteArray(arr)
+
     result = gdal.FillNodata(
-        targetBand=memfile.GetRasterBand(1),
+        targetBand=band,
         maskBand=None,
         maxSearchDist=max_search_dist,
         smoothingIterations=smoothing_iterations
     )
     assert result == 0, f'FillNodata failed, error code: {result}'
-    arr = memfile.GetRasterBand(1).ReadAsArray()
-    return arr
+
+    if arr is not None:
+        result = band.ReadAsArray()
+        del band
+        del ds
+    else:
+        result = ds
+
+    return result
 
 
 def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='Latitude',
                             lon_dataset='Longitude', proj=None) -> Optional[ProcessedGeolocFile]:
     """
-    Обробатывает файл геолокаци, на данный момент поддерживается только GIMGO
+    Обробатывает файл геолокации
     """
-
+    assert geofile.is_geoloc, (
+        f'{geofile.name} не является геолокационным файлом, '
+        f'поддерживаемые форматы: {", ".join(GeofileInfo.GEOLOC_SDR + GeofileInfo.GEOLOC_EDR)}'
+    )
     projection = get_projection(proj)
     logger.info('ОБРАБОТКА ' + geofile.name)
     gdal_file = gdal_open(geofile)
@@ -84,13 +126,33 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
     x_min = x_index.min()
     y_max = y_index.max()
 
+    x_index, y_index = np.int_(x_index / scale), np.int_(y_index / scale)
+    x_index -= x_index.min()
+    y_index -= y_index.min()
+
+    indexes_ds = cache.create(
+        x_index.shape[0], 2,
+        use_memory=True,
+        data=[np.array([x_index, y_index])],
+        dtype=gdal.GDT_UInt32
+    )
+
     logger.info('ОБРАБОТКА ЗАВЕРШЕНА ' + geofile.name)
-    return ProcessedGeolocFile(info=geofile, lat=lat, lon=lon, x_index=x_index, y_index=y_index,
-                               lonlat_mask=lonlat_mask, geotransform_max_y=y_max, geotransform_min_x=x_min,
-                               projection=projection, scale=scale)
+    return ProcessedGeolocFile(
+        info=geofile,
+        lonlat_mask=lonlat_mask,
+        geotransform_max_y=y_max,
+        geotransform_min_x=x_min,
+        projection=projection,
+        scale=scale,
+        indexes_ds=indexes_ds,
+        indexes_count=x_index.shape[0],
+        out_image_shape=(y_index.max() + 1, x_index.max() + 1)
+    )
 
 
-def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile) -> Optional[ProcessedBandFile]:
+def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile,
+                          store_ds: Optional[gdal.Dataset] = None, band_index: int = 1) -> Optional[ProcessedBandFile]:
     """
     Обрабатывает band-файл
     """
@@ -105,19 +167,14 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
     arr = sub.ReadAsArray()
     arr = arr[geoloc_file.lonlat_mask]
 
-    # TODO оптимизировать (это можно просто заранее вычислить)
-    x_index = np.int_(geoloc_file.x_index / geoloc_file.scale)
-    y_index = np.int_(geoloc_file.y_index / geoloc_file.scale)
-
-    assert x_index.shape == arr.shape, 'x_index.shape != arr.shape'
-    assert y_index.shape == arr.shape, 'y_index.shape != arr.shape'
-
-    x_index -= np.min(x_index)
-    y_index -= np.min(y_index)
-    image_shape = (np.max(y_index) + 1, np.max(x_index) + 1)
+    x_index = geoloc_file.x_index
+    y_index = geoloc_file.y_index
+    assert x_index.shape == arr.shape, f'x_index.shape != arr.shape {x_index.shape} {arr.shape}'
+    assert y_index.shape == arr.shape, 'y_index.shape != arr.shape {x_index.shape} {arr.shape}'
+    image_shape = geoloc_file.out_image_shape
     logger.debug(f'hlf_process_band_file: image_shape={image_shape}')
     assert len(image_shape) == 2
-    assert all(d > 1 for d in image_shape)
+    assert all(d > 1 for d in image_shape), 'image must be at least 2x2'
 
     image = np.zeros(image_shape, 'uint16') + ND_NA
     image[y_index, x_index] = arr
@@ -138,7 +195,17 @@ def hlf_process_band_file(geofile: GeofileInfo, geoloc_file: ProcessedGeolocFile
         logger.warning('Не удалось получить ' + dataset_name + "Factors")
     time = datetime.now() - time
     logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {time.microseconds / 1000}ms')
-    return ProcessedBandFile(data=image, geoloc_file=geoloc_file)
+
+    if store_ds is None:
+        store_ds = cache.create(image.shape[1], image.shape[0])
+        band_index = 1
+    store_ds.GetRasterBand(band_index).WriteArray(image)
+
+    return ProcessedBandFile(
+        geoloc_file=geoloc_file,
+        data_ds=store_ds,
+        data_ds_band_index=band_index
+    )
 
 
 def hlf_process_fileset(fileset: ViirsFileSet, scale=15000, do_trim=False, proj=None) -> Optional[ProcessedFileSet]:
@@ -168,35 +235,19 @@ def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
                             files: List[GeofileInfo],
                             do_trim: bool) -> ProcessedBandsSet:
     results = []
-
-    required_width = -1
-    required_height = -1
-
     assert len(files) > 0, 'bands list is empty'
     assert len(set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
 
-    resolution = 371 if files[0].band == 'I' else 750
+    bands_store = cache.create(geoloc_file.out_image_shape[1], geoloc_file.out_image_shape[0], dtype=gdal.GDT_Float64, bands=len(files))
 
-    for file in files:
+    for index, file in enumerate(files):
         processed = hlf_process_band_file(
             file,
-            geoloc_file
+            geoloc_file,
+            store_ds=bands_store,
+            band_index=index + 1
         )
-        if processed is None:
-            results.append(None)
-            continue
-
-        # TODO trim_data по горизонтали
-
-        if do_trim:
-            processed.data, _, offset = trim_data(processed.data, trim_value=np.isnan, ret_offset=True)
-        else:
-            offset = Point(0, 0)
-
-        required_width = max(required_width, processed.data.shape[1] + offset.x)
-        required_height = max(required_height, processed.data.shape[0] + offset.y)
-
-        results.append((processed, offset))
+        results.append(processed)
 
     geotransform = [
         geoloc_file.geotransform_min_x,

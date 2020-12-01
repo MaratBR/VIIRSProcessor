@@ -5,7 +5,7 @@ from io import StringIO
 import gdal
 import loguru
 
-import gdal_viirs as viirs
+import gdal_viirs.v2 as viirs
 import argparse
 
 is_color_output_enabled = True
@@ -80,7 +80,10 @@ def main():
 
     args: argparse.Namespace = parser.parse_args(sys.argv[1:])
 
-    args.func(args)
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        parser.print_help()
 
 
 def shorten_name(s: str, max_len: int) -> str:
