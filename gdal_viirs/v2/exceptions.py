@@ -20,3 +20,19 @@ class InvalidFileType(ViirsException):
 
 class InvalidData(ViirsException):
     pass
+
+
+class GDALNonZeroReturnCode(ViirsException):
+    return_code: int
+
+    def __init__(self, code, message):
+        super(GDALNonZeroReturnCode, self).__init__(message)
+        self.return_code = code
+
+
+class ProcessingException(ViirsException):
+    pass
+
+
+class ProjectionFailure(ProcessingException):
+    pass

@@ -1,20 +1,37 @@
 import os
 import re
-from typing import List, Dict, Optional
-
 import gdal
 import h5py
+from typing import List, Dict, Optional
 
-from gdal_viirs.v2.exceptions import DatasetNotFoundException, SubDatasetNotFound
-from loguru import logger
+from gdal_viirs.v2.exceptions import DatasetNotFoundException, SubDatasetNotFound, InvalidData, GDALNonZeroReturnCode
+from gdal_viirs.v2.types import DatasetLike, ViirsFileSet, GeofileInfo
 
-from gdal_viirs.v2.types import DatasetLike, ViirsFileSet, GeofileInfo, GDNBO
+
+def check_gdal_return_code(code):
+    if code != 0:
+        msg = gdal.GetLastErrorMsg()
+        raise GDALNonZeroReturnCode(code, msg)
 
 
 def require_driver(name: str) -> gdal.Driver:
     driver = gdal.GetDriverByName(name)
     assert driver is not None, f'GDAL driver {name} is required, but missing!'
     return driver
+
+
+def create_mem(xsize, ysize, *, dtype=gdal.GDT_Float64, bands=1, data: list = None) -> gdal.Dataset:
+    ds = require_driver('MEM').Create('', int(xsize), int(ysize), bands, eType=dtype)
+
+    if data:
+        if len(data) > bands:
+            raise InvalidData(f'Передано больше растеров, чем выделено ({bands} выделено, {len(data)} передано)')
+
+        for index, d in enumerate(data):
+            code = ds.GetRasterBand(index + 1).WriteArray(d)
+            check_gdal_return_code(code)
+
+    return ds
 
 
 def get_lat_long_data(file: DatasetLike, ret_file: bool = True):
@@ -67,7 +84,6 @@ def gdal_open(file: DatasetLike, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
         raise DatasetNotFoundException(file)
     if f is None:
         raise DatasetNotFoundException(file)
-    logger.debug(f'mode={_Repr.gdal_access(mode)} file={file} ')
     return f
 
 
@@ -95,28 +111,6 @@ def h5py_get_dataset(filename: str, dataset_lastname: str) -> h5py.File:
         return data
     except StopIteration:
         return None
-
-
-class _Repr:
-    _access_repr: dict = None
-
-    @classmethod
-    def gdal_access(cls, mode):
-        """
-        Конвертирует значения gdal.GA_XXXX (GA_ReadOnly, GA_Update и т.д.) в строку
-        :param mode:
-        :return:
-        """
-        if cls._access_repr is None:
-            from osgeo import gdalconst
-            ga_keys = list(filter(lambda key: key.startswith('GA_'), gdalconst.__dict__.keys()))
-            ga_values = list(map(lambda key: gdalconst.__dict__[key], ga_keys))
-            cls._access_repr = {ga_values[i]: ga_keys[i] for i in range(len(ga_values))}
-        name = cls._access_repr.get(mode)
-        if name is None:
-            return f'{mode}/UNKNOWN'
-        else:
-            return f'{mode}/{name}'
 
 
 def find_viirs_files(root) -> List[GeofileInfo]:
