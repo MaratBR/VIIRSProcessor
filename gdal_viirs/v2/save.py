@@ -13,7 +13,7 @@ def save_as_tiff(root_path: str,
     driver = require_driver('GTiff')
     wkt = fileset.geoloc_file.projection.crs.to_wkt(version=pyproj.enums.WktVersion.WKT1_GDAL)
 
-    filename = os.path.join(root_path, f'{fileset.geoloc_file.info.name}--{fileset.geoloc_file.info.band}')
+    filename = os.path.join(root_path, f'{fileset.geoloc_file.info.name}-processed.tiff')
     logger.info('Записываем: ' + filename)
     bands_set: ProcessedBandsSet = fileset.bands_set
     band: gdal.Band = bands_set.bands[0].data_ds.GetRasterBand(1)
