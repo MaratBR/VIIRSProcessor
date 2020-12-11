@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 import gdal
 import pyproj.enums
 from loguru import logger
@@ -24,5 +24,8 @@ def save_as_tiff(root_path: str,
     for bi in range(len(bands_set.bands)):
         processed = bands_set.bands[bi]
         if processed is not None:
-            file.GetRasterBand(bi + 1).WriteArray(processed.data)
+            band: gdal.Band = file.GetRasterBand(bi + 1)
+            if bi == 0:
+                band.SetNoDataValue(np.nan)
+            band.WriteArray(processed.data)
 

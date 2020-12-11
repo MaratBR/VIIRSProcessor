@@ -1,16 +1,15 @@
-import inspect
 from datetime import datetime
 
 import gdal
 import numpy as np
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 import pyproj
 from loguru import logger
 
-from gdal_viirs.v2.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA, ND_SOUB
-from gdal_viirs.v2.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Point, Number, \
+from gdal_viirs.v2.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
+from gdal_viirs.v2.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
 from gdal_viirs.v2 import utility
 from gdal_viirs.v2.exceptions import GDALNonZeroReturnCode
@@ -146,7 +145,7 @@ def hlf_process_band_file(geofile: GeofileInfo,
                           geoloc_file: ProcessedGeolocFile,
                           store_ds: Optional[gdal.Dataset] = None,
                           band_index: int = 1,
-                          no_data_threshold: int = 60000) -> Optional[ProcessedBandFile]:
+                          no_data_threshold: Tuple[int, int] = (0, 60000)) -> Optional[ProcessedBandFile]:
     """
     Обрабатывает band-файл
     """
@@ -158,7 +157,10 @@ def hlf_process_band_file(geofile: GeofileInfo,
     f = utility.gdal_open(geofile)
     dataset_name = geofile.get_band_dataset()
     sub = utility.gdal_read_subdataset(f, dataset_name)
+    sdr_mask = utility.gdal_read_subdataset(f, 'BANDSDR', exact_lastname=False).ReadAsArray()
+    sdr_mask = sdr_mask[sdr_mask == 129]
     arr = sub.ReadAsArray()
+    arr[sdr_mask] = ND_NA
     arr = arr[geoloc_file.lonlat_mask]
 
     x_index = geoloc_file.x_index
@@ -176,10 +178,11 @@ def hlf_process_band_file(geofile: GeofileInfo,
     image = np.flip(image, 0)
     image = fill_nodata(image)
     image = np.float_(image)
-    # Поменять nodata на nan, применить ReflectanceFactors
-    mask = image >= no_data_threshold
+    # Поменять nodata на nan
+    mask = (image > no_data_threshold[1]) | (image < no_data_threshold[0])
     image[mask] = np.nan
 
+    # factors
     data = utility.h5py_get_dataset(geofile.path, dataset_name + "Factors")
     if data is not None:
         mask = ~mask

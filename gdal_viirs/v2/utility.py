@@ -87,14 +87,15 @@ def gdal_open(file: DatasetLike, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
     return f
 
 
-def gdal_read_subdataset(file: gdal.Dataset, dataset_lastname: str, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
+def gdal_read_subdataset(file: gdal.Dataset, dataset_lastname: str, mode=gdal.GA_ReadOnly,
+                         exact_lastname=True) -> gdal.Dataset:
     """
     Прочитывает датасет из другого, родительского, датасета
     :return:
     """
     try:
         name = next(sub[0] for sub in file.GetSubDatasets() if
-                    isinstance(sub[0], str) and sub[0].endswith('/' + dataset_lastname))
+                    isinstance(sub[0], str) and sub[0].endswith(('/' if exact_lastname else '') + dataset_lastname))
     except StopIteration:
         raise SubDatasetNotFound(dataset_lastname)
     file = gdal_open(name, mode)
@@ -135,7 +136,7 @@ def find_sdr_viirs_filesets(root,
     """
     result = {}
     files = find_viirs_files(root)
-    geoloc_types = GeofileInfo.GEOLOC_SDR
+    geoloc_types = geoloc_types or GeofileInfo.GEOLOC_SDR
     if prefer_parallax_corrected is not None:
         if prefer_parallax_corrected:
             geoloc_types = filter(lambda t: t not in GeofileInfo.GEOLOC_SMOOTH_ELLIPSOID, geoloc_types)
