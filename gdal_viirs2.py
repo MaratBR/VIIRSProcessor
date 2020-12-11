@@ -62,7 +62,7 @@ def main():
     process_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
     process_parser.add_argument('-v', '--verbose', help='Подробный вывод в консоль', action='store_true')
     process_parser.add_argument('-S', '--scale', help='Масштаб выходного файла', default=2000, type=check_scale_int)
-    process_parser.add_argument('-p', '--proj', help='Проекция, передоваемая в pyproj', default=viirs.PROJ_LCC)
+    process_parser.add_argument('-p', '--proj', help='Проекция, передоваемая в pyproj', default=viirs.const.PROJ_LCC)
     process_parser.add_argument('--proj_src', help='Файл с проекцией, если указано, флаг --proj игнорируется')
 
     show_parser = subcommands.add_parser('show', help='Анализ данных')
@@ -104,7 +104,7 @@ def show(args):
         global is_color_output_enabled
         is_color_output_enabled = False
 
-    files = viirs.find_sdr_viirs_filesets(args.src_dir, prefer_parallax_corrected=cnv_prefer_tag(args.prefer))
+    files = viirs.utility.find_sdr_viirs_filesets(args.src_dir, prefer_parallax_corrected=cnv_prefer_tag(args.prefer))
 
     files_total = 0
 

@@ -1,4 +1,6 @@
-from .const import *
-from .save import *
-from .process import *
-from .utility import *
+import gdal_viirs.v2.process
+import gdal_viirs.v2.save
+import gdal_viirs.v2.utility
+import gdal_viirs.v2.types
+import gdal_viirs.v2.exceptions
+import gdal_viirs.v2.const
