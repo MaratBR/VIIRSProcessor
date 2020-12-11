@@ -1,6 +1,7 @@
 import os
 
 import gdal
+import pyproj.enums
 from loguru import logger
 
 from gdal_viirs.v2.types import ProcessedFileSet, ProcessedBandsSet
@@ -10,7 +11,7 @@ from gdal_viirs.v2.utility import require_driver
 def save_as_tiff(root_path: str,
                  fileset: ProcessedFileSet):
     driver = require_driver('GTiff')
-    wkt = fileset.geoloc_file.projection.crs.to_wkt()
+    wkt = fileset.geoloc_file.projection.crs.to_wkt(version=pyproj.enums.WktVersion.WKT1_GDAL)
 
     filename = os.path.join(root_path, f'{fileset.geoloc_file.info.name}--{fileset.geoloc_file.info.band}')
     logger.info('Записываем: ' + filename)
