@@ -156,16 +156,16 @@ def process(args):
         loguru.logger.remove()
         loguru.logger.add(sys.stdout, colorize=not args.no_colors, level='INFO')
 
-    files = viirs.find_sdr_viirs_filesets(
+    files = viirs.utility.find_sdr_viirs_filesets(
         args.src_dir,
         prefer_parallax_corrected=cnv_prefer_tag(args.prefer)
     )
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():
-        processed_fileset = viirs.hlf_process_fileset(dataset, scale=args.scale, proj=proj)
+        processed_fileset = viirs.process.hlf_process_fileset(dataset, scale=args.scale, proj=proj)
         if processed_fileset is None:
             continue
-        viirs.save_as_tiff(args.out_dir, processed_fileset)
+        viirs.save.save_as_tiff(args.out_dir, processed_fileset)
 
 
 if __name__ == '__main__':
