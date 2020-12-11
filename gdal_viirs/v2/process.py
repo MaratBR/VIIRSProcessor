@@ -12,7 +12,7 @@ from gdal_viirs.v2.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.v2.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
 from gdal_viirs.v2 import utility
-from gdal_viirs.v2.exceptions import GDALNonZeroReturnCode
+from gdal_viirs.v2.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound
 
 
 def get_projection(proj) -> pyproj.Proj:
@@ -157,10 +157,13 @@ def hlf_process_band_file(geofile: GeofileInfo,
     f = utility.gdal_open(geofile)
     dataset_name = geofile.get_band_dataset()
     sub = utility.gdal_read_subdataset(f, dataset_name)
-    sdr_mask = utility.gdal_read_subdataset(f, 'BANDSDR', exact_lastname=False).ReadAsArray()
-    sdr_mask = sdr_mask[sdr_mask == 129]
     arr = sub.ReadAsArray()
-    arr[sdr_mask] = ND_NA
+    try:
+        sdr_mask = utility.gdal_read_subdataset(f, 'BANDSDR', exact_lastname=False).ReadAsArray()
+        sdr_mask = sdr_mask[sdr_mask == 129]
+        arr[sdr_mask] = ND_NA
+    except SubDatasetNotFound:
+        pass
     arr = arr[geoloc_file.lonlat_mask]
 
     x_index = geoloc_file.x_index
