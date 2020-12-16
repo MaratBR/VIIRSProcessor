@@ -1,8 +1,9 @@
 import os
 import re
+from typing import List, Dict, Optional
+
 import gdal
 import h5py
-from typing import List, Dict, Optional
 
 from gdal_viirs.exceptions import DatasetNotFoundException, SubDatasetNotFound, InvalidData, GDALNonZeroReturnCode, \
     DriverNotFound

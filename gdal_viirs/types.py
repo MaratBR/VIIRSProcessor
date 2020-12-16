@@ -3,12 +3,12 @@ types.py содержит объявление типов данных, кото
 Как классов так и просто type-hints
 """
 
+import os
 from datetime import datetime, time
 from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
 
 import gdal
 import numpy as np
-import os
 
 from gdal_viirs.const import *
 from gdal_viirs.exceptions import InvalidFileType, InvalidFilename
@@ -121,7 +121,8 @@ class GeofileInfo:
         :returns список типов файлов (как строки)
         """
         if not self.is_geoloc:
-            raise InvalidFileType('got: ' + self.file_type + ', required: geolocation filetype, one of ' + ', '.join(self.GEOLOC_SDR + self.GEOLOC_EDR))
+            raise InvalidFileType('got: ' + self.file_type + ', required: geolocation filetype, one of ' + ', '.join(
+                self.GEOLOC_SDR + self.GEOLOC_EDR))
         if self.file_type in (GIMGO, GITCO):
             return self.I_BAND_SDR
         elif self.file_type in (GMODO, GMTCO):
@@ -229,6 +230,7 @@ class ProcessedBandsSet(NamedTuple):
     bands: List[Optional[ProcessedBandFile]]
     band: str
 
+
 class ViirsFileSet(NamedTuple):
     geoloc_file: GeofileInfo
     band_files: List[GeofileInfo]
@@ -248,5 +250,3 @@ class ViirsFileSet(NamedTuple):
 class ProcessedFileSet(NamedTuple):
     geoloc_file: ProcessedGeolocFile
     bands_set: ProcessedBandsSet
-
-

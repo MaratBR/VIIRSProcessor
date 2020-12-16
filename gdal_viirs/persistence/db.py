@@ -52,7 +52,7 @@ class GDALViirsDB:
         '''
         for band_file in fileset.band_files:
             records.append((band_file.name, band_file.path, now, fileset.geoloc_file.name))
-    
+
         self._db.execute(query, (fileset.geoloc_file.name, fileset.geoloc_file.path, now, None))
         self._db.executemany(query, records)
         self._db.commit()
@@ -60,5 +60,3 @@ class GDALViirsDB:
     def delete_fileset(self, fileset: ViirsFileSet):
         self._db.execute('''DELETE FROM files WHERE name = ? OR geoloc_file = ?''',
                          [fileset.geoloc_file.name, fileset.geoloc_file.name])
-
-

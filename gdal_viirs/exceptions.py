@@ -2,6 +2,7 @@ class ViirsException(Exception):
     """
     Базовый класс исключений
     """
+
     def __init__(self, message):
         self.message = message
         super(ViirsException, self).__init__(message)
@@ -11,6 +12,7 @@ class DatasetNotFoundException(ViirsException):
     """
     Исключение, выбрасываемае, когда не удается открыть датасет
     """
+
     def __init__(self, name):
         super(DatasetNotFoundException, self).__init__(f'Dataset or subdataset {name} not found')
         self.dataset = name
@@ -65,6 +67,7 @@ class InvalidFilename(ViirsException):
     """
     Выбрасывается, если имя VIIRS файла не соответсвует шаблону
     """
+
     def __init__(self, filename):
         super(InvalidFilename, self).__init__(
             f'Имя файла не соответсвует шаблону. Имя файла: {filename}, ожидалось: ТИП_спутник_dГГГГММДД_tЧЧММССС_eЧЧММССС_bНомерОрбиты_cГГГММДДччммсссссссс_ИсточникФайла.h5')

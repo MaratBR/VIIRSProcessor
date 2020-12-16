@@ -1,18 +1,16 @@
 from datetime import datetime
+from typing import List, Optional, Union, Tuple
 
 import gdal
 import numpy as np
-
-from typing import List, Optional, Union, Tuple
-
 import pyproj
 from loguru import logger
 
+from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
+from gdal_viirs.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound, InvalidData
 from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
-from gdal_viirs import utility
-from gdal_viirs.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound, InvalidData
 
 
 def get_projection(proj) -> pyproj.Proj:
@@ -89,7 +87,6 @@ def hlf_process_fileset(fileset: ViirsFileSet, scale=10, proj=None) -> Optional[
     geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     if geoloc_file is None:
         return None
-
 
     band_files = _hlf_process_band_files(geoloc_file, fileset.band_files)
     return ProcessedFileSet(geoloc_file=geoloc_file, bands_set=band_files)
@@ -221,9 +218,11 @@ def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
                             files: List[GeofileInfo]) -> ProcessedBandsSet:
     results = []
     assert len(files) > 0, 'bands list is empty'
-    assert len(set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
+    assert len(
+        set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
 
-    bands_store = utility.create_mem(geoloc_file.out_image_shape[1], geoloc_file.out_image_shape[0], dtype=gdal.GDT_Float64, bands=len(files))
+    bands_store = utility.create_mem(geoloc_file.out_image_shape[1], geoloc_file.out_image_shape[0],
+                                     dtype=gdal.GDT_Float64, bands=len(files))
 
     for index, file in enumerate(files):
         processed = hlf_process_band_file(
@@ -255,4 +254,3 @@ def _require_band_notimpl(info: GeofileInfo):
     if not info.is_band:
         logger.error('Поддерживаются только band-файлы')
         raise AssertionError('Поддерживаются только band-файлы')
-

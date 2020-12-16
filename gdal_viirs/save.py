@@ -1,6 +1,7 @@
 import os
-import numpy as np
+
 import gdal
+import numpy as np
 import pyproj.enums
 from loguru import logger
 
@@ -28,4 +29,3 @@ def save_as_tiff(root_path: str,
             if bi == 0:
                 band.SetNoDataValue(np.nan)
             band.WriteArray(processed.data)
-
