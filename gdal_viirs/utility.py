@@ -4,8 +4,9 @@ import gdal
 import h5py
 from typing import List, Dict, Optional
 
-from gdal_viirs.v2.exceptions import DatasetNotFoundException, SubDatasetNotFound, InvalidData, GDALNonZeroReturnCode
-from gdal_viirs.v2.types import DatasetLike, ViirsFileSet, GeofileInfo
+from gdal_viirs.exceptions import DatasetNotFoundException, SubDatasetNotFound, InvalidData, GDALNonZeroReturnCode, \
+    DriverNotFound
+from gdal_viirs.types import DatasetLike, ViirsFileSet, GeofileInfo
 
 
 def check_gdal_return_code(code):
@@ -15,12 +16,27 @@ def check_gdal_return_code(code):
 
 
 def require_driver(name: str) -> gdal.Driver:
+    """
+    Возвращается драйвер, выбрасывает
+    :param name:
+    :return:
+    """
     driver = gdal.GetDriverByName(name)
-    assert driver is not None, f'GDAL driver {name} is required, but missing!'
+    if driver is None:
+        raise DriverNotFound(name)
     return driver
 
 
 def create_mem(xsize, ysize, *, dtype=gdal.GDT_Float64, bands=1, data: list = None) -> gdal.Dataset:
+    """
+    Создает пустой датасет в памяти
+    :param xsize: ширина
+    :param ysize: высота
+    :param dtype: тип данныз (gdal.GDT_Byte, gdal.GDT_Float64 и т. д.), по умолчанию - gdal.GDT_Float64
+    :param bands: кол-во каналов (по-умолчанию - 1)
+    :param data: данные в виде списка numpy массивов, размер списка не больше зачение bands
+    :return: gdal.Dataset
+    """
     ds = require_driver('MEM').Create('', int(xsize), int(ysize), bands, eType=dtype)
 
     if data:
@@ -36,7 +52,7 @@ def create_mem(xsize, ysize, *, dtype=gdal.GDT_Float64, bands=1, data: list = No
 
 def get_lat_long_data(file: DatasetLike, ret_file: bool = True):
     """
-    Открывает датасет для широты и долготы.
+    Открывает датасеты широты и долготы.
 
     Принимает на вход имя файла или датасет полученный через gdal.Open.
     Возвращает кортеж из 3 элементов: датасет широты, долготы и открытый файл.

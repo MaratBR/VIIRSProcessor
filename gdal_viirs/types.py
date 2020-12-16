@@ -1,13 +1,17 @@
-import os
+"""
+types.py содержит объявление типов данных, которые используются в библиотеке.
+Как классов так и просто type-hints
+"""
+
 from datetime import datetime, time
 from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
 
 import gdal
 import numpy as np
-import pyproj
+import os
 
-from .const import *
-from .exceptions import InvalidFileType
+from gdal_viirs.const import *
+from gdal_viirs.exceptions import InvalidFileType, InvalidFilename
 
 DatasetLike = Union[gdal.Dataset, str, 'GeofileInfo']
 TNumpyOperable = TypeVar('TNumpyOperable', np.ndarray, float, int)
@@ -19,12 +23,11 @@ class Point(NamedTuple):
     y: Number
 
 
-class GeoPoint(NamedTuple):
-    lat: Number
-    lon: Number
-
-
 class GeofileInfo:
+    """
+    Предоставляет информацию о VIIRS файле
+    """
+
     GEOLOC_SDR = [GITCO, GMTCO, GIMGO, GMODO, GDNBO]
     GEOLOC_EDR = [GIGTO, GMGTO, GNCCO]
 
@@ -62,9 +65,15 @@ class GeofileInfo:
         return time(hour=int(s[:2]), minute=int(s[2:4]), second=int(s[4:6]), microsecond=int(s[6]) * 100000)
 
     def __init__(self, path):
+        """
+        Инициализирует экземпляр
+        :param path:
+        """
         self.path = path
         self.name = os.path.basename(path)
         parts = self.name.split('_', 7)
+        if len(parts) != 8:
+            raise InvalidFilename(self.name)
         self.file_type = parts[0]
         self.sat_id = parts[1]
         self.date = datetime.strptime(parts[2][1:], '%Y%m%d')
@@ -89,6 +98,11 @@ class GeofileInfo:
         return f'<GeofileInfo {info}>'
 
     def get_band_dataset(self):
+        """
+        Возвращает название датасета (а если точнее последнюю часть название после "/"),
+        в зависимости от канала и типа (SVIO1/SVM16 и прочее)
+        :return: str|None
+        """
         if self.is_geoloc:
             raise InvalidFileType('expected: band filetype, got: ' + self.file_type)
         if self.file_type in self.I_BAND_SDR:
@@ -100,6 +114,12 @@ class GeofileInfo:
         return None
 
     def get_band_files_types(self):
+        """
+        Возвращает список типов файлов каналов
+
+        :raises InvalidFileType если метод вызван на экземпляре GeofileInfo, обозначающем файл канала (например SVI01)
+        :returns список типов файлов (как строки)
+        """
         if not self.is_geoloc:
             raise InvalidFileType('got: ' + self.file_type + ', required: geolocation filetype, one of ' + ', '.join(self.GEOLOC_SDR + self.GEOLOC_EDR))
         if self.file_type in (GIMGO, GITCO):

@@ -8,11 +8,11 @@ from typing import List, Optional, Union, Tuple
 import pyproj
 from loguru import logger
 
-from gdal_viirs.v2.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
-from gdal_viirs.v2.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
+from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
+from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
-from gdal_viirs.v2 import utility
-from gdal_viirs.v2.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound
+from gdal_viirs import utility
+from gdal_viirs.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound, InvalidData
 
 
 def get_projection(proj) -> pyproj.Proj:
@@ -23,7 +23,7 @@ def get_projection(proj) -> pyproj.Proj:
 def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT, smoothing_iterations=5,
                 max_search_dist=100, band_index: int = 1):
     """
-    Принимает на вход датасет как класс из GDAL'а или как "сырой массив", заполняет
+    Принимает на вход датасет как класс из GDAL'а или как "сырой массив" numpy, заполняет
     значения nodata используя функцию gdal.FillNodata
 
     :param ds_or_arr: датасет (класс gdal.Dataset) или массив numpy (ndarray)
@@ -35,7 +35,7 @@ def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT,
     :param smoothing_iterations: количество итераций сглаживания
     :param max_search_dist: максимальная дистанция поиска, передаваемая в gdal.FillNodata
     :param band_index: индекс band'а (НАЧИНАЕТСЯ СТРОГО С 1)
-    :return: gdal.Dataset если передан gdal.Dataset, иначе numpy массив
+    :return: gdal.Dataset если первым аргументом передан gdal.Dataset, иначе numpy массив
     """
     if isinstance(ds_or_arr, np.ndarray):
         arr = ds_or_arr
@@ -74,13 +74,22 @@ def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT,
     return result
 
 
-def hlf_process_fileset(fileset: ViirsFileSet, scale=15000, proj=None) -> Optional[ProcessedFileSet]:
+def hlf_process_fileset(fileset: ViirsFileSet, scale=10, proj=None) -> Optional[ProcessedFileSet]:
+    """
+    Обарабатывает набор файлов с указанным масштабом и проекцией
+    :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
+    :param scale: масштаб, который будет в дальнейшем домножен на 351 для I-канала и на 750 для M канала
+    :param proj: проекция
+    :return:
+    """
     if len(fileset.band_files) == 0:
-        raise ValueError('Band-файлы не найдены')
+        raise InvalidData('Band-файлы не найдены')
+    scale *= 750 if fileset.geoloc_file.band == 'M' else 351
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
     geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     if geoloc_file is None:
         return None
+
 
     band_files = _hlf_process_band_files(geoloc_file, fileset.band_files)
     return ProcessedFileSet(geoloc_file=geoloc_file, bands_set=band_files)

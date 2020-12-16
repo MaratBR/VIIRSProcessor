@@ -4,8 +4,8 @@ import gdal
 import pyproj.enums
 from loguru import logger
 
-from gdal_viirs.v2.types import ProcessedFileSet, ProcessedBandsSet
-from gdal_viirs.v2.utility import require_driver
+from gdal_viirs.types import ProcessedFileSet, ProcessedBandsSet
+from gdal_viirs.utility import require_driver
 
 
 def save_as_tiff(root_path: str,

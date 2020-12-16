@@ -158,7 +158,8 @@ def process(args):
 
     files = viirs.utility.find_sdr_viirs_filesets(
         args.src_dir,
-        prefer_parallax_corrected=cnv_prefer_tag(args.prefer)
+        prefer_parallax_corrected=cnv_prefer_tag(args.prefer),
+        geoloc_types=['GIMGO']
     )
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():

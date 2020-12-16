@@ -1,3 +1,8 @@
+"""
+const.py содержит определение констант, которые используются
+в библиотеке
+"""
+
 import pyproj
 
 ND_NA = 65535
@@ -8,13 +13,19 @@ ND_ERR = 65531
 ND_ELINT = 65530
 ND_VDNE = 65529
 ND_SOUB = 65528
-_ND_MIN_VALUE = 65528
 
 
 def is_nodata(v):
-    return v >= _ND_MIN_VALUE
+    """
+    Создает маску nodata значений или (если передано число) возвращает True или False,
+    в зависимости от того является значение nodata или нет
+    :param v:
+    :return:
+    """
+    return v >= ND_SOUB  # минимальное значение 65528
 
 
+# Проекция по умолчанию
 PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
      GEOGCS["GCS_WGS_1984",
          DATUM["WGS_1984",
@@ -33,25 +44,14 @@ PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
      PARAMETER["Latitude_Of_Origin",55.4962675],
      UNIT["Meter",1.0]
 ]'''
-PROJ_LCC_PROJ4 = pyproj.Proj(PROJ_LCC)
 
-PROJ_WGS = '''GEOGCS["WGS 84",
-DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],
-AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],
-UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]
-'''
-
-
-def lcc_proj(scale):
-    return PROJ_LCC % {'scale': scale}
-
+# Типы VIIRS файлов
 
 GITCO = 'GITCO'
 GMTCO = 'GMTCO'
 GIMGO = 'GIMGO'
 GMODO = 'GMODO'
 GDNBO = 'GDNBO'
-
 GIGTO = 'GIGTO'
 GMGTO = 'GMGTO'
 GNCCO = 'GNCCO'

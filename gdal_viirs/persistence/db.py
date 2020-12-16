@@ -2,7 +2,8 @@ import os
 import sqlite3
 from datetime import datetime
 
-from gdal_viirs.v2.types import ViirsFileSet
+from gdal_viirs.types import ViirsFileSet
+
 
 class GDALViirsDB:
     INIT_EXEC = [
@@ -40,7 +41,10 @@ class GDALViirsDB:
 
     def add_fileset(self, fileset: ViirsFileSet, replace=False):
         if self.has_fileset(fileset):
-            return
+            if replace:
+                self.delete_fileset(fileset)
+            else:
+                return
         now = datetime.now().timestamp()
         records = []
         query = '''
@@ -52,5 +56,9 @@ class GDALViirsDB:
         self._db.execute(query, (fileset.geoloc_file.name, fileset.geoloc_file.path, now, None))
         self._db.executemany(query, records)
         self._db.commit()
+
+    def delete_fileset(self, fileset: ViirsFileSet):
+        self._db.execute('''DELETE FROM files WHERE name = ? OR geoloc_file = ?''',
+                         [fileset.geoloc_file.name, fileset.geoloc_file.name])
 
 
