@@ -9,17 +9,22 @@ class GDALViirsDB:
     INIT_EXEC = [
         '''            
         CREATE TABLE files(
+            id INTEGER PRIMARY KEY,
             name VARCHAR(255) UNIQUE PRIMARY KEY,
             full_path VARCHAR(1000) NOT NULL,
             added_at_ts INTEGER,
-            geoloc_file VARCHAR(255) NULL,
-            FOREIGN KEY(geoloc_file) REFERENCES files(name)
+            geoloc_file_id INTEGER NULL,
+            band CHAR(1) NULL,
+            
+            FOREIGN KEY(geoloc_file) REFERENCES files(id)
         );
         ''',
         '''
         CREATE TABLE processed_data(
-            src_name VARCHAR(255),
+            id INTEGER PRIMARY KEY,
+            src_id INTEGER PRIMARY KEY,
             out_path VARCHAR(1000),
+            type VARCHAR(255),
             created_at_ts INTEGER
         );
         '''
@@ -46,17 +51,26 @@ class GDALViirsDB:
             else:
                 return
         now = datetime.now().timestamp()
-        records = []
         query = '''
-            INSERT INTO files(name, full_path, added_at_ts, geoloc_file) VALUES (?, ?, ?, ?)
+            INSERT INTO files(name, band, full_path, added_at_ts, geoloc_file_id) VALUES (?, ?, ?, ?, ?)
         '''
-        for band_file in fileset.band_files:
-            records.append((band_file.name, band_file.path, now, fileset.geoloc_file.name))
+        cursor = self._db.cursor()
 
-        self._db.execute(query, (fileset.geoloc_file.name, fileset.geoloc_file.path, now, None))
-        self._db.executemany(query, records)
-        self._db.commit()
+        cursor.execute(query, (fileset.geoloc_file.name, fileset.geoloc_file.band, fileset.geoloc_file.path, now, None))
+        geoloc_id = cursor.lastrowid
+
+        records = []
+        for band_file in fileset.band_files:
+            records.append((band_file.name, band_file.band, band_file.path, now, geoloc_id))
+
+        cursor.executemany(query, records)
 
     def delete_fileset(self, fileset: ViirsFileSet):
-        self._db.execute('''DELETE FROM files WHERE name = ? OR geoloc_file = ?''',
-                         [fileset.geoloc_file.name, fileset.geoloc_file.name])
+        result = self._db.execute('''SELECT id FROM files WHERE name = ?''', [fileset.geoloc_file.name])
+        try:
+            (row_id,) = result.next()
+        except StopIteration:
+            return False
+
+        self._db.execute('DELETE FROM files WHERE id = ? OR geoloc_file_id = ?', [row_id, row_id])
+        return True
