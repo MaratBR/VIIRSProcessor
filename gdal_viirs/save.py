@@ -41,7 +41,7 @@ def save_fileset(root_path: str,
                 band.SetNoDataValue(np.nan)
             band.WriteArray(processed.data)
 
-    if save_ndvi:
+    if save_ndvi and fileset.geoloc_file.info.band == 'I':
         ndvi_file = os.path.join(root, 'ndvi.tiff')
         file = driver.Create(ndvi_file, shape[1], shape[0], 1, gdal.GDT_Float32)
         file.SetProjection(wkt)
