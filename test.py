@@ -2,7 +2,7 @@ import time
 
 from gdal_viirs.hl import ViirsProcessor
 
-proc = ViirsProcessor('~/Downloads', '~/Documents', make_ndvi=True, use_multiprocessing=True, mp_processes=2)
+proc = ViirsProcessor('~/Downloads', '~/Documents', make_ndvi=True)
 proc.reset()
 
 while True:
