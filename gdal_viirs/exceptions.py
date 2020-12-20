@@ -47,14 +47,6 @@ class GDALNonZeroReturnCode(ViirsException):
         self.return_code = code
 
 
-class ProcessingException(ViirsException):
-    pass
-
-
-class ProjectionFailure(ProcessingException):
-    pass
-
-
 class InvalidData(ViirsException):
     """
     Данное исключение выбрасываемое в случае, если входные данные были неверны,
