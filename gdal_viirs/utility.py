@@ -135,7 +135,10 @@ def find_viirs_files(root) -> List[GeofileInfo]:
     """
     Находит и возвращает все HDF VIIRS файлы в указанной папке
     """
-    files = os.listdir(root)
+    try:
+        files = os.listdir(root)
+    except FileNotFoundError:
+        return []
     regex = re.compile(r"^[a-zA-Z0-9]+_[a-zA-Z0-9]+_d\d+_t\d+_e\d+_b\d+_c\d+_\w+\.h5$")
     files = filter(lambda filename: regex.match(filename) is not None, files)
     files = map(lambda p: os.path.join(root, p), files)

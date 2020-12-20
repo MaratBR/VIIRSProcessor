@@ -4,6 +4,7 @@ from typing import List, Optional, Union, Tuple
 import gdal
 import numpy as np
 import pyproj
+import time
 from loguru import logger
 
 from gdal_viirs import utility
@@ -11,11 +12,6 @@ from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound, InvalidData
 from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
-
-
-def get_projection(proj) -> pyproj.Proj:
-    proj = proj or PROJ_LCC
-    return pyproj.Proj(proj)
 
 
 def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT, smoothing_iterations=5,
@@ -72,7 +68,7 @@ def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT,
     return result
 
 
-def hlf_process_fileset(fileset: ViirsFileSet, scale=10, proj=None) -> Optional[ProcessedFileSet]:
+def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, proj=None) -> Optional[ProcessedFileSet]:
     """
     Обарабатывает набор файлов с указанным масштабом и проекцией
     :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
@@ -82,7 +78,6 @@ def hlf_process_fileset(fileset: ViirsFileSet, scale=10, proj=None) -> Optional[
     """
     if len(fileset.band_files) == 0:
         raise InvalidData('Band-файлы не найдены')
-    scale *= 750 if fileset.geoloc_file.band == 'M' else 351
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
     geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     if geoloc_file is None:
@@ -101,7 +96,7 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
         f'{geofile.name} не является геолокационным файлом, '
         f'поддерживаемые форматы: {", ".join(GeofileInfo.GEOLOC_SDR + GeofileInfo.GEOLOC_EDR)}'
     )
-    projection = get_projection(proj)
+    projection = pyproj.Proj(proj or PROJ_LCC)
     logger.info('ОБРАБОТКА ' + geofile.name)
     gdal_file = utility.gdal_open(geofile)
     lat = utility.gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
@@ -158,7 +153,7 @@ def hlf_process_band_file(geofile: GeofileInfo,
     _require_band_notimpl(geofile)
 
     logger.info(f'ОБРАБОТКА {geofile.band_verbose}: {geofile.name}')
-    time = datetime.now()
+    ts = time.time()
 
     f = utility.gdal_open(geofile)
     dataset_name = geofile.get_band_dataset()
@@ -166,8 +161,8 @@ def hlf_process_band_file(geofile: GeofileInfo,
     arr = sub.ReadAsArray()
     try:
         sdr_mask = utility.gdal_read_subdataset(f, 'BANDSDR', exact_lastname=False).ReadAsArray()
-        sdr_mask = sdr_mask[sdr_mask == 129]
-        arr[sdr_mask] = ND_NA
+        arr[sdr_mask == 129] = ND_NA
+        del sdr_mask
     except SubDatasetNotFound:
         pass
     arr = arr[geoloc_file.lonlat_mask]
@@ -199,8 +194,8 @@ def hlf_process_band_file(geofile: GeofileInfo,
         image[mask] += data[1]
     else:
         logger.warning('Не удалось получить ' + dataset_name + "Factors")
-    time = datetime.now() - time
-    logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {time.microseconds / 1000}ms')
+    ts = time.time() - ts
+    logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {int(ts * 1000)}ms')
 
     if store_ds is None:
         store_ds = utility.create_mem(image.shape[1], image.shape[0])

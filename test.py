@@ -1,9 +1,10 @@
-import gdal_viirs.v2 as gv
-import gdal_viirs.persistence.db as p
+import time
 
-db = p.GDALViirsDB('test.db')
-filesets = gv.utility.find_sdr_viirs_filesets('/home/marat/Documents/npp')
+from gdal_viirs.hl import ViirsProcessor
 
-for fs in filesets.values():
-    db.add_fileset(fs)
+proc = ViirsProcessor('~/Downloads', '~/Documents', make_ndvi=True)
+proc.reset_counter()
 
+while True:
+    proc.process_recent_files()
+    time.sleep(60 * 60)

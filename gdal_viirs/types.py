@@ -5,9 +5,11 @@ types.py содержит объявление типов данных, кото
 
 import os
 from datetime import datetime, time
+from pathlib import Path
 from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
 
 import gdal
+import pyproj
 import numpy as np
 
 from gdal_viirs.const import *
@@ -49,8 +51,9 @@ class GeofileInfo:
 
     KNOWN_TYPES = GEOLOC_EDR + GEOLOC_SDR + I_BAND_SDR + M_BAND_SDR + I_BAND_EDR + M_BAND_EDR + [DNB_SDR, NCC_EDR]
 
-    path: str
+    path_obj: Path
     name: str
+    path: str
     sat_id: str
     file_type: str
     date: datetime
@@ -59,6 +62,7 @@ class GeofileInfo:
     orbit_number: str
     file_ts: str
     data_source: str
+
 
     @staticmethod
     def _parse_time(s: str):
@@ -69,8 +73,9 @@ class GeofileInfo:
         Инициализирует экземпляр
         :param path:
         """
-        self.path = path
-        self.name = os.path.basename(path)
+        p = Path(os.path.expandvars(os.path.expanduser(path)))
+        self.path = str(p)
+        self.name = p.parts[-1]
         parts = self.name.split('_', 7)
         if len(parts) != 8:
             raise InvalidFilename(self.name)
@@ -234,6 +239,11 @@ class ProcessedBandsSet(NamedTuple):
 class ViirsFileSet(NamedTuple):
     geoloc_file: GeofileInfo
     band_files: List[GeofileInfo]
+
+    def mtime(self):
+        all_files = [self.geoloc_file] + self.band_files
+        timestamps = map(lambda f: os.path.getmtime(f.path), all_files)
+        return min(*timestamps)
 
     def is_full(self):
         b = self.geoloc_file.band
