@@ -63,7 +63,6 @@ class GeofileInfo:
     file_ts: str
     data_source: str
 
-
     @staticmethod
     def _parse_time(s: str):
         return time(hour=int(s[:2]), minute=int(s[2:4]), second=int(s[4:6]), microsecond=int(s[6]) * 100000)

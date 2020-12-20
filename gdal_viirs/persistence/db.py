@@ -84,3 +84,4 @@ class GDALViirsDB:
 
     def reset_filesets(self):
         self._db.execute('DELETE FROM geoloc_files')
+        self._db.commit()
