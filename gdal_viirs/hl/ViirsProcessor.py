@@ -55,7 +55,6 @@ class ViirsProcessor:
             logger.debug('Наборы файлов не найдены')
 
         if self._mp_pool:
-            print(filesets)
             self._mp_process_files(filesets)
         else:
             self._sp_process_files(filesets)
