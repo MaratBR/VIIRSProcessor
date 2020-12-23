@@ -6,7 +6,7 @@ import pyproj.enums
 from loguru import logger
 
 from gdal_viirs.types import ProcessedFileSet, ProcessedBandsSet
-from gdal_viirs.utility import require_driver
+from gdal_viirs.utility import require_driver, get_filename
 
 
 def save_fileset(root_path: str,
@@ -27,8 +27,7 @@ def save_fileset(root_path: str,
     # Сохраняем основной файл
     filename = os.path.join(root_path, fileset_name + '.tiff')
     bands_set: ProcessedBandsSet = fileset.bands_set
-    band: gdal.Band = bands_set.bands[0].data_ds.GetRasterBand(1)
-    shape = [band.YSize, band.XSize]
+    shape = bands_set.bands[0].data.shape
     file: gdal.Dataset = driver.Create(filename, shape[1], shape[0], len(bands_set.bands), gdal.GDT_Float32)
     assert file is not None, 'не удалось открыть файл: ' + filename
     logger.info('Записываем: ' + filename)
@@ -43,7 +42,7 @@ def save_fileset(root_path: str,
             band.WriteArray(processed.data)
 
     if save_ndvi and fileset.geoloc_file.info.band == 'I':
-        ndvi_file = os.path.join(root_path, f'NDVI_{fileset_name}.tiff')
+        ndvi_file = os.path.join(root_path, get_filename(fileset, 'ndvi'))
         file = driver.Create(ndvi_file, shape[1], shape[0], 1, gdal.GDT_Float32)
         file.SetProjection(wkt)
         file.SetGeoTransform(bands_set.geotransform)

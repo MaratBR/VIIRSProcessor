@@ -1,13 +1,11 @@
 import os
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
-import gdal
 import h5py
 
-from gdal_viirs.exceptions import DatasetNotFoundException, SubDatasetNotFound, InvalidData, GDALNonZeroReturnCode, \
-    DriverNotFound
-from gdal_viirs.types import DatasetLike, ViirsFileSet, GeofileInfo
+from gdal_viirs.exceptions import *
+from gdal_viirs.types import *
 
 
 def check_gdal_return_code(code):
@@ -26,60 +24,6 @@ def require_driver(name: str) -> gdal.Driver:
     if driver is None:
         raise DriverNotFound(name)
     return driver
-
-
-def create_mem(xsize, ysize, *, dtype=gdal.GDT_Float64, bands=1, data: list = None) -> gdal.Dataset:
-    """
-    Создает пустой датасет в памяти
-    :param xsize: ширина
-    :param ysize: высота
-    :param dtype: тип данныз (gdal.GDT_Byte, gdal.GDT_Float64 и т. д.), по умолчанию - gdal.GDT_Float64
-    :param bands: кол-во каналов (по-умолчанию - 1)
-    :param data: данные в виде списка numpy массивов, размер списка не больше зачение bands
-    :return: gdal.Dataset
-    """
-    ds = require_driver('MEM').Create('', int(xsize), int(ysize), bands, eType=dtype)
-
-    if data:
-        if len(data) > bands:
-            raise InvalidData(f'Передано больше растеров, чем выделено ({bands} выделено, {len(data)} передано)')
-
-        for index, d in enumerate(data):
-            code = ds.GetRasterBand(index + 1).WriteArray(d)
-            check_gdal_return_code(code)
-
-    return ds
-
-
-def get_lat_long_data(file: DatasetLike, ret_file: bool = True):
-    """
-    Открывает датасеты широты и долготы.
-
-    Принимает на вход имя файла или датасет полученный через gdal.Open.
-    Возвращает кортеж из 3 элементов: датасет широты, долготы и открытый файл.
-    Если ret_file = False, возвращает None вместо файла.
-    """
-    file = gdal_open(file)
-    sub_datasets = file.GetSubDatasets()
-    lat_ds = None
-    try:
-        lat_ds = next(ds_info[0] for ds_info in sub_datasets if 'Latitude' in ds_info[0])
-        lat_ds = gdal.Open(lat_ds)
-    except StopIteration:
-        pass
-
-    lon_ds = None
-    try:
-        lon_ds = next(ds_info[0] for ds_info in sub_datasets if 'Longitude' in ds_info[0])
-        lon_ds = gdal.Open(lon_ds)
-    except StopIteration:
-        pass
-
-    if lat_ds:
-        lat_ds = gdal.Open(lat_ds, gdal.GA_ReadOnly)
-    if lon_ds:
-        lon_ds = gdal.Open(lon_ds, gdal.GA_ReadOnly)
-    return lat_ds, lon_ds, file if ret_file else None
 
 
 def gdal_open(file: DatasetLike, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
@@ -150,10 +94,6 @@ def find_viirs_files(root) -> List[GeofileInfo]:
 def find_sdr_viirs_filesets(root,
                             geoloc_types: Optional[List[str]] = None,
                             prefer_parallax_corrected: Optional[bool] = False) -> Dict[str, ViirsFileSet]:
-    """
-    Возвращает dictionary где ключами являются названия файлов геолокации (с широтой и долготой),
-    а занчение - кортеж из двух элемFентов, первый - информация о файле геолокации, второй - список band-файлов
-    """
     result = {}
     files = find_viirs_files(root)
     geoloc_types = geoloc_types or GeofileInfo.GEOLOC_SDR
@@ -176,3 +116,7 @@ def find_sdr_viirs_filesets(root,
         band_files = sorted(band_files, key=lambda f: f.file_type)
         result[fileinfo.name] = ViirsFileSet(geoloc_file=fileinfo, band_files=band_files)
     return result
+
+
+def get_filename(fileset: Union[ViirsFileSet, ProcessedFileSet], type_='out'):
+    return type_ + '_' + fileset.geoloc_file.name_without_extension + f'.tiff'

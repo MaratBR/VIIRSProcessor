@@ -209,28 +209,33 @@ class ProcessedGeolocFile(NamedTuple):
     geotransform_max_y: Number
     projection: pyproj.Proj
     scale: Number
-    indexes_count: int
     out_image_shape: Tuple[int, int]
-
-    indexes_ds: gdal.Dataset
-
-    @property
-    def x_index(self):
-        return self.indexes_ds.GetRasterBand(1).ReadAsArray()[0]
+    x_index: np.ndarray
+    y_index: np.ndarray
 
     @property
-    def y_index(self):
-        return self.indexes_ds.GetRasterBand(1).ReadAsArray()[1]
+    def height(self):
+        return self.out_image_shape[0]
+
+    @property
+    def width(self):
+        return self.out_image_shape[1]
+
+    @property
+    def geotransform(self):
+        return [
+            self.geotransform_min_x,
+            self.scale,
+            0,
+            self.geotransform_max_y,
+            0,
+            -self.scale
+        ]
 
 
 class ProcessedBandFile(NamedTuple):
-    data_ds: gdal.Dataset
-    data_ds_band_index: int
+    data: np.ndarray
     geoloc_file: ProcessedGeolocFile
-
-    @property
-    def data(self):
-        return self.data_ds.GetRasterBand(self.data_ds_band_index).ReadAsArray()
 
 
 class ProcessedBandsSet(NamedTuple):

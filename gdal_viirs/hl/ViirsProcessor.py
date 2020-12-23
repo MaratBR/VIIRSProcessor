@@ -1,21 +1,19 @@
 import os
 from datetime import datetime
-from functools import partial
-from multiprocessing import Pool, Pipe
 from pathlib import Path
 from typing import List, Callable, Union
 
+import rasterio
 from loguru import logger
 
 from gdal_viirs import utility, process
 from gdal_viirs.persistence.db import GDALViirsDB
-from gdal_viirs.save import save_fileset
 from gdal_viirs.types import ViirsFileSet
 
 
 class ViirsProcessor:
     def __init__(self, search_dirs: Union[Callable[[], List[str]], str, List[str]], out_dir: str, data_dir='~/.gdal_viirs',
-                 make_ndvi = True, scale: int = 1000):
+                 make_ndvi = True, scale: int = 2000):
         self.make_ndvi = make_ndvi
         self.out_dir = os.path.expandvars(os.path.expanduser(out_dir))
         self.scale = scale
@@ -64,8 +62,10 @@ class ViirsProcessor:
         self._set_last_check_time()
 
     def _process_fileset(self, fileset: ViirsFileSet):
-        processed = process.hlf_process_fileset(fileset, scale=self.scale)
-        save_fileset(self.out_dir, processed, self.make_ndvi)
+        processed = process.process_fileset_out(fileset, self.out_dir, scale=self.scale)
+        if fileset.geoloc_file.band == 'I':
+            with rasterio.open(processed) as f:
+                process.process_ndvi(f, fileset, self.out_dir)
         self.persistence.add_fileset(fileset)
 
     def reset(self):

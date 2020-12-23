@@ -14,7 +14,7 @@ class DatasetNotFoundException(ViirsException):
     """
 
     def __init__(self, name):
-        super(DatasetNotFoundException, self).__init__(f'Dataset or subdataset {name} not found')
+        super(DatasetNotFoundException, self).__init__(f'Датасет {name} не найден')
         self.dataset = name
 
 

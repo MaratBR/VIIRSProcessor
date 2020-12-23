@@ -1,74 +1,78 @@
+import os
 from datetime import datetime
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Iterable
 
-import gdal
 import numpy as np
 import pyproj
 import time
+
+import rasterio
+import rasterio.fill
+import rasterio.crs
 from loguru import logger
 
 from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
-from gdal_viirs.exceptions import GDALNonZeroReturnCode, SubDatasetNotFound, InvalidData
+from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData
 from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
+from gdal_viirs.utility import get_filename
 
 
-def fill_nodata(ds_or_arr: Union[np.ndarray, gdal.Dataset], *, nd_value=ND_OBPT, smoothing_iterations=5,
-                max_search_dist=100, band_index: int = 1):
+_RASTERIO_DEFAULT_META = {
+    'driver': 'GTiff',
+    'nodata': np.nan,
+    'dtype': 'float32'
+}
+
+
+def _mkmeta(height, width, bands_count):
+    return {
+        'height': height,
+        'width': width,
+        'count': bands_count,
+        **_RASTERIO_DEFAULT_META
+    }
+
+
+def fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
+                max_search_dist=100):
     """
-    Принимает на вход датасет как класс из GDAL'а или как "сырой массив" numpy, заполняет
-    значения nodata используя функцию gdal.FillNodata
-
-    :param ds_or_arr: датасет (класс gdal.Dataset) или массив numpy (ndarray)
-    :param nd_value:
-        значение nodata.
-        Если указано и ds_or_arr - это датасет, сохранит значение nodata из датасета, заменит его на
-        указанное значение, а затем, после завершения операции вернет старое значение (если текущее значение
-        отличается от указанного)
+    :param arr: массив numpy (ndarray)
+    :param nd_value: значение nodata
     :param smoothing_iterations: количество итераций сглаживания
     :param max_search_dist: максимальная дистанция поиска, передаваемая в gdal.FillNodata
-    :param band_index: индекс band'а (НАЧИНАЕТСЯ СТРОГО С 1)
-    :return: gdal.Dataset если первым аргументом передан gdal.Dataset, иначе numpy массив
+    :return: numpy массив
     """
-    if isinstance(ds_or_arr, np.ndarray):
-        arr = ds_or_arr
-        ds = utility.create_mem(arr.shape[1], arr.shape[0])
-    else:
-        ds = ds_or_arr
-        arr = None
-
-    band: gdal.Band = ds.GetRasterBand(band_index)
-    assert band is not None, f'band №{band_index} не найден'
-
-    if arr is not None:
-        # установить значение nd_value как nodata, но только если в функцию был передан массив
-        # если был передан уже существующий датасет nd_value будет проигнорировано
-        band.SetNoDataValue(nd_value)
-        band.WriteArray(arr)
-
-    try:
-        code = gdal.FillNodata(
-            targetBand=band,
-            maskBand=None,
-            maxSearchDist=max_search_dist,
-            smoothingIterations=smoothing_iterations
-        )
-        utility.check_gdal_return_code(code)  # выбросит GDALNonZeroReturnCode
-    except RuntimeError:  # на случай, если был вызван gdal.UseExceptions()
-        raise GDALNonZeroReturnCode(gdal.GetLastErrorNo(), gdal.GetLastErrorMsg())
-
-    if arr is not None:
-        result = band.ReadAsArray()
-        del band
-        del ds
-    else:
-        result = ds
-
-    return result
+    return rasterio.fill.fillnodata(arr, arr != nd_value, smoothing_iterations=smoothing_iterations,
+                                    max_search_distance=max_search_dist)
 
 
-def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, proj=None) -> Optional[ProcessedFileSet]:
+def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, proj=None) -> str:
+    """
+    Действует также как и hlf_process_fileset, но тут же записывает данные в файл, тем самым экономя память.
+    :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
+    :param scale: масштаб, который будет в дальнейшем домножен на 351 для I-канала и на 750 для M канала
+    :param proj: проекция
+    :param out_dir: выходная папка
+    :return: полный путь к tiff файлу
+    """
+    if len(fileset.band_files) == 0:
+        raise InvalidData('Band-файлы не найдены')
+    logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
+    geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
+    meta = _mkmeta(geoloc_file.height, geoloc_file.width, len(fileset.band_files))
+    filepath = os.path.join(out_dir, get_filename(fileset))
+
+    with rasterio.open(filepath, 'w', **meta) as f:
+        f.transform = rasterio.Affine.from_gdal(*geoloc_file.geotransform)
+        f.crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC)
+        for index, processed_band in enumerate(_process_band_files_gen(geoloc_file, fileset.band_files)):
+            f.write(processed_band.data, index + 1)
+    return filepath
+
+
+def process_fileset(fileset: ViirsFileSet, scale=2000, proj=None) -> Optional[ProcessedFileSet]:
     """
     Обарабатывает набор файлов с указанным масштабом и проекцией
     :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
@@ -79,16 +83,12 @@ def hlf_process_fileset(fileset: ViirsFileSet, scale=2000, proj=None) -> Optiona
     if len(fileset.band_files) == 0:
         raise InvalidData('Band-файлы не найдены')
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
-    geoloc_file = hlf_process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
-    if geoloc_file is None:
-        return None
-
-    band_files = _hlf_process_band_files(geoloc_file, fileset.band_files)
+    geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
+    band_files = _process_band_files(geoloc_file, fileset.band_files)
     return ProcessedFileSet(geoloc_file=geoloc_file, bands_set=band_files)
 
 
-def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='Latitude',
-                            lon_dataset='Longitude', proj=None) -> Optional[ProcessedGeolocFile]:
+def process_geoloc_file(geofile: GeofileInfo, scale: Number, proj=None) -> ProcessedGeolocFile:
     """
     Обробатывает файл геолокации
     """
@@ -96,12 +96,23 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
         f'{geofile.name} не является геолокационным файлом, '
         f'поддерживаемые форматы: {", ".join(GeofileInfo.GEOLOC_SDR + GeofileInfo.GEOLOC_EDR)}'
     )
+
+    with rasterio.open(geofile.path) as f:
+        try:
+            lat_dataset = next(ds for ds in f.subdatasets if ds.endswith('/Latitude'))
+            lon_dataset = next(ds for ds in f.subdatasets if ds.endswith('/Longitude'))
+        except StopIteration:
+            raise SubDatasetNotFound('не удалось найти датасеты широты и долготы')
+
+    with rasterio.open(lat_dataset) as lat_ds:
+        lat = lat_ds.read(1)
+
+    with rasterio.open(lon_dataset) as lon_ds:
+        lon = lon_ds.read(1)
+
     projection = pyproj.Proj(proj or PROJ_LCC)
     logger.info('ОБРАБОТКА ' + geofile.name)
-    gdal_file = utility.gdal_open(geofile)
-    lat = utility.gdal_read_subdataset(gdal_file, lat_dataset).ReadAsArray()
-    lon = utility.gdal_read_subdataset(gdal_file, lon_dataset).ReadAsArray()
-    logger.debug(f'lat.shape={lat.shape} lon.shape={lon.shape}')
+    logger.debug(f'lat.shape = lon.shape = {lat.shape}')
     lonlat_mask = (lon > -200) * (lat > -200)
     nodata_values = len(lonlat_mask[lonlat_mask == False])
     logger.debug(f'Обнаружено {nodata_values} значений nodata в массивах широты и долготы')
@@ -116,37 +127,35 @@ def hlf_process_geoloc_file(geofile: GeofileInfo, scale: Number, lat_dataset='La
     assert x_index.shape == y_index.shape, 'x_index.shape != y_index.shape'
     assert np.all(np.isfinite(x_index)), 'x_index contains non-finite numbers'
     assert np.all(np.isfinite(x_index)), 'y_index contains non-finite numbers'
-    x_index, y_index = np.int_(x_index), np.int_(y_index)
+    x_index, y_index = np.int_(np.round(x_index)), np.int_(np.round(y_index))
 
     x_min = x_index.min()
     y_max = y_index.max()
 
     # подсчитывает индексы для пикселей с учетом масштаба
-    x_index, y_index = np.int_(x_index / scale), np.int_(y_index / scale)
+    x_index, y_index = np.int_(np.round(x_index / scale)), np.int_(np.round(y_index / scale))
     x_index -= x_index.min()
     y_index -= y_index.min()
 
-    indexes_ds = utility.create_mem(x_index.shape[0], 2, data=[np.array([x_index, y_index])], dtype=gdal.GDT_UInt32)
+    out_image_shape = y_index.max() + 1, x_index.max() + 1
 
     logger.info('ОБРАБОТКА ЗАВЕРШЕНА ' + geofile.name)
     return ProcessedGeolocFile(
         info=geofile,
+        x_index=x_index,
+        y_index=y_index,
         lonlat_mask=lonlat_mask,
         geotransform_max_y=y_max,
         geotransform_min_x=x_min,
         projection=projection,
         scale=scale,
-        indexes_ds=indexes_ds,
-        indexes_count=x_index.shape[0],
-        out_image_shape=(y_index.max() + 1, x_index.max() + 1)
+        out_image_shape=out_image_shape
     )
 
 
-def hlf_process_band_file(geofile: GeofileInfo,
-                          geoloc_file: ProcessedGeolocFile,
-                          store_ds: Optional[gdal.Dataset] = None,
-                          band_index: int = 1,
-                          no_data_threshold: Tuple[int, int] = (0, 60000)) -> Optional[ProcessedBandFile]:
+def process_band_file(geofile: GeofileInfo,
+                      geoloc_file: ProcessedGeolocFile,
+                      no_data_threshold: Number = 60000) -> ProcessedBandFile:
     """
     Обрабатывает band-файл
     """
@@ -155,18 +164,29 @@ def hlf_process_band_file(geofile: GeofileInfo,
     logger.info(f'ОБРАБОТКА {geofile.band_verbose}: {geofile.name}')
     ts = time.time()
 
-    f = utility.gdal_open(geofile)
     dataset_name = geofile.get_band_dataset()
-    sub = utility.gdal_read_subdataset(f, dataset_name)
-    arr = sub.ReadAsArray()
-    try:
-        sdr_mask = utility.gdal_read_subdataset(f, 'BANDSDR', exact_lastname=False).ReadAsArray()
+    with rasterio.open(geofile.path) as f:
+        try:
+            dataset_path = next(ds for ds in f.subdatasets if ds.endswith('/' + dataset_name))
+        except StopIteration:
+            raise SubDatasetNotFound(dataset_name)
+
+        try:
+            sdr_mask = next(ds for ds in f.subdatasets if ds.endswith('BANDSDR'))
+            with rasterio.open(sdr_mask) as sdr_mask_f:
+                sdr_mask = sdr_mask_f.read(1)
+        except StopIteration:
+            sdr_mask = None
+            pass
+
+    with rasterio.open(dataset_path) as f:
+        arr = f.read(1)
+
+    if sdr_mask is not None:
         arr[sdr_mask == 129] = ND_NA
         del sdr_mask
-    except SubDatasetNotFound:
-        pass
-    arr = arr[geoloc_file.lonlat_mask]
 
+    arr = arr[geoloc_file.lonlat_mask]
     x_index = geoloc_file.x_index
     y_index = geoloc_file.y_index
     assert x_index.shape == arr.shape, f'x_index.shape != arr.shape {x_index.shape} {arr.shape}'
@@ -181,9 +201,9 @@ def hlf_process_band_file(geofile: GeofileInfo,
     del arr
     image = np.flip(image, 0)
     image = fill_nodata(image)
-    image = np.float_(image)
+    image = image.astype('float32')
     # Поменять nodata на nan
-    mask = (image > no_data_threshold[1]) | (image < no_data_threshold[0])
+    mask = image > no_data_threshold
     image[mask] = np.nan
 
     # factors
@@ -197,46 +217,54 @@ def hlf_process_band_file(geofile: GeofileInfo,
     ts = time.time() - ts
     logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {int(ts * 1000)}ms')
 
-    if store_ds is None:
-        store_ds = utility.create_mem(image.shape[1], image.shape[0])
-        band_index = 1
-    store_ds.GetRasterBand(band_index).WriteArray(image)
-
     return ProcessedBandFile(
         geoloc_file=geoloc_file,
-        data_ds=store_ds,
-        data_ds_band_index=band_index
+        data=image
     )
 
 
-def _hlf_process_band_files(geoloc_file: ProcessedGeolocFile,
-                            files: List[GeofileInfo]) -> ProcessedBandsSet:
-    results = []
+def _process_band_files(geoloc_file: ProcessedGeolocFile,
+                        files: List[GeofileInfo]) -> ProcessedBandsSet:
     assert len(files) > 0, 'bands list is empty'
     assert len(
         set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
 
-    bands_store = utility.create_mem(geoloc_file.out_image_shape[1], geoloc_file.out_image_shape[0],
-                                     dtype=gdal.GDT_Float64, bands=len(files))
+    results = list(_process_band_files_gen(geoloc_file, files))
+    geotransform = geoloc_file.geotransform
+    return ProcessedBandsSet(bands=results, geotransform=geotransform, band=files[0].band)
+
+
+def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
+                            files: List[GeofileInfo]) -> Iterable[ProcessedBandFile]:
+    assert len(files) > 0, 'bands list is empty'
+    assert len(
+        set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
 
     for index, file in enumerate(files):
-        processed = hlf_process_band_file(
-            file,
-            geoloc_file,
-            store_ds=bands_store,
-            band_index=index + 1
-        )
-        results.append(processed)
+        yield process_band_file(file, geoloc_file)
 
-    geotransform = [
-        geoloc_file.geotransform_min_x,
-        geoloc_file.scale,
-        0,
-        geoloc_file.geotransform_max_y,
-        0,
-        -geoloc_file.scale
-    ]
-    return ProcessedBandsSet(bands=results, geotransform=geotransform, band=files[0].band)
+
+def process_ndvi(data, fileset: ViirsFileSet, out_dir: str) -> str:
+    """
+    Получает NDVI и записывает его в файл.
+    :param data: открытый файл rasterio, экземпляр ProcessedFileSet или экземпляр ProcessedBandsSet
+    :param fileset: экземпляр ViirsFileSet
+    :param out_dir: путь к папке, куда поместить данные
+    :return: путь к NDVI TIFF файлу
+    """
+    if isinstance(data, ProcessedFileSet):
+        svi01, svi02 = data.bands_set.bands[0].data, data.bands_set.bands[1].data
+    elif isinstance(data, ProcessedBandsSet):
+        svi01, svi02 = data.bands[0].data, data.bands[1].data
+    else:
+        svi01, svi02 = data.read(1), data.read(2)
+
+    ndvi = (svi02 - svi01)/(svi01 + svi02)
+    filepath = os.path.join(out_dir, get_filename(fileset, 'ndvi'))
+    meta = _mkmeta(svi01.shape[0], svi02.shape[1], 1)
+    with rasterio.open(filepath, 'w', **meta) as f:
+        f.write(ndvi, 1)
+    return filepath
 
 
 def _require_file_type_notimpl(info: GeofileInfo, type_: str):

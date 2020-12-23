@@ -5,7 +5,6 @@ from datetime import datetime
 
 from loguru import logger
 
-from gdal_viirs.persistence.exceptions import PersistenceError
 from gdal_viirs.types import ViirsFileSet
 
 
@@ -15,7 +14,7 @@ class GDALViirsDB:
         CREATE TABLE geoloc_files(
             name VARCHAR(255) UNIQUE PRIMARY KEY,
             full_path VARCHAR(1000) NOT NULL,
-            added_at_ts INTEGER
+            added_at_ts INTEGER 
         );
         ''',
         '''

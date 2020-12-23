@@ -61,7 +61,7 @@ def main():
     process_parser.add_argument('--types', help='Типы файлов для обработки')
     process_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
     process_parser.add_argument('-v', '--verbose', help='Подробный вывод в консоль', action='store_true')
-    process_parser.add_argument('-S', '--scale', help='Масштаб выходного файла', default=1000, type=check_scale_int)
+    process_parser.add_argument('-S', '--scale', help='Масштаб выходного файла', default=2000, type=check_scale_int)
     process_parser.add_argument('-p', '--proj', help='Проекция, передоваемая в pyproj')
     process_parser.add_argument('--proj_src', help='Файл с проекцией, если указано, флаг --proj игнорируется')
 
@@ -162,10 +162,7 @@ def process(args):
     )
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():
-        processed_fileset = viirs.process.hlf_process_fileset(dataset, scale=args.scale, proj=proj)
-        if processed_fileset is None:
-            continue
-        viirs.save.save_fileset(args.out_dir, processed_fileset)
+        viirs.process.process_fileset_out(dataset, args.out_dir, scale=args.scale, proj=proj)
 
 
 if __name__ == '__main__':
