@@ -14,7 +14,7 @@ def cm(v):
 
 def build_figure(data, image_size: Tuple[Number, Number], crs: cartopy.crs.Projection, *, xlim: Tuple[Number, Number] = None,
                  ylim: Tuple[Number, Number] = None, scale='10m', cmap=None, norm=None, transform=None):
-    figure, axes = pyplot.subplots(figsize=image_size, projection=crs)
+    figure, axes = pyplot.subplots(figsize=image_size, subplot_kw=dict(projection=crs))
     axes.set_axis_off()
     if xlim:
         axes.set_xlim(xlim)
