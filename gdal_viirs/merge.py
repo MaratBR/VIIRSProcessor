@@ -12,28 +12,19 @@ import gdal_viirs.utility as _utility
 MergeDataset = Union[rasterio.DatasetReader, str]
 
 
-def merge_files(datasets: List[MergeDataset], **kw) -> Tuple[np.ndarray, rasterio.Affine, rasterio.crs.CRS]:
+def merge_files(datasets: List[str], **kw) -> Tuple[np.ndarray, rasterio.Affine, rasterio.crs.CRS]:
     open_datasets = []
-    internally_open = []
     for ds in datasets:
-        if isinstance(ds, str):
-            f = rasterio.open(ds)
-            internally_open.append(f)
-            open_datasets.append(f)
-        else:
-            open_datasets.append(ds)
+        f = rasterio.open(ds)
+        open_datasets.append(f)
     try:
         if 'method' not in kw:
             kw['method'] = 'max'
         data, transform = _merge(open_datasets, **kw)
-        data = data[0]
-        top, right, bottom, left = _utility.get_trimming_offsets(data)
-        data = data[top:data.shape[0] - bottom, left:data.shape[1] - right]
-        data = np.array([data])
-        transform *= Affine.translation(left * transform.a, top * transform.e)
+        transform, data = _utility.trim_nodata(data, transform)
         return data, transform, open_datasets[0].crs
     finally:
-        for f in internally_open:
+        for f in open_datasets:
             f.close()
 
 
