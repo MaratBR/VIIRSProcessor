@@ -26,15 +26,6 @@ _RASTERIO_DEFAULT_META = {
 }
 
 
-def _mkmeta(height, width, bands_count):
-    return {
-        'height': height,
-        'width': width,
-        'count': bands_count,
-        **_RASTERIO_DEFAULT_META
-    }
-
-
 def fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
                 max_search_dist=100):
     """
@@ -48,7 +39,7 @@ def fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
                                     max_search_distance=max_search_dist)
 
 
-def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, proj=None) -> str:
+def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, trim=True, trim_in_memory=True, proj=None) -> str:
     """
     Действует также как и hlf_process_fileset, но тут же записывает данные в файл, тем самым экономя память.
     :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
@@ -61,13 +52,40 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, proj=No
         raise InvalidData('Band-файлы не найдены')
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
     geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
-    meta = _mkmeta(geoloc_file.height, geoloc_file.width, len(fileset.band_files))
     filepath = os.path.join(out_dir, get_filename(fileset))
+    height, width = geoloc_file.out_image_shape
+    gdal_transform = geoloc_file.geotransform
+
+    if trim:
+        bands = []
+        top, right, bottom, left = [1_000_000_000] * 4
+        for processed_band in _process_band_files_gen(geoloc_file, fileset.band_files):
+            top2, right2, bottom2, left2 = utility.get_trimming_offsets(processed_band.data)
+            top, right, bottom, left = min(top, top2), min(right, right2), min(bottom, bottom2), min(left, left2)
+            bands.append(processed_band)
+        print(top, right, bottom, left)
+        if top > 0 or right > 0 or bottom > 0 or left > 0:
+            for i in range(len(bands)):
+                band = bands[i]
+                data = band.data[top:band.data.shape[0] - bottom, left:band.data.shape[1] - right]
+                bands[i] = ProcessedBandFile(
+                    data=data,
+                    geoloc_file=band.geoloc_file
+                )
+            assert len(set(band.data.shape for band in bands)) == 1, 'не все массивы имеют одинаковый размер'
+            height, width = bands[0].data.shape
+            gdal_transform[0] += left * scale
+            gdal_transform[3] -= top * scale
+    else:
+        bands = _process_band_files_gen(geoloc_file, fileset.band_files)
+
+    transform = rasterio.Affine.from_gdal(*gdal_transform)
+    meta = utility.make_rasterio_meta(height, width, len(fileset.band_files))
 
     with rasterio.open(filepath, 'w', **meta) as f:
-        f.transform = rasterio.Affine.from_gdal(*geoloc_file.geotransform)
+        f.transform = transform
         f.crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC)
-        for index, processed_band in enumerate(_process_band_files_gen(geoloc_file, fileset.band_files)):
+        for index, processed_band in enumerate(bands):
             f.write(processed_band.data, index + 1)
     return filepath
 
@@ -183,7 +201,7 @@ def process_band_file(geofile: GeofileInfo,
         arr = f.read(1)
 
     if sdr_mask is not None:
-        arr[sdr_mask == 129] = ND_NA
+        arr[sdr_mask > 32] = ND_NA
         del sdr_mask
 
     arr = arr[geoloc_file.lonlat_mask]
@@ -216,6 +234,8 @@ def process_band_file(geofile: GeofileInfo,
         logger.warning('Не удалось получить ' + dataset_name + "Factors")
     ts = time.time() - ts
     logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {int(ts * 1000)}ms')
+
+    print(utility.get_trimming_offsets(image))
 
     return ProcessedBandFile(
         geoloc_file=geoloc_file,
@@ -261,7 +281,7 @@ def process_ndvi(data, fileset: ViirsFileSet, out_dir: str) -> str:
 
     ndvi = (svi02 - svi01)/(svi01 + svi02)
     filepath = os.path.join(out_dir, get_filename(fileset, 'ndvi'))
-    meta = _mkmeta(svi01.shape[0], svi02.shape[1], 1)
+    meta = utility.make_rasterio_meta(svi01.shape[0], svi02.shape[1], 1)
     with rasterio.open(filepath, 'w', **meta) as f:
         f.write(ndvi, 1)
     return filepath

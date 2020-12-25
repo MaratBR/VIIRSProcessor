@@ -120,3 +120,24 @@ def find_sdr_viirs_filesets(root,
 
 def get_filename(fileset: Union[ViirsFileSet, ProcessedFileSet], type_='out'):
     return type_ + '_' + fileset.geoloc_file.name_without_extension + f'.tiff'
+
+
+def get_trimming_offsets(data: np.ndarray, nodata=np.isnan):
+    nd_rows = np.all(nodata(data), axis=0)
+    nd_cols = np.all(nodata(data), axis=1)
+    left_off = nd_rows.argmin()
+    right_off = nd_rows[::-1].argmin()
+    top_off = nd_cols.argmin()
+    bottom_off = nd_cols[::-1].argmin()
+    return top_off, right_off, bottom_off, left_off
+
+
+def make_rasterio_meta(height, width, bands_count):
+    return {
+        'height': height,
+        'width': width,
+        'count': bands_count,
+        'driver': 'GTiff',
+        'nodata': np.nan,
+        'dtype': 'float32'
+    }
