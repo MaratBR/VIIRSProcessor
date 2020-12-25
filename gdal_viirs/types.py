@@ -202,6 +202,9 @@ class GeofileInfo:
         return self.file_type in self.GEOLOC_EDR or self.file_type in self.GEOLOC_SDR
 
 
+GDALGeotransformT = Tuple[Number, Number, Number, Number, Number, Number]
+
+
 class ProcessedGeolocFile(NamedTuple):
     info: GeofileInfo
     lonlat_mask: np.ndarray
@@ -222,26 +225,20 @@ class ProcessedGeolocFile(NamedTuple):
         return self.out_image_shape[1]
 
     @property
-    def geotransform(self):
-        return [
+    def geotransform(self) -> GDALGeotransformT:
+        return (
             self.geotransform_min_x,
             self.scale,
             0,
             self.geotransform_max_y,
             0,
             -self.scale
-        ]
+        )
 
 
 class ProcessedBandFile(NamedTuple):
     data: np.ndarray
     geoloc_file: ProcessedGeolocFile
-
-
-class ProcessedBandsSet(NamedTuple):
-    geotransform: List[Number]
-    bands: List[Optional[ProcessedBandFile]]
-    band: str
 
 
 class ViirsFileSet(NamedTuple):
@@ -267,4 +264,4 @@ class ViirsFileSet(NamedTuple):
 
 class ProcessedFileSet(NamedTuple):
     geoloc_file: ProcessedGeolocFile
-    bands_set: ProcessedBandsSet
+    bands_set: List[ProcessedBandFile]

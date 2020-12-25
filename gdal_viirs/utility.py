@@ -1,66 +1,9 @@
-import os
 import re
-from typing import List, Dict, Optional, Union
+from typing import Dict, Iterable
 
 import h5py
 
-from gdal_viirs.exceptions import *
 from gdal_viirs.types import *
-
-
-def check_gdal_return_code(code):
-    if code != 0:
-        msg = gdal.GetLastErrorMsg()
-        raise GDALNonZeroReturnCode(code, msg)
-
-
-def require_driver(name: str) -> gdal.Driver:
-    """
-    Возвращается драйвер, выбрасывает
-    :param name:
-    :return:
-    """
-    driver = gdal.GetDriverByName(name)
-    if driver is None:
-        raise DriverNotFound(name)
-    return driver
-
-
-def gdal_open(file: DatasetLike, mode=gdal.GA_ReadOnly) -> gdal.Dataset:
-    """
-    Открывает hdf5 файл, на вход принимает имя файла, GeofileInfo объект или уже открытый файл.
-    В последнем случае, файл не открывается, а просто возвращается назад.
-    :param file:
-    :param mode:
-    :return:
-    """
-    if isinstance(file, gdal.Dataset):
-        return file
-
-    if isinstance(file, GeofileInfo):
-        file = file.path
-    try:
-        f = gdal.Open(file, mode)
-    except RuntimeError:
-        raise DatasetNotFoundException(file)
-    if f is None:
-        raise DatasetNotFoundException(file)
-    return f
-
-
-def gdal_read_subdataset(file: gdal.Dataset, dataset_lastname: str, mode=gdal.GA_ReadOnly,
-                         exact_lastname=True) -> gdal.Dataset:
-    """
-    Прочитывает датасет из другого, родительского, датасета
-    :return:
-    """
-    try:
-        name = next(sub[0] for sub in file.GetSubDatasets() if
-                    isinstance(sub[0], str) and sub[0].endswith(('/' if exact_lastname else '') + dataset_lastname))
-    except StopIteration:
-        raise SubDatasetNotFound(dataset_lastname)
-    file = gdal_open(name, mode)
-    return file
 
 
 def h5py_get_dataset(filename: str, dataset_lastname: str) -> Optional[h5py.File]:
@@ -141,3 +84,31 @@ def make_rasterio_meta(height, width, bands_count):
         'nodata': np.nan,
         'dtype': 'float32'
     }
+
+
+def trim_nodata(bands_in: Iterable[ProcessedBandFile], geotransform: GDALGeotransformT, scale: Number) -> Tuple[GDALGeotransformT, List[ProcessedBandFile]]:
+    bands = []
+    top, right, bottom, left = [1_000_000_000] * 4
+    for processed_band in bands_in:
+        top2, right2, bottom2, left2 = get_trimming_offsets(processed_band.data)
+        top, right, bottom, left = min(top, top2), min(right, right2), min(bottom, bottom2), min(left, left2)
+        bands.append(processed_band)
+
+    if top > 0 or right > 0 or bottom > 0 or left > 0:
+        for i in range(len(bands)):
+            band = bands[i]
+            data = band.data[top:band.data.shape[0] - bottom, left:band.data.shape[1] - right]
+            bands[i] = ProcessedBandFile(
+                data=data,
+                geoloc_file=band.geoloc_file
+            )
+        assert len(set(band.data.shape for band in bands)) == 1, 'не все массивы имеют одинаковый размер'
+        geotransform = (
+            geotransform[0] + left * scale,
+            geotransform[1],
+            geotransform[2],
+            geotransform[3] - top * scale,
+            geotransform[4],
+            geotransform[5]
+        )
+        return geotransform, bands

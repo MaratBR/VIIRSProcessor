@@ -14,8 +14,8 @@ from loguru import logger
 from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData
-from gdal_viirs.types import ProcessedBandsSet, GeofileInfo, ProcessedFileSet, Number, \
-    ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet
+from gdal_viirs.types import GeofileInfo, ProcessedFileSet, Number, \
+    ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet, GDALGeotransformT
 from gdal_viirs.utility import get_filename
 
 
@@ -26,8 +26,8 @@ _RASTERIO_DEFAULT_META = {
 }
 
 
-def fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
-                max_search_dist=100):
+def _fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
+                 max_search_dist=100):
     """
     :param arr: массив numpy (ndarray)
     :param nd_value: значение nodata
@@ -39,12 +39,16 @@ def fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
                                     max_search_distance=max_search_dist)
 
 
-def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, trim=True, trim_in_memory=True, proj=None) -> str:
+def process_fileset_out(fileset: ViirsFileSet, out_dir: str, filename=None, scale=2000, trim=True, proj=None) -> str:
     """
-    Действует также как и hlf_process_fileset, но тут же записывает данные в файл, тем самым экономя память.
+    Обрабатывает набор файлов, начиная с файла геолокации (широта/долгота) и затем файлы каналов (SVI/SVM),
+    создает файл вида out_ИМЯ_ФАЙЛА_ГЕОЛОКАЦИИ.tiff в папке, указанной в параметре out_dir (если указан filename,
+    использует его).
+
+    :param filename: имя tiff файла, если не указать имя будет сгенерировано на основании файлас с широтой и долготой
     :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
-    :param scale: масштаб, который будет в дальнейшем домножен на 351 для I-канала и на 750 для M канала
-    :param proj: проекция
+    :param scale: масштаб, метров на пиксель (рекомендовано значение 2000, чтобы минимизировать nodata)
+    :param proj: проекция в формате WKT, значение по умолчанию - gdal_viirs.const.PROJ_LCC
     :param out_dir: выходная папка
     :return: полный путь к tiff файлу
     """
@@ -52,31 +56,15 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, trim=Tr
         raise InvalidData('Band-файлы не найдены')
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
     geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
-    filepath = os.path.join(out_dir, get_filename(fileset))
+    filepath = os.path.join(out_dir, filename or get_filename(fileset))
     height, width = geoloc_file.out_image_shape
     gdal_transform = geoloc_file.geotransform
 
+    bands = _process_band_files_gen(geoloc_file, fileset.band_files)
+
     if trim:
-        bands = []
-        top, right, bottom, left = [1_000_000_000] * 4
-        for processed_band in _process_band_files_gen(geoloc_file, fileset.band_files):
-            top2, right2, bottom2, left2 = utility.get_trimming_offsets(processed_band.data)
-            top, right, bottom, left = min(top, top2), min(right, right2), min(bottom, bottom2), min(left, left2)
-            bands.append(processed_band)
-        if top > 0 or right > 0 or bottom > 0 or left > 0:
-            for i in range(len(bands)):
-                band = bands[i]
-                data = band.data[top:band.data.shape[0] - bottom, left:band.data.shape[1] - right]
-                bands[i] = ProcessedBandFile(
-                    data=data,
-                    geoloc_file=band.geoloc_file
-                )
-            assert len(set(band.data.shape for band in bands)) == 1, 'не все массивы имеют одинаковый размер'
-            height, width = bands[0].data.shape
-            gdal_transform[0] += left * scale
-            gdal_transform[3] -= top * scale
-    else:
-        bands = _process_band_files_gen(geoloc_file, fileset.band_files)
+        gdal_transform, bands = utility.trim_nodata(bands, gdal_transform, scale)
+        height, width = bands[0].data.shape
 
     transform = rasterio.Affine.from_gdal(*gdal_transform)
     meta = utility.make_rasterio_meta(height, width, len(fileset.band_files))
@@ -87,22 +75,6 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, trim=Tr
         for index, processed_band in enumerate(bands):
             f.write(processed_band.data, index + 1)
     return filepath
-
-
-def process_fileset(fileset: ViirsFileSet, scale=2000, proj=None) -> Optional[ProcessedFileSet]:
-    """
-    Обарабатывает набор файлов с указанным масштабом и проекцией
-    :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
-    :param scale: масштаб, который будет в дальнейшем домножен на 351 для I-канала и на 750 для M канала
-    :param proj: проекция
-    :return:
-    """
-    if len(fileset.band_files) == 0:
-        raise InvalidData('Band-файлы не найдены')
-    logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
-    geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
-    band_files = _process_band_files(geoloc_file, fileset.band_files)
-    return ProcessedFileSet(geoloc_file=geoloc_file, bands_set=band_files)
 
 
 def process_geoloc_file(geofile: GeofileInfo, scale: Number, proj=None) -> ProcessedGeolocFile:
@@ -217,7 +189,7 @@ def process_band_file(geofile: GeofileInfo,
     image[y_index, x_index] = arr
     del arr
     image = np.flip(image, 0)
-    image = fill_nodata(image)
+    image = _fill_nodata(image)
     image = image.astype('float32')
     # Поменять nodata на nan
     mask = image > no_data_threshold
@@ -240,17 +212,6 @@ def process_band_file(geofile: GeofileInfo,
     )
 
 
-def _process_band_files(geoloc_file: ProcessedGeolocFile,
-                        files: List[GeofileInfo]) -> ProcessedBandsSet:
-    assert len(files) > 0, 'bands list is empty'
-    assert len(
-        set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
-
-    results = list(_process_band_files_gen(geoloc_file, files))
-    geotransform = geoloc_file.geotransform
-    return ProcessedBandsSet(bands=results, geotransform=geotransform, band=files[0].band)
-
-
 def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
                             files: List[GeofileInfo]) -> Iterable[ProcessedBandFile]:
     assert len(files) > 0, 'bands list is empty'
@@ -261,7 +222,7 @@ def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
         yield process_band_file(file, geoloc_file)
 
 
-def process_ndvi(data, fileset: ViirsFileSet, out_dir: str, transform: rasterio.Affine = None) -> str:
+def process_ndvi(data, fileset: ViirsFileSet, out_dir: str, filename=None) -> str:
     """
     Получает NDVI и записывает его в файл.
     :param data: открытый файл rasterio
@@ -272,7 +233,7 @@ def process_ndvi(data, fileset: ViirsFileSet, out_dir: str, transform: rasterio.
     """
     svi01, svi02 = data.read(1), data.read(2)
     ndvi = (svi02 - svi01)/(svi01 + svi02)
-    filepath = os.path.join(out_dir, get_filename(fileset, 'ndvi'))
+    filepath = os.path.join(out_dir, filename or get_filename(fileset, 'ndvi'))
     meta = utility.make_rasterio_meta(svi01.shape[0], svi02.shape[1], 1)
     meta.update({
         'transform': data.transform,

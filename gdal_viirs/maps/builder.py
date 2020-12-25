@@ -78,7 +78,7 @@ class MapBuilder:
         data = file.read(band)
         crs = self.get_projection(file)
         fig, axes = build_figure(data, self.plot_size, cmap=self.cmap, norm=self.norm, xlim=self.xlim, ylim=self.ylim,
-                            crs=crs)
+                                 crs=crs)
 
         geod = cartopy.crs.Geodetic()
         plate_carree = cartopy.crs.PlateCarree()
