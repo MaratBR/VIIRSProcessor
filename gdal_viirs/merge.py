@@ -22,6 +22,8 @@ def merge_files(datasets: List[MergeDataset], **kw) -> Tuple[np.ndarray, rasteri
         else:
             open_datasets.append(ds)
     try:
+        if 'method' not in kw:
+            kw['method'] = 'max'
         data, transform = _merge(open_datasets, **kw)
         return data, transform, open_datasets[0].crs
     finally:
