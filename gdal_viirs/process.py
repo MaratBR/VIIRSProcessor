@@ -63,7 +63,6 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, scale=2000, trim=Tr
             top2, right2, bottom2, left2 = utility.get_trimming_offsets(processed_band.data)
             top, right, bottom, left = min(top, top2), min(right, right2), min(bottom, bottom2), min(left, left2)
             bands.append(processed_band)
-        print(top, right, bottom, left)
         if top > 0 or right > 0 or bottom > 0 or left > 0:
             for i in range(len(bands)):
                 band = bands[i]
@@ -234,8 +233,6 @@ def process_band_file(geofile: GeofileInfo,
         logger.warning('Не удалось получить ' + dataset_name + "Factors")
     ts = time.time() - ts
     logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {int(ts * 1000)}ms')
-
-    print(utility.get_trimming_offsets(image))
 
     return ProcessedBandFile(
         geoloc_file=geoloc_file,
