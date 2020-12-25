@@ -55,24 +55,40 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, filename=None, scal
     if len(fileset.band_files) == 0:
         raise InvalidData('Band-файлы не найдены')
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
+
+    crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC)
+
     geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     filepath = os.path.join(out_dir, filename or get_filename(fileset))
     height, width = geoloc_file.out_image_shape
-    gdal_transform = geoloc_file.geotransform
 
     bands = _process_band_files_gen(geoloc_file, fileset.band_files)
+    transform = geoloc_file.transform
 
     if trim:
-        gdal_transform, bands = utility.trim_nodata(bands, gdal_transform, scale)
-        height, width = bands[0].data.shape
+        # обработаем все файлы и запишем их в MemoryFile
+        meta = utility.make_rasterio_meta(height, width, len(fileset.band_files))
+        meta.update({
+            'transform': geoloc_file.transform,
+            'crs': crs
+        })
+        with rasterio.MemoryFile() as f:
+            with f.open(**meta) as ds:
+                for index, band in enumerate(bands):
+                    ds.write(band.data, index + 1)
+                # обрезаем nodata
+                transform, data = utility.trim_nodata(ds.read(), geoloc_file.transform)
+            height, width = data.shape[1:]
+    else:
+        data = bands
 
-    transform = rasterio.Affine.from_gdal(*gdal_transform)
     meta = utility.make_rasterio_meta(height, width, len(fileset.band_files))
-
+    meta.update({
+        'transform': transform,
+        'crs': crs
+    })
     with rasterio.open(filepath, 'w', **meta) as f:
-        f.transform = transform
-        f.crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC)
-        for index, processed_band in enumerate(bands):
+        for index, processed_band in enumerate(data):
             f.write(processed_band.data, index + 1)
     return filepath
 
@@ -144,7 +160,7 @@ def process_geoloc_file(geofile: GeofileInfo, scale: Number, proj=None) -> Proce
 
 def process_band_file(geofile: GeofileInfo,
                       geoloc_file: ProcessedGeolocFile,
-                      no_data_threshold: Number = 60000) -> ProcessedBandFile:
+                      no_data_threshold: Number = 60000) -> np.ndarray:
     """
     Обрабатывает band-файл
     """
@@ -206,14 +222,11 @@ def process_band_file(geofile: GeofileInfo,
     ts = time.time() - ts
     logger.info(f'ОБРАБОТАН {geofile.band_verbose}: {int(ts * 1000)}ms')
 
-    return ProcessedBandFile(
-        geoloc_file=geoloc_file,
-        data=image
-    )
+    return image
 
 
 def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
-                            files: List[GeofileInfo]) -> Iterable[ProcessedBandFile]:
+                            files: List[GeofileInfo]) -> Iterable[np.ndarray]:
     assert len(files) > 0, 'bands list is empty'
     assert len(
         set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
@@ -228,7 +241,6 @@ def process_ndvi(data, fileset: ViirsFileSet, out_dir: str, filename=None) -> st
     :param data: открытый файл rasterio
     :param fileset: экземпляр ViirsFileSet
     :param out_dir: путь к папке, куда поместить данные
-    :param transform: трансформация растера NDVI, обязательно должна быть, если параметр data - это НЕ открытый файл rasterio
     :return: путь к NDVI TIFF файлу
     """
     svi01, svi02 = data.read(1), data.read(2)

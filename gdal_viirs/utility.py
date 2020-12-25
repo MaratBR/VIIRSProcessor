@@ -1,7 +1,9 @@
+import inspect
 import re
 from typing import Dict, Iterable
 
 import h5py
+from affine import Affine
 
 from gdal_viirs.types import *
 
@@ -65,7 +67,13 @@ def get_filename(fileset: Union[ViirsFileSet, ProcessedFileSet], type_='out'):
     return type_ + '_' + fileset.geoloc_file.name_without_extension + f'.tiff'
 
 
-def get_trimming_offsets(data: np.ndarray, nodata=np.isnan):
+def get_trimming_offsets(data: np.ndarray, nodata=None):
+    if not inspect.isfunction(nodata):
+        if nodata is None:
+            nodata = np.isnan
+        else:
+            nodata = lambda: nodata
+
     nd_rows = np.all(nodata(data), axis=0)
     nd_cols = np.all(nodata(data), axis=1)
     left_off = nd_rows.argmin()
@@ -75,8 +83,8 @@ def get_trimming_offsets(data: np.ndarray, nodata=np.isnan):
     return top_off, right_off, bottom_off, left_off
 
 
-def make_rasterio_meta(height, width, bands_count):
-    return {
+def make_rasterio_meta(height, width, bands_count, omit=None):
+    meta = {
         'height': height,
         'width': width,
         'count': bands_count,
@@ -84,31 +92,33 @@ def make_rasterio_meta(height, width, bands_count):
         'nodata': np.nan,
         'dtype': 'float32'
     }
+    if omit:
+        for k in omit:
+            del meta[k]
+    return meta
 
 
-def trim_nodata(bands_in: Iterable[ProcessedBandFile], geotransform: GDALGeotransformT, scale: Number) -> Tuple[GDALGeotransformT, List[ProcessedBandFile]]:
-    bands = []
-    top, right, bottom, left = [1_000_000_000] * 4
-    for processed_band in bands_in:
-        top2, right2, bottom2, left2 = get_trimming_offsets(processed_band.data)
-        top, right, bottom, left = min(top, top2), min(right, right2), min(bottom, bottom2), min(left, left2)
-        bands.append(processed_band)
+def trim_nodata(data: np.ndarray,
+                transform: Affine,
+                nodata=None) -> Tuple[Optional[Affine], np.ndarray]:
 
-    if top > 0 or right > 0 or bottom > 0 or left > 0:
-        for i in range(len(bands)):
-            band = bands[i]
-            data = band.data[top:band.data.shape[0] - bottom, left:band.data.shape[1] - right]
-            bands[i] = ProcessedBandFile(
-                data=data,
-                geoloc_file=band.geoloc_file
-            )
-        assert len(set(band.data.shape for band in bands)) == 1, 'не все массивы имеют одинаковый размер'
-        geotransform = (
-            geotransform[0] + left * scale,
-            geotransform[1],
-            geotransform[2],
-            geotransform[3] - top * scale,
-            geotransform[4],
-            geotransform[5]
-        )
-        return geotransform, bands
+    if len(data.shape) not in (2, 3):
+        raise ValueError('неверная размерность массива, допускаются только 2-х и 3-х мерные массивы')
+    if len(data.shape) == 2:
+        # двух-мерный массив, просто обрезать и вернуть назад
+        t, r, b, l = get_trimming_offsets(data, nodata)
+        data = data[t:data.shape[0]-b, l:data.shape[1]-r]
+        transform = transform * Affine.translation(-l, t)
+        return transform, data
+    else:
+        if data.shape[0] == 0:
+            raise ValueError(f'размерность массива {data.shape} не поддерживается')
+        # трех мерный массив, который является массивом из двухмерных
+        # как следствие нужно вычислить минимальную область обрезки
+        t, r, b, l = 1_000_000_000, 1_000_000_000, 1_000_000_000, 1_000_000_000
+        for processed_band in data:
+            t2, r2, b2, l2 = get_trimming_offsets(processed_band)
+            t, r, b, l = min(t, t2), min(r, r2), min(b, b2), min(l, l2)
+        data = data[:, t:data.shape[1]-b, l:data.shape[2]-r]
+        transform = transform * Affine.translation(-l, t)
+        return transform, data

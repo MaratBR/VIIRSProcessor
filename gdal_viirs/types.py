@@ -11,6 +11,7 @@ from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
 import gdal
 import pyproj
 import numpy as np
+from affine import Affine
 
 from gdal_viirs.const import *
 from gdal_viirs.exceptions import InvalidFileType, InvalidFilename
@@ -234,6 +235,10 @@ class ProcessedGeolocFile(NamedTuple):
             0,
             -self.scale
         )
+
+    @property
+    def transform(self):
+        return Affine.translation(self.geotransform_min_x, self.geotransform_max_y) * Affine.scale(self.scale, -self.scale)
 
 
 class ProcessedBandFile(NamedTuple):

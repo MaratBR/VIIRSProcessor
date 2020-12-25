@@ -26,8 +26,8 @@ def merge_files(datasets: List[MergeDataset], **kw) -> Tuple[np.ndarray, rasteri
         if 'method' not in kw:
             kw['method'] = 'max'
         data, transform = _merge(open_datasets, **kw)
-        top, right, bottom, left = _utility.get_trimming_offsets(data)
         data = data[0]
+        top, right, bottom, left = _utility.get_trimming_offsets(data)
         data = data[top:data.shape[0] - bottom, left:data.shape[1] - right]
         data = np.array([data])
         transform *= Affine.translation(left * transform.a, top * transform.e)
