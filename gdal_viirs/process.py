@@ -264,12 +264,13 @@ def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
         yield process_band_file(file, geoloc_file)
 
 
-def process_ndvi(data, fileset: ViirsFileSet, out_dir: str) -> str:
+def process_ndvi(data, fileset: ViirsFileSet, out_dir: str, transform: rasterio.Affine = None) -> str:
     """
     Получает NDVI и записывает его в файл.
     :param data: открытый файл rasterio, экземпляр ProcessedFileSet или экземпляр ProcessedBandsSet
     :param fileset: экземпляр ViirsFileSet
     :param out_dir: путь к папке, куда поместить данные
+    :param transform: трансформация растера NDVI, обязательно должна быть, если параметр data - это НЕ открытый файл rasterio
     :return: путь к NDVI TIFF файлу
     """
     if isinstance(data, ProcessedFileSet):
@@ -277,11 +278,16 @@ def process_ndvi(data, fileset: ViirsFileSet, out_dir: str) -> str:
     elif isinstance(data, ProcessedBandsSet):
         svi01, svi02 = data.bands[0].data, data.bands[1].data
     else:
+        transform = data.transform
         svi01, svi02 = data.read(1), data.read(2)
 
     ndvi = (svi02 - svi01)/(svi01 + svi02)
     filepath = os.path.join(out_dir, get_filename(fileset, 'ndvi'))
     meta = utility.make_rasterio_meta(svi01.shape[0], svi02.shape[1], 1)
+    if transform is None:
+        logger.warning('Трансформация не найдена!')
+    else:
+        meta['transform'] = transform
     with rasterio.open(filepath, 'w', **meta) as f:
         f.write(ndvi, 1)
     return filepath
