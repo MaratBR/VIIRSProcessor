@@ -1,10 +1,8 @@
-import time
+import rasterio
 
-from gdal_viirs.hl import ViirsProcessor
+from gdal_viirs.maps.novosibirsk import *
+b = NovosibirskMapBuilder()
 
-proc = ViirsProcessor('~/Downloads', '~/Documents', make_ndvi=True)
-proc.reset()
-
-while True:
-    proc.process_recent_files()
-    time.sleep(60 * 60)
+with rasterio.open('/home/marat/Downloads/ndvi (6).tiff') as f:
+    b.cmap = 'Reds'
+    b.plot_to_file(f, '/home/marat/Documents/out.png')

@@ -6,8 +6,8 @@ from gdal_viirs.maps.builder import MapBuilder
 class NovosibirskMapBuilder(MapBuilder):
     def __init__(self):
         super(NovosibirskMapBuilder, self).__init__()
-        self.xlim = -1500000, 2100000
-        self.ylim = 800000, 3000000
+        #self.xlim = -1500000, 2100000
+        #self.ylim = 800000, 3000000
 
         self.add_point(84.948197, 56.484680, 'Томск')
         self.add_point(73.368212, 54.989342, 'Омск')

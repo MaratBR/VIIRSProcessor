@@ -3,18 +3,18 @@ import rasterio.plot
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
-from matplotlib import pyplot
+from matplotlib import pyplot, patches, offsetbox
 import cartopy
 
 _CM = 1/2.54
+
 
 def cm(v):
     return v * _CM
 
 
-def build_figure(data, image_size: Tuple[Number, Number], crs: cartopy.crs.Projection, *, xlim: Tuple[Number, Number] = None,
+def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
                  ylim: Tuple[Number, Number] = None, scale='10m', cmap=None, norm=None, transform=None):
-    figure, axes = pyplot.subplots(figsize=image_size, subplot_kw=dict(projection=crs))
     axes.set_axis_off()
     if xlim:
         axes.set_xlim(xlim)
@@ -51,47 +51,81 @@ def build_figure(data, image_size: Tuple[Number, Number], crs: cartopy.crs.Proje
     axes.add_feature(admin_0_countries, edgecolor='black', linewidth=3)
     axes.add_feature(admin_1_states_provinces, edgecolor='black', linewidth=1)
 
-    return figure, axes
+    return axes
+
+
+def plot_marks(points: dict, crs, ax, fontdict=None, dpi=1, color='k'):
+    plate_carree = cartopy.crs.PlateCarree()
+    for coord, text in points.items():
+        point = crs.transform_point(coord[0], coord[1], plate_carree)
+        ax.plot(*point, color=color, markersize=14, marker='o')
+        point = ax.transData.transform(point)
+        ax.text(point[0] + dpi * 40, point[1] + dpi * 20, text, color=color, transform=ax.transData, fontdict=fontdict).set_clip_on(True)
+
+
+def _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax):
+    frame = patches.Rectangle((*image_pos_ax, 0), *plot_size_ax, facecolor='none')
+    offbox = offsetbox.AuxTransformBox(ax.transData)
+    offbox.add_artist(frame)
+    ab = offsetbox.AnnotationBbox(offbox,
+                                  (image_pos_ax[0] + plot_size_ax[0] / 2., image_pos_ax[1] + plot_size_ax[1] / 2.),
+                                  boxcoords="data", pad=0.52, fontsize=4,
+                                  bboxprops=dict(fc="none", ec='k', lw=4))
+    ax.add_artist(ab)
 
 
 class MapBuilder:
     xlim: Optional[Tuple[Number, Number]]
     ylim: Optional[Tuple[Number, Number]]
     cartopy_scale: str
-    plot_size: Tuple[Number, Number]
     cmap = None
     norm = None
     marks_color = 'blue'
     font_size = 25
+    outer_size: Tuple[Number, Number, Number, Number] = cm(2.5), cm(1), cm(3), cm(10)
+    dpi = 50
 
     def __init__(self):
         self._points = {}
         self.xlim = None
         self.ylim = None
         self.cartopy_scale = '10m'
-        self.plot_size = cm(30), cm(30)
 
     def add_point(self, lon: Number, lat: Number, text: str):
-        self._points[(lat, lon)] = text
+        self._points[(lon, lat)] = text
 
-    def plot(self, file: DatasetReader, band=1):
+    def plot(self, file: DatasetReader, band=1, fontdict=None):
+        fontdict = fontdict or {
+            'family': 'serif',
+            'weight': 'normal',
+            'size': self.font_size,
+        }
+        plot_width, plot_height = file.width / self.dpi, file.height / self.dpi
+        xlim = self.xlim or (file.transform.c, file.transform.a * file.width + file.transform.c)
+        ylim = self.ylim or (file.transform.e * file.height + file.transform.f, file.transform.f)
+        plot_width = abs(xlim[0] - xlim[1]) / file.transform.a / self.dpi
+        plot_height = abs(ylim[0] - ylim[1]) / file.transform.a / self.dpi
+
+        plot_size = plot_width, plot_height
         data = file.read(band)
         crs = self.get_projection(file)
-        fig, axes = build_figure(data, self.plot_size, cmap=self.cmap, norm=self.norm, xlim=self.xlim, ylim=self.ylim,
-                                 crs=crs)
+        figsize = plot_size[0] + self.outer_size[1] + self.outer_size[3], plot_size[1] + self.outer_size[0] + self.outer_size[2]
+        fig = pyplot.figure(figsize=figsize)
 
-        geod = cartopy.crs.Geodetic()
-        plate_carree = cartopy.crs.PlateCarree()
-        for coord, text in self._points.items():
-            axes.plot(*coord, color=self.marks_color, markersize=22, marker='o', transform=geod)
-            point = crs.transform_point(coord[0], coord[1], plate_carree)
-            axes.text(point[0] + 25, point[1] + 25, 'Новосибирск', color=self.marks_color, fontdict={
-                'family': 'serif',
-                'weight': 'normal',
-                'size': 40,
-            })
+        # сконвертировать координаты изображения в пиксели (можно просто моножить на dpi)
+        image_pos = self.outer_size[3], self.outer_size[0]  # позиция изображения в дюймах (от верхнего левого угла)
+        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], figsize[1]-image_pos[1]-plot_size[1]))  # позиция изображеня в пикселях, от вернего левого угла
+        image_pos_ax = fig.transFigure.inverted().transform(image_pos_px)  # в долях(?) (от 0 до 1)
+        plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(plot_size))
+        ax0 = fig.add_axes([0, 0, 1, 1])
+        ax0.set_axis_off()
+        ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
+        # ax1.set_axis_off()
+        build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform)
+        _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
+        plot_marks(self._points, crs, ax1, fontdict=fontdict, color=self.marks_color, dpi=self.dpi)
 
-        return fig, axes
+        return fig, (ax0, ax1)
 
     def plot_to_file(self, file: DatasetReader, output_file: str, band=1):
         figure, _ = self.plot(file, band)
