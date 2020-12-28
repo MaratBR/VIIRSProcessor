@@ -9,13 +9,14 @@ import time
 import rasterio
 import rasterio.fill
 import rasterio.crs
+import rasterio.warp
 from loguru import logger
 
 from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData
 from gdal_viirs.types import GeofileInfo, ProcessedFileSet, Number, \
-    ProcessedGeolocFile, ProcessedBandFile, ViirsFileSet, GDALGeotransformT
+    ProcessedGeolocFile, ProcessedBandFile, ViirsFileset, GDALGeotransformT
 from gdal_viirs.utility import get_filename
 
 
@@ -39,18 +40,15 @@ def _fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
                                     max_search_distance=max_search_dist)
 
 
-def process_fileset_out(fileset: ViirsFileSet, out_dir: str, filename=None, scale=2000, trim=True, proj=None) -> str:
+def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=True, proj=None):
     """
     Обрабатывает набор файлов, начиная с файла геолокации (широта/долгота) и затем файлы каналов (SVI/SVM),
     создает файл вида out_ИМЯ_ФАЙЛА_ГЕОЛОКАЦИИ.tiff в папке, указанной в параметре out_dir (если указан filename,
     использует его).
 
-    :param filename: имя tiff файла, если не указать имя будет сгенерировано на основании файлас с широтой и долготой
     :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
     :param scale: масштаб, метров на пиксель (рекомендовано значение 2000, чтобы минимизировать nodata)
     :param proj: проекция в формате WKT, значение по умолчанию - gdal_viirs.const.PROJ_LCC
-    :param out_dir: выходная папка
-    :return: полный путь к tiff файлу
     """
     if len(fileset.band_files) == 0:
         raise InvalidData('Band-файлы не найдены')
@@ -59,7 +57,6 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, filename=None, scal
     crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC)
 
     geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
-    filepath = os.path.join(out_dir, filename or get_filename(fileset))
     height, width = geoloc_file.out_image_shape
 
     bands = _process_band_files_gen(geoloc_file, fileset.band_files)
@@ -87,10 +84,9 @@ def process_fileset_out(fileset: ViirsFileSet, out_dir: str, filename=None, scal
         'transform': transform,
         'crs': crs
     })
-    with rasterio.open(filepath, 'w', **meta) as f:
+    with rasterio.open(output_file, 'w', **meta) as f:
         for index, processed_band in enumerate(data):
             f.write(processed_band.data, index + 1)
-    return filepath
 
 
 def process_geoloc_file(geofile: GeofileInfo, scale: Number, proj=None) -> ProcessedGeolocFile:
@@ -146,7 +142,6 @@ def process_geoloc_file(geofile: GeofileInfo, scale: Number, proj=None) -> Proce
 
     logger.info('ОБРАБОТКА ЗАВЕРШЕНА ' + geofile.name)
     return ProcessedGeolocFile(
-        info=geofile,
         x_index=x_index,
         y_index=y_index,
         lonlat_mask=lonlat_mask,
@@ -197,7 +192,7 @@ def process_band_file(geofile: GeofileInfo,
     assert x_index.shape == arr.shape, f'x_index.shape != arr.shape {x_index.shape} {arr.shape}'
     assert y_index.shape == arr.shape, 'y_index.shape != arr.shape {x_index.shape} {arr.shape}'
     image_shape = geoloc_file.out_image_shape
-    logger.debug(f'hlf_process_band_file: image_shape={image_shape}')
+    logger.debug(f'image_shape={image_shape}')
     assert len(image_shape) == 2
     assert all(d > 1 for d in image_shape), 'image must be at least 2x2'
 
@@ -229,31 +224,30 @@ def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
                             files: List[GeofileInfo]) -> Iterable[np.ndarray]:
     assert len(files) > 0, 'bands list is empty'
     assert len(
-        set(b.band for b in files)) == 1, 'bands passed to _hlf_process_band_files belong to different band types'
+        set(b.band for b in files)) == 1, 'bands passed to _process_band_files_gen belong to different band types'
 
     for index, file in enumerate(files):
         yield process_band_file(file, geoloc_file)
 
 
-def process_ndvi(data, fileset: ViirsFileSet, out_dir: str, filename=None) -> str:
+def process_ndvi(input_file: str, output_file: str, cloud_mask_file: str = None):
     """
     Получает NDVI и записывает его в файл.
-    :param data: открытый файл rasterio
-    :param fileset: экземпляр ViirsFileSet
-    :param out_dir: путь к папке, куда поместить данные
-    :return: путь к NDVI TIFF файлу
     """
-    svi01, svi02 = data.read(1), data.read(2)
-    ndvi = (svi02 - svi01)/(svi01 + svi02)
-    filepath = os.path.join(out_dir, filename or get_filename(fileset, 'ndvi'))
-    meta = utility.make_rasterio_meta(svi01.shape[0], svi02.shape[1], 1)
-    meta.update({
-        'transform': data.transform,
-        'crs': data.crs
-    })
-    with rasterio.open(filepath, 'w', **meta) as f:
+    with rasterio.open(input_file) as f:
+        svi01, svi02 = f.read(1), f.read(2)
+        ndvi = (svi02 - svi01)/(svi01 + svi02)
+        if cloud_mask_file:
+            with rasterio.open(cloud_mask_file) as f:
+                pass
+        meta = utility.make_rasterio_meta(svi01.shape[0], svi02.shape[1], 1)
+        meta.update({
+            'transform': f.transform,
+            'crs': f.crs
+        })
+
+    with rasterio.open(output_file, 'w', **meta) as f:
         f.write(ndvi, 1)
-    return filepath
 
 
 def _require_file_type_notimpl(info: GeofileInfo, type_: str):
@@ -266,3 +260,37 @@ def _require_band_notimpl(info: GeofileInfo):
     if not info.is_band:
         logger.error('Поддерживаются только band-файлы')
         raise AssertionError('Поддерживаются только band-файлы')
+
+
+def process_cloud_mask(input_file: str, output_file: str, proj: str = PROJ_LCC, scale: int = None):
+
+    # открываем файл и читаем данные
+    with rasterio.open(input_file) as f:
+        crs = rasterio.crs.CRS.from_wkt(proj)
+        data = f.read()
+        # если crs не отличается ничего не делаем, иначе - сменить проекцию
+        if f.crs != crs:
+            data, transform = rasterio.warp.reproject(
+                data,
+                src_transform=f.transform,
+                src_crs=f.crs,
+                dst_crs=crs,
+                dst_resolution=None if scale is None else (scale, scale)
+            )
+        else:
+            transform = f.transform
+
+    # обрезать данные
+    transform, data = utility.trim_nodata(data, transform, 0)
+
+    meta = {
+        'driver': 'GTiff',
+        'count': 1,
+        'height': data.shape[1],
+        'width': data.shape[2],
+        'transform': transform,
+        'crs': crs,
+        'dtype': rasterio.uint8
+    }
+    with rasterio.open(output_file, 'w', **meta) as f:
+        f.write(data)

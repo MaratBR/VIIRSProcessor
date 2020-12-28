@@ -207,7 +207,6 @@ GDALGeotransformT = Tuple[Number, Number, Number, Number, Number, Number]
 
 
 class ProcessedGeolocFile(NamedTuple):
-    info: GeofileInfo
     lonlat_mask: np.ndarray
     geotransform_min_x: Number
     geotransform_max_y: Number
@@ -246,7 +245,7 @@ class ProcessedBandFile(NamedTuple):
     geoloc_file: ProcessedGeolocFile
 
 
-class ViirsFileSet(NamedTuple):
+class ViirsFileset(NamedTuple):
     geoloc_file: GeofileInfo
     band_files: List[GeofileInfo]
 

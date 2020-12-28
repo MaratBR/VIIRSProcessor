@@ -5,16 +5,18 @@ from datetime import datetime
 
 from loguru import logger
 
-from gdal_viirs.types import ViirsFileSet
+from gdal_viirs.types import ViirsFileset
 
 
 class GDALViirsDB:
     INIT_EXEC = [
         '''            
-        CREATE TABLE geoloc_files(
-            name VARCHAR(255) UNIQUE PRIMARY KEY,
-            full_path VARCHAR(1000) NOT NULL,
-            added_at_ts INTEGER 
+        CREATE TABLE processed_data_sources(
+            name VARCHAR(255) NOT NULL,
+            type VARCHAR(255) NULL,
+            added_at_ts INTEGER,
+            output VARCHAR(1000) NULL,
+            PRIMARY KEY (name, type)
         );
         ''',
         '''
@@ -32,34 +34,22 @@ class GDALViirsDB:
             for stmt in self.INIT_EXEC:
                 self._db.execute(stmt)
 
-    def has_file(self, name: str):
-        result = next(self._db.execute('SELECT EXISTS(SELECT 1 FROM geoloc_files WHERE name = ?)', [name]))
+    def has_processed(self, name: str, src_type: str):
+        result = next(self._db.execute(
+            'SELECT EXISTS(SELECT 1 FROM processed_data_sources WHERE name = ? AND type = ?)', (name, src_type)))
         return result[0] == 1
 
-    def has_fileset(self, fileset: ViirsFileSet):
-        return self.has_file(fileset.geoloc_file.name)
-
-    def add_fileset(self, fileset: ViirsFileSet, replace=False):
-        if self.has_fileset(fileset):
-            if replace:
-                self.delete_fileset(fileset)
-            else:
-                return
-        logger.debug(fileset.geoloc_file.name)
+    def add_processed(self, name: str, src_type: str = None):
+        logger.debug(name)
         now = datetime.now().timestamp()
-        query = 'INSERT INTO geoloc_files(name, full_path, added_at_ts) VALUES (?, ?, ?)'
-        self._db.execute(query, (fileset.geoloc_file.name, fileset.geoloc_file.path, now))
+        query = 'INSERT INTO processed_data_sources(name, type, added_at_ts) VALUES (?, ?, ?)'
+        self._db.execute(query, (name, src_type, now))
         self._db.commit()
 
-    def delete_fileset(self, fileset: ViirsFileSet):
-        self._db.execute('DELETE FROM files WHERE name = ?', [fileset.geoloc_file.name])
+    def delete_processed(self, name: str, src_type: str):
+        self._db.execute('DELETE FROM processed_data_sources WHERE name = ?', (name, src_type))
         self._db.commit()
 
-    def _get_file_id(self, filename):
-        try:
-            return self._db.execute('SELECT id FROM files WHERE name = ?', [filename]).next()[0]
-        except StopIteration:
-            return None
 
     def get_meta(self, key, default_value=None):
         cur = self._db.execute('SELECT value FROM meta WHERE key = ?', [key])
@@ -81,6 +71,6 @@ class GDALViirsDB:
         self._db.commit()
         logger.debug(f'{key} = {value}')
 
-    def reset_filesets(self):
-        self._db.execute('DELETE FROM geoloc_files')
+    def reset(self):
+        self._db.execute('DELETE FROM processed_data_sources')
         self._db.commit()

@@ -5,7 +5,7 @@ from io import StringIO
 import gdal
 import loguru
 
-import gdal_viirs.v2 as viirs
+import gdal_viirs as viirs
 import argparse
 
 is_color_output_enabled = True
@@ -162,7 +162,7 @@ def process(args):
     )
     loguru.logger.debug(f'Нашел {len(files)} наборов файлов')
     for dataset in files.values():
-        viirs.process.process_fileset_out(dataset, args.out_dir, scale=args.scale, proj=proj)
+        viirs.process.process_fileset(dataset, args.out_dir, scale=args.scale, proj=proj)
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ def h5py_get_dataset(filename: str, dataset_lastname: str) -> Optional[h5py.File
         return None
 
 
-def find_viirs_files(root) -> List[GeofileInfo]:
+def _find_viirs_files(root: str) -> List[GeofileInfo]:
     """
     Находит и возвращает все HDF VIIRS файлы в указанной папке
     """
@@ -38,9 +38,9 @@ def find_viirs_files(root) -> List[GeofileInfo]:
 
 def find_sdr_viirs_filesets(root,
                             geoloc_types: Optional[List[str]] = None,
-                            prefer_parallax_corrected: Optional[bool] = False) -> Dict[str, ViirsFileSet]:
+                            prefer_parallax_corrected: Optional[bool] = False) -> Dict[str, ViirsFileset]:
     result = {}
-    files = find_viirs_files(root)
+    files = _find_viirs_files(root)
     geoloc_types = geoloc_types or GeofileInfo.GEOLOC_SDR
     if prefer_parallax_corrected is not None:
         if prefer_parallax_corrected:
@@ -59,23 +59,25 @@ def find_sdr_viirs_filesets(root,
             info.orbit_number == fileinfo.orbit_number,
             files))
         band_files = sorted(band_files, key=lambda f: f.file_type)
-        result[fileinfo.name] = ViirsFileSet(geoloc_file=fileinfo, band_files=band_files)
+        result[fileinfo.name] = ViirsFileset(geoloc_file=fileinfo, band_files=band_files)
     return result
 
 
-def get_filename(fileset: Union[ViirsFileSet, ProcessedFileSet], type_='out'):
+def get_filename(fileset: Union[ViirsFileset, ProcessedFileSet], type_='out'):
     return type_ + '_' + fileset.geoloc_file.name_without_extension + f'.tiff'
 
 
 def get_trimming_offsets(data: np.ndarray, nodata=None):
     if not inspect.isfunction(nodata):
         if nodata is None:
-            nodata = np.isnan
+            nodata_fn = np.isnan
         else:
-            nodata = lambda: nodata
+            nodata_fn = lambda d: d == nodata
+    else:
+        nodata_fn = nodata
 
-    nd_rows = np.all(nodata(data), axis=0)
-    nd_cols = np.all(nodata(data), axis=1)
+    nd_rows = np.all(nodata_fn(data), axis=0)
+    nd_cols = np.all(nodata_fn(data), axis=1)
     left_off = nd_rows.argmin()
     right_off = nd_rows[::-1].argmin()
     top_off = nd_cols.argmin()
@@ -108,7 +110,7 @@ def trim_nodata(data: np.ndarray,
         # двух-мерный массив, просто обрезать и вернуть назад
         t, r, b, l = get_trimming_offsets(data, nodata)
         data = data[t:data.shape[0]-b, l:data.shape[1]-r]
-        transform = transform * Affine.translation(-l, t)
+        transform = transform * Affine.translation(l, t)
         return transform, data
     else:
         if data.shape[0] == 0:
@@ -117,8 +119,8 @@ def trim_nodata(data: np.ndarray,
         # как следствие нужно вычислить минимальную область обрезки
         t, r, b, l = 1_000_000_000, 1_000_000_000, 1_000_000_000, 1_000_000_000
         for processed_band in data:
-            t2, r2, b2, l2 = get_trimming_offsets(processed_band)
+            t2, r2, b2, l2 = get_trimming_offsets(processed_band, nodata)
             t, r, b, l = min(t, t2), min(r, r2), min(b, b2), min(l, l2)
         data = data[:, t:data.shape[1]-b, l:data.shape[2]-r]
-        transform = transform * Affine.translation(-l, t)
+        transform = transform * Affine.translation(l, t)
         return transform, data

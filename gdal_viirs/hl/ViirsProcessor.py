@@ -1,75 +1,56 @@
 import os
 from datetime import datetime
+from glob import glob
 from pathlib import Path
-from typing import List, Callable, Union
 
-import rasterio
 from loguru import logger
 
-from gdal_viirs import utility, process
 from gdal_viirs.persistence.db import GDALViirsDB
-from gdal_viirs.types import ViirsFileSet
+from gdal_viirs import process as _process, utility as _utility
 
 
 class ViirsProcessor:
-    def __init__(self, search_dirs: Union[Callable[[], List[str]], str, List[str]], out_dir: str, data_dir='~/.gdal_viirs',
-                 make_ndvi = True, scale: int = 2000):
-        self.make_ndvi = make_ndvi
-        self.out_dir = os.path.expandvars(os.path.expanduser(out_dir))
+    def __init__(self, data_dir: str, output_dir: str, config_dir='~/.gdal_viirs', scale=2000):
+        config_dir = Path(os.path.expandvars(os.path.expanduser(config_dir)))
+        config_dir.mkdir(parents=True, exist_ok=True)
+        self.persistence = GDALViirsDB(str(config_dir / 'store.db'))
+        self._output_dir = os.path.expandvars(os.path.expanduser(output_dir))
+        self._data_dir = os.path.expandvars(os.path.expanduser(data_dir))
+        Path(self._data_dir).mkdir(parents=True, exist_ok=True)
+        Path(self._output_dir).mkdir(parents=True, exist_ok=True)
         self.scale = scale
-        self.search_dirs = [search_dirs] if isinstance(search_dirs, str) else search_dirs
-        data_dir = Path(os.path.expandvars(os.path.expanduser(data_dir)))
-        data_dir.mkdir(parents=True, exist_ok=True)
-        self.persistence = GDALViirsDB(str(data_dir / 'store.db'))
 
-    def get_all_filesets(self):
-        return self._find_filesets(return_all=True)
+    def _dirname(self, d, kind):
+        return os.path.join(self._output_dir, d + '.' + kind + '.tiff')
 
-    def find_filesets(self):
-        return self._find_filesets(return_all=False)
+    def process_recent(self):
+        directories = glob(os.path.join(self._data_dir, '*'))
+        for d in directories:
+            if not os.path.isdir(d):
+                continue
+            dirname = os.path.basename(d)
+            if not self.persistence.has_processed(d, 'level1'):
+                filesets = _utility.find_sdr_viirs_filesets(os.path.join(d, 'viirs/level1')).values()
+                for fs in filesets:
+                    output_file = self._dirname(dirname, fs.geoloc_file.file_type)
+                    _process.process_fileset(fs, output_file, self.scale)
+                self.persistence.add_processed(d, 'level1')
 
-    def _find_filesets(self, *, return_all: bool):
-        directories = self.search_dirs if isinstance(self.search_dirs, list) else self.search_dirs()
-        directories = list(map(lambda d: os.path.expandvars(os.path.expanduser(d)), directories))
-        if not return_all:
-            last_check_ts = self.persistence.get_meta('last_check_time', 0)
-            directories = list(filter(lambda directory: os.path.getmtime(directory) >= last_check_ts, directories))
-        filesets = [
-            utility.find_sdr_viirs_filesets(os.path.expandvars(os.path.expanduser(directory)))
-            for directory in directories
-        ]
-        filesets = [item for d in filesets for item in d.values()]
-        return filesets
-
-    def _set_last_check_time(self):
-        self.persistence.set_meta('last_check_time', datetime.now().timestamp())
-
-    def process_recent_files(self):
-        filesets = self.find_filesets()
-        if len(filesets) > 0:
-            logger.info(f'Нашел {len(filesets)} наборов файлов, начинаю обработку...')
-        else:
-            logger.debug('Наборы файлов не найдены')
-
-        for fileset in filesets:
-            if self.persistence.has_fileset(fileset):
-                logger.debug(f'Набор файлов {fileset.geoloc_file.name} уже присутствует в БД и не будет обрабатываться')
-            try:
-                self._process_fileset(fileset)
-            except Exception as e:
-                logger.exception(e)
-                return
-        self._set_last_check_time()
-
-    def _process_fileset(self, fileset: ViirsFileSet):
-        processed = process.process_fileset_out(fileset, self.out_dir, scale=self.scale)
-        if fileset.geoloc_file.band == 'I':
-            with rasterio.open(processed) as f:
-                process.process_ndvi(f, fileset, self.out_dir)
-        self.persistence.add_fileset(fileset)
+            if not self.persistence.has_processed(d, 'level2'):
+                input_file = glob(os.path.join(d, 'viirs/level2/*CLOUDMASK.tif'))
+                if len(input_file) != 0:
+                    input_file = input_file[0]
+                    clouds_file = os.path.join(self._output_dir, dirname + '.PROJECTED_CLOUDMASK.tiff')
+                    _process.process_cloud_mask(input_file, clouds_file, scale=self.scale)
+                    ndvi_file = self._dirname(dirname, 'NDVI')
+                    gimgo_tiff_file = self._dirname(dirname, 'GIMGO')
+                    if os.path.isfile(gimgo_tiff_file):
+                        _process.process_ndvi(gimgo_tiff_file, ndvi_file)
+                    else:
+                        logger.warning(f'не удалось найти файл {gimgo_tiff_file}, не могу обработать NDVI')
 
     def reset(self):
         self.persistence.delete_meta('last_check_time')
-        self.persistence.reset_filesets()
+        self.persistence.reset()
 
 

@@ -14,7 +14,7 @@ datasets = gdal_viirs.utility.find_sdr_viirs_filesets(folder)
 
 for filename, dataset in datasets.items():
     print(f"обработка {filename}...")
-    gdal_viirs.process.process_fileset_out(dataset, "/папка/куда/положить/данные")
+    gdal_viirs.process.process_fileset(dataset, "/папка/куда/положить/данные")
 ``` 
 
 ### Пример с БД
