@@ -1,9 +1,8 @@
 import inspect
 import re
-from typing import Dict, Iterable
+from typing import Dict, Optional
 
 import h5py
-import rasterio.warp
 from gdal_viirs.types import *
 
 
