@@ -1,5 +1,9 @@
-from gdal_viirs.hl import ViirsProcessor
+import time
+
+from gdal_viirs.hl import NPPProcessor
 
 
-processor = ViirsProcessor('/media/marat/Quack/Projects/GDAL_Data/NPP', '~/Documents')
-processor.process_recent()
+processor = NPPProcessor('/media/marat/Quack/Projects/GDAL_Data/NPP', '~/Documents')
+while True:
+    processor.process_recent()
+    time.sleep(3600)

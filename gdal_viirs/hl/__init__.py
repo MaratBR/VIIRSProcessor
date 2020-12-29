@@ -1,1 +1,1 @@
-from .ViirsProcessor import ViirsProcessor
+from .NPPProcessor import NPPProcessor

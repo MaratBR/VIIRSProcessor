@@ -3,8 +3,7 @@ import re
 from typing import Dict, Iterable
 
 import h5py
-from affine import Affine
-
+import rasterio.warp
 from gdal_viirs.types import *
 
 
@@ -124,3 +123,71 @@ def trim_nodata(data: np.ndarray,
         data = data[:, t:data.shape[1]-b, l:data.shape[2]-r]
         transform = transform * Affine.translation(l, t)
         return transform, data
+
+
+def get_intersection(x1, y1, w1, h1, x2, y2, w2, h2, scalex, scaley):
+    left1 = max(0.0, x2  // abs(scalex) - x1  // abs(scalex))
+    left2 = max(0.0, x1  // abs(scalex) - x2  // abs(scalex))
+    right1 = max(0.0, x1 // abs(scalex) + w1 - x2 // abs(scalex) - w2)
+    right2 = max(0.0, x2 // abs(scalex) + w2 - x1 // abs(scalex) - w1)
+
+    top1 = max(0.0, y1 // abs(scaley) + h1 - y2 // abs(scaley) - h2)
+    top2 = max(0.0, y2 // abs(scaley) + h2 - y1 // abs(scaley) - h1)
+    bottom1 = max(0.0, y2 // abs(scalex) - y1 // abs(scalex))
+    bottom2 = max(0.0, y1 // abs(scalex) - y2 // abs(scalex))
+
+    return (round(top1), round(right1), round(bottom1), round(left1)), (round(top2), round(right2), round(bottom2), round(left2))
+
+
+def apply_mask(data: np.ndarray,
+               data_transform: Affine,
+               mask: np.ndarray,
+               mask_transform: Affine,
+               nd_value):
+    #  A----------B  нам необходимо найти ту область,
+    #  |data      |  которую нужно обрезать по маске
+    #  |          |
+    #  Q     Z----|-----X
+    #  |     |....|     |
+    #  |     |....|     |
+    #  D-----|----C     |
+    #        |      mask|
+    #        V----------Y
+    if len(data.shape) not in (2, 3):
+        raise ValueError('функция apply_mask работает только с 2-х и 3-х мерными массивами')
+    if mask.dtype != np.bool_:
+        raise ValueError('маска должна быть массивом из логических значений bool')
+    if len(data.shape) == 2:
+        shape = data.shape
+    else:
+        shape = data.shape[1:]
+
+    if mask_transform.a != data_transform.a or mask_transform.e != data_transform.e:
+        raise ValueError('применение маски невозможно для двух растров с разным масштабом')
+    if mask_transform.b != data_transform.b or mask_transform.d != data_transform.d:
+        raise ValueError('применение маски невозможно для двух растров с разным вращением')
+
+    scalex, scaley = data_transform.a, data_transform.e
+    data_intr, mask_intr = get_intersection(
+        data_transform.xoff, data_transform.yoff, shape[1], shape[0],
+        mask_transform.xoff, mask_transform.yoff, mask.shape[1], mask.shape[0],
+        scalex, scaley
+    )
+
+    mask = mask[
+        mask_intr[0]:mask.shape[0] - mask_intr[2],
+        mask_intr[3]:mask.shape[1] - mask_intr[1]
+    ]
+    if len(data.shape) == 2:
+        data[
+            data_intr[0]:shape[0] - data_intr[2],
+            data_intr[3]:shape[1] - data_intr[1]
+        ][mask] = nd_value
+    else:
+        data[
+            :,
+            data_intr[0]:shape[0] - data_intr[2],
+            data_intr[3]:shape[1] - data_intr[1]
+        ][mask] = nd_value
+
+    return data

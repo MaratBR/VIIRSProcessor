@@ -10,6 +10,8 @@ import rasterio
 import rasterio.fill
 import rasterio.crs
 import rasterio.warp
+import rasterio.features
+import shapely as shapely
 from loguru import logger
 
 from gdal_viirs import utility
@@ -238,8 +240,12 @@ def process_ndvi(input_file: str, output_file: str, cloud_mask_file: str = None)
         svi01, svi02 = f.read(1), f.read(2)
         ndvi = (svi02 - svi01)/(svi01 + svi02)
         if cloud_mask_file:
-            with rasterio.open(cloud_mask_file) as f:
-                pass
+            with rasterio.open(cloud_mask_file) as cmf:
+                try:
+                    mask = cmf.read(1) == 4
+                    ndvi = utility.apply_mask(ndvi, f.transform, mask, cmf.transform, -2)
+                except Exception as exc:
+                    logger.warning(f'ошибка при применениии маски облачности к NDVI: {exc}')
         meta = utility.make_rasterio_meta(svi01.shape[0], svi02.shape[1], 1)
         meta.update({
             'transform': f.transform,
@@ -262,7 +268,14 @@ def _require_band_notimpl(info: GeofileInfo):
         raise AssertionError('Поддерживаются только band-файлы')
 
 
-def process_cloud_mask(input_file: str, output_file: str, proj: str = PROJ_LCC, scale: int = None):
+def process_cloud_mask(input_file: str,
+                       output_file: str,
+                       proj: str = PROJ_LCC,
+                       scale: int = None):
+
+    import fiona
+    from shapely.geometry import shape, mapping
+    from shapely.geometry.multipolygon import MultiPolygon
 
     # открываем файл и читаем данные
     with rasterio.open(input_file) as f:
