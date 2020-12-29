@@ -31,13 +31,6 @@ _RASTERIO_DEFAULT_META = {
 
 def _fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
                  max_search_dist=100):
-    """
-    :param arr: массив numpy (ndarray)
-    :param nd_value: значение nodata
-    :param smoothing_iterations: количество итераций сглаживания
-    :param max_search_dist: максимальная дистанция поиска, передаваемая в gdal.FillNodata
-    :return: numpy массив
-    """
     return rasterio.fill.fillnodata(arr, arr != nd_value, smoothing_iterations=smoothing_iterations,
                                     max_search_distance=max_search_dist)
 

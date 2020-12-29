@@ -6,17 +6,15 @@ types.py содержит объявление типов данных, кото
 import os
 from datetime import datetime, time
 from pathlib import Path
-from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
+from typing import NamedTuple, List, TypeVar, Union, Tuple
 
-import gdal
-import pyproj
 import numpy as np
+import pyproj
 from affine import Affine
 
 from gdal_viirs.const import *
 from gdal_viirs.exceptions import InvalidFileType, InvalidFilename
 
-DatasetLike = Union[gdal.Dataset, str, 'GeofileInfo']
 TNumpyOperable = TypeVar('TNumpyOperable', np.ndarray, float, int)
 Number = Union[int, float]
 
@@ -237,7 +235,8 @@ class ProcessedGeolocFile(NamedTuple):
 
     @property
     def transform(self):
-        return Affine.translation(self.geotransform_min_x, self.geotransform_max_y) * Affine.scale(self.scale, -self.scale)
+        return Affine.translation(self.geotransform_min_x, self.geotransform_max_y) * Affine.scale(self.scale,
+                                                                                                   -self.scale)
 
 
 class ProcessedBandFile(NamedTuple):

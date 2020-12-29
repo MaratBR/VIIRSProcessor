@@ -35,18 +35,6 @@ class InvalidFileType(ViirsException):
     pass
 
 
-class GDALNonZeroReturnCode(ViirsException):
-    """
-    Выбрасывается, если операция GDAL'а вернула код, отличный от 0
-    Например при вызове gdal.FillNodata
-    """
-    return_code: int
-
-    def __init__(self, code, message):
-        super(GDALNonZeroReturnCode, self).__init__(message)
-        self.return_code = code
-
-
 class InvalidData(ViirsException):
     """
     Данное исключение выбрасываемое в случае, если входные данные были неверны,

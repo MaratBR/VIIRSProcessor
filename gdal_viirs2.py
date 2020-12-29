@@ -55,8 +55,6 @@ def main():
                                      'параллакс-скорректированные сеты, e - спроецированные на еллипсоид WGS84, '
                                      'b - оба')
     process_parser.add_argument('-o', '--out_dir', default='/tmp', help='Папка, куда поместить готовые файлы', required=False)
-    process_parser.add_argument('-E', '--no_exc', help='Не вызывать gdal.UseExceptions() при старте',
-                                action="store_true")
     process_parser.add_argument('--ext', help='Расширение выходных файлов', default='tiff')
     process_parser.add_argument('--types', help='Типы файлов для обработки')
     process_parser.add_argument('-C', '--no_colors', help='Не выводить в цвете', action='store_true')
@@ -144,9 +142,6 @@ def process(args):
             print(f'Файл с проекцией: {args.proj_src}')
     else:
         proj = args.proj
-
-    if not args.no_exc:
-        gdal.UseExceptions()
 
     if args.no_colors:
         loguru.logger.remove()
