@@ -1,3 +1,6 @@
+import os
+
+import matplotlib.font_manager as _fm
 import rasterio.plot
 from matplotlib.colors import to_rgb
 
@@ -50,17 +53,17 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
     axes.add_feature(minor_islands, edgecolor='black', linewidth=0.5)
     axes.add_feature(lakes_contour, edgecolor='black', linewidth=0.4)
     axes.add_feature(admin_0_countries, edgecolor='black', linewidth=3)
-    axes.add_feature(admin_1_states_provinces, edgecolor='black', linewidth=1, linestyle=':')
+    axes.add_feature(admin_1_states_provinces, edgecolor='black', linewidth=1, linestyle='-.')
 
     return axes
 
 
-def plot_marks(points: dict, crs, ax, color='k'):
+def plot_marks(points: dict, crs, ax, color='k', props=None):
     plate_carree = cartopy.crs.PlateCarree()
     for coord, text in points.items():
         point = crs.transform_point(coord[0], coord[1], plate_carree)
         ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(color))
-        ax.annotate(text, point, fontsize=25).set_clip_on(True)
+        ax.annotate(text, point, fontsize=25, fontproperties=props).set_clip_on(True)
 
 
 def _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax):
@@ -88,12 +91,25 @@ class MapBuilder:
     max_height = None
     min_width = None
     min_height = None
+    font_family = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._points = {}
         self.xlim = None
         self.ylim = None
         self.cartopy_scale = '10m'
+
+        for k, v in kwargs.items():
+            if k.startswith('_'):
+                continue
+            if hasattr(self, k):
+                setattr(self, k, v)
+
+    def _get_font_props(self, **kwargs):
+        if self.font_family:
+            if os.path.isfile(self.font_family):
+                kwargs['fname'] = self.font_family
+        return _fm.FontProperties(**kwargs)
 
     def add_point(self, lon: Number, lat: Number, text: str):
         self._points[(lon, lat)] = text

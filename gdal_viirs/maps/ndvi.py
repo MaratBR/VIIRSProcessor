@@ -9,9 +9,6 @@ from matplotlib import rcParams, patches, lines
 from gdal_viirs import utility
 from gdal_viirs.hl import points
 
-rcParams['font.family'] = 'sans-serif'
-rcParams['font.sans-serif'] = ['Times', 'Times New Roman', 'Serif']
-
 from gdal_viirs.maps import _drawings
 from gdal_viirs.maps.builder import MapBuilder, cm
 
@@ -37,8 +34,12 @@ class NDVIMapBuilder(MapBuilder):
         * "Закрыто облаками" = -2
         * "Водоёмы" = -4
     """
+
+    bottom_title = 'Мониторинг состояния посевов зерновых культур'
+    bottom_subtitle = None
+
     def __init__(self, logo_path='./logo.png', **kwargs):
-        super(NDVIMapBuilder, self).__init__()
+        super(NDVIMapBuilder, self).__init__(**kwargs)
         self.xlim = -500000, 800000
         self.ylim = 1500000, 2100000
         points.add_points(self, points.SIBERIA_CITIES)
@@ -60,10 +61,6 @@ class NDVIMapBuilder(MapBuilder):
         self.map_latlong_mark_thickness = cm(.1)  # толщина отметок
         self.map_latlon_mark_len = cm(.35)  # длинна отметок
 
-        for k, v in kwargs.items():
-            if hasattr(self, k):
-                setattr(self, k, v)
-
     def plot(self, file: DatasetReader, band=1):
         fig, (ax0, ax1), size = super(NDVIMapBuilder, self).plot(file, band)
         top_gap = self.outer_size[0]
@@ -78,7 +75,7 @@ class NDVIMapBuilder(MapBuilder):
         text_left = self.margin + logo_size + logo_padding*2 + cm(.75)  # отступ текста слева
         _drawings.draw_text('ФГБУ «НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ ГИДРОМЕТЕОРОЛОГИИ «ПЛАНЕТА»\nСИБИРСКИЙ ЦЕНТР',
                             (text_left, cm(1.5)), ax0,
-                            wrap=True, fontsize=26, va='top', ha='left', invert_y=True)
+                            wrap=True, fontproperties=self._get_font_props(size=24), va='top', ha='left', invert_y=True)
         _drawings.draw_text('\n'.join([
             'Сибирский центр',
             'ФГБУ НИЦ «ПЛАНЕТА»',
@@ -88,9 +85,11 @@ class NDVIMapBuilder(MapBuilder):
             'Факс. (383) 363-46-05',
             'E-mail: kav@rcpod.siberia.net',
             'http://rcpod.ru'
-        ]), (self.margin, self.margin), ax0, fontsize=15, va='bottom', ha='left')
-        _drawings.draw_text('Мониторинг состояния посевов зерновых культур', (self.outer_size[3], self.outer_size[2] / 2), ax0,
-                            ha='left', va='top', fontsize=25, weight='bold')
+        ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=16), va='bottom', ha='left')
+        _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
+                            (self.outer_size[3], self.outer_size[2] / 2), ax0,
+                            ha='left', va='top', weight='bold',
+                            fontproperties=self._get_font_props(size=30, weight='bold'))
 
         data = file.read(band)
         self._draw_legend(ax0, data)
@@ -106,12 +105,15 @@ class NDVIMapBuilder(MapBuilder):
         """
         Рисуем легенду для изображенния и некоторый текст
         """
+        fontprops = self._get_font_props(size=20)
         top = self.outer_size[0] + self.margin  # отступ сверху
         _drawings.draw_text('Suomi NPP/VIIRS', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', weight='bold', fontsize=23, invert_y=True)
+                            ha='center', va='top', weight='bold', fontsize=23, invert_y=True,
+                            fontproperties=self._get_font_props(size=28))
         top += self.margin * 2
         _drawings.draw_text('Состояние посевов', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', fontsize=20, invert_y=True)
+                            ha='center', va='top', invert_y=True,
+                            fontproperties=fontprops)
         top += cm(8)
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
@@ -126,23 +128,22 @@ class NDVIMapBuilder(MapBuilder):
             patches.Patch(color='yellow', label=f'Удовлетворительное\n< 0.7 ({round(100 * ok_count / all_count)}%)'),
             patches.Patch(color='greenyellow', label=f'Хорошое\n>= 0.7 ({round(100 * good_count / all_count)}%)'),
             patches.Patch(color='#aaa', label='Закрыто облаками'),
-        ], loc=loc, edgecolor='none', fontsize=20)
+        ], loc=loc, edgecolor='none', fontsize=20, prop=fontprops)
 
         top += cm(1)
 
         _drawings.draw_text('Условные обозначения', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', fontsize=20, invert_y=True)
+                            ha='center', va='top', fontsize=20, invert_y=True, fontproperties=fontprops)
 
         top += cm(6)
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
         ax0.legend(handles=[
-            lines.Line2D([], [], linewidth=2, color='k', linestyle=':', label='Границы субъектов'),
+            lines.Line2D([], [], linewidth=2, color='k', linestyle='-.', label='Границы субъектов'),
             lines.Line2D([], [], linewidth=4, color='k', label='Границы стран'),
-            lines.Line2D([], [], color="none", marker='o', markersize=20, markerfacecolor="blue",
-                         label='Населенные пункты'),
+            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor="none", label='Населенные пункты'),
             patches.Patch(color='blue', label='Водоёмы'),
-        ], loc=loc, edgecolor='none', fontsize=20)
+        ], loc=loc, edgecolor='none', prop=fontprops)
         ax0.add_artist(leg1)
 
     def _get_pixels_per_km(self, file: DatasetReader):
@@ -163,6 +164,7 @@ class NDVIMapBuilder(MapBuilder):
         :return:
         """
         transform = file.transform
+        fontprops = self._get_font_props()
 
         # расчитываем, сколько дюймов должно приходится на один сегмент
         pixels_per_km_x = self._get_pixels_per_km(file)
@@ -188,7 +190,8 @@ class NDVIMapBuilder(MapBuilder):
             color = self.map_mark_colors[0] if odd else self.map_mark_colors[1]
             rect1 = patches.Rectangle(xy, color=color, width=w, height=h)
             ax0.add_artist(rect1)
-            _drawings.draw_text(str(km), (left + w_inches, y - h - cm(.1)), ax0, va='top', ha='right')
+            _drawings.draw_text(str(km), (left + w_inches, y - h - cm(.1)), ax0, va='top', ha='right',
+                                fontproperties=fontprops)
             left += w_inches
             odd = not odd
 
@@ -240,14 +243,13 @@ class NDVIMapBuilder(MapBuilder):
         for i in range(segments_count_top):
             w, h = self.map_latlong_mark_thickness, self.map_latlon_mark_len
             long, lat = utility.transform_point(src_crs, 'EPSG:4326', (left_xy, transform.f))
-            print(long, lat)
             degree, minutes, seconds = _split_degree(long)
             _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'', (left + cm(.05), plot_h - top + h + cm(.05)), ax0,
-                                va='bottom', ha='center', fontsize=14)
+                                va='bottom', ha='center', fontsize=14, fontproperties=fontprops)
 
             xy = _drawings.inches2axes(ax0, (left - w / 2, plot_h - top))
             w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            rect = patches.Rectangle(xy, color='k', width=w, height=h)
             ax0.add_artist(rect)
 
             left += segment_top_size
@@ -272,10 +274,11 @@ class NDVIMapBuilder(MapBuilder):
             long = utility.transform_point(src_crs, 'EPSG:4326', (left_xy, transform.f + transform.e * file.height))[0]
             degree, minutes, seconds = _split_degree(long)
             _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
-                                (left + cm(.05), plot_h - h - top - cm(.15)), ax0, va='top', ha='center', fontsize=14)
+                                (left + cm(.05), plot_h - h - top - cm(.15)), ax0, va='top', ha='center', fontsize=14,
+                                fontproperties=fontprops)
 
             w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            rect = patches.Rectangle(xy, color='k', width=w, height=h)
             ax0.add_artist(rect)
 
             left += segment_top_size
@@ -301,10 +304,10 @@ class NDVIMapBuilder(MapBuilder):
             degree, minutes, seconds = _split_degree(long)
             _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
                                 (left - cm(.1), plot_h - top), ax0, va='center', ha='right',
-                                rotation=90, fontsize=14)
+                                rotation=90, fontsize=14, fontproperties=fontprops)
 
             w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            rect = patches.Rectangle(xy, color='k', width=w, height=h)
             ax0.add_artist(rect)
 
             top += segment_left_size
@@ -330,10 +333,10 @@ class NDVIMapBuilder(MapBuilder):
             degree, minutes, seconds = _split_degree(long)
             _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
                                 (left + h + cm(.2), plot_h - top), ax0, va='center', ha='left',
-                                rotation=-90, fontsize=14)
+                                rotation=-90, fontsize=14, fontproperties=fontprops)
 
             w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            rect = patches.Rectangle(xy, color='k', width=w, height=h)
             ax0.add_artist(rect)
 
             top += segment_left_size
