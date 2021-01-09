@@ -1,12 +1,13 @@
 import math
-import warnings
-
 import cartopy
-import rasterio.plot
 import numpy as np
+
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from rasterio import DatasetReader
 from matplotlib import rcParams, patches, lines
+
+from gdal_viirs import utility
+from gdal_viirs.hl import points
 
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Times', 'Times New Roman', 'Serif']
@@ -15,34 +16,66 @@ from gdal_viirs.maps import _drawings
 from gdal_viirs.maps.builder import MapBuilder, cm
 
 
+def _split_degree(deg):
+    degree = int(deg)
+    deg -= degree
+    deg *= 60
+    minutes = int(deg)
+    deg -= minutes
+    deg *= 60
+    seconds = int(deg)
+    return degree, minutes, seconds
+
+
 class NDVIMapBuilder(MapBuilder):
-    def __init__(self):
+    """
+    Данная реализация класса MapBuilder предназначена для отображения NDVI карты
+    с отмечание городов, водоёмов и значений NDVI со следующими значениями:
+        * "Хорошо" >= 0.7
+        * "Удовлетворительно" >= 0.3
+        * "Плохо" >= -1
+        * "Закрыто облаками" = -2
+        * "Водоёмы" = -4
+    """
+    def __init__(self, logo_path='./logo.png', **kwargs):
         super(NDVIMapBuilder, self).__init__()
-        self.xlim = -1500000, 2100000
-        self.ylim = 800000, 3000000
-        self.add_point(84.948197, 56.484680, 'Томск')
-        self.add_point(73.368212, 54.989342, 'Омск')
-        self.add_point(86.087314, 55.354968, 'Кемерово')
-        self.add_point(82.933952, 55.018803, 'Новосибирск')
+        self.xlim = -500000, 800000
+        self.ylim = 1500000, 2100000
+        points.add_points(self, points.SIBERIA_CITIES)
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
-        self.norm = BoundaryNorm([-999, -1, .4, .7], 3)
-        self.outer_size = cm(6), self.margin, cm(7), self.margin + cm(12)
-        self.map_mark_min_length = cm(1)
-        self.map_mark_thickness = cm(.25)
-        self.map_mark_dist = 1, 1, 2, 2, 3
-        self.map_mark_colors = 'black', 'white'
+        self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
+        self.outer_size = cm(6), self.margin, cm(7), self.margin + cm(13)
+        self.min_height = cm(30)
+
+        self.logo_path = logo_path
+
+        # настройка параметров для меток на карте
+        self.map_mark_min_length = cm(1)  # минимальная длина сегмента обозначения длинны
+        self.map_mark_thickness = cm(.25)  # толщина сегмента
+        self.map_mark_dist = 1, 1, 2, 2, 3  # длинная сегментов, измеренная в процентах по сравнению с минимальной
+        self.map_mark_colors = 'black', 'white'  # чередующиеся цвета сегментов
+
+        self.map_mark_degree_seg_len = cm(5)  # минимальное растояние между отметками градусов на карте
+        self.map_latlong_mark_thickness = cm(.1)  # толщина отметок
+        self.map_latlon_mark_len = cm(.35)  # длинна отметок
+
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
 
     def plot(self, file: DatasetReader, band=1):
         fig, (ax0, ax1), size = super(NDVIMapBuilder, self).plot(file, band)
         top_gap = self.outer_size[0]
-        logo_size = top_gap * .75
-        logo_padding = top_gap * .0375
-        _drawings.draw_image('./logo.png', (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
+        logo_size = top_gap * .75  # размер лого - 75% от толщины верхней зоны
+        logo_padding = top_gap * .0375 #
+
+        # рисуем логотип в верем левом углу
+        _drawings.draw_image(self.logo_path, (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
                              max_width=logo_size, max_height=logo_size,
                              origin=_drawings.TOP_LEFT)
 
-        text_left = self.margin + logo_size + logo_padding*2 + cm(.75)
+        text_left = self.margin + logo_size + logo_padding*2 + cm(.75)  # отступ текста слева
         _drawings.draw_text('ФГБУ «НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ ГИДРОМЕТЕОРОЛОГИИ «ПЛАНЕТА»\nСИБИРСКИЙ ЦЕНТР',
                             (text_left, cm(1.5)), ax0,
                             wrap=True, fontsize=26, va='top', ha='left', invert_y=True)
@@ -56,43 +89,42 @@ class NDVIMapBuilder(MapBuilder):
             'E-mail: kav@rcpod.siberia.net',
             'http://rcpod.ru'
         ]), (self.margin, self.margin), ax0, fontsize=15, va='bottom', ha='left')
-        _drawings.draw_text('Мониторинг состояния посевов зерновых культур', (fig.get_size_inches()[0] / 2, self.outer_size[2] / 2), ax0,
-                            ha='center', va='top', fontsize=25, weight='bold')
-        #self._draw_histogram(fig, file, size, band)
-        self._draw_legend(ax0)
-        self._draw_map_marks(ax0, file, size)
+        _drawings.draw_text('Мониторинг состояния посевов зерновых культур', (self.outer_size[3], self.outer_size[2] / 2), ax0,
+                            ha='left', va='top', fontsize=25, weight='bold')
+
+        data = file.read(band)
+        self._draw_legend(ax0, data)
+        del data
+        self._draw_map_marks(ax0, file)
 
         return fig, (ax0, ax1), size
 
     def get_projection(self, file):
         return cartopy.crs.LambertConformal(standard_parallels=(67.41206675, 43.58046825), central_longitude=79.950619)
 
-    def _draw_histogram(self, fig, file, size, band):
-        w, h = self.outer_size[1] - self.margin - cm(2), min(cm(30), size[1] / 2)
-        pos = self.outer_size[1] - cm(2) - w, self.outer_size[0]
-        ax = _drawings.get_axes_area(fig, pos, w, h, origin=_drawings.TOP_RIGHT)
-        data = file.read(band).copy()
-        data[data < -1] = np.nan
-        rasterio.plot.show_hist(data, ax=ax, bins=100, lw=0.0, title='Распределение',
-                                histtype='stepfilled', stacked=False, alpha=1, label='NDVI')
-
-    def _draw_legend(self, ax0):
-        # ----
-        # Условные обозначения
-        # ----
-        top = self.outer_size[0] + self.margin
+    def _draw_legend(self, ax0, data):
+        """
+        Рисуем легенду для изображенния и некоторый текст
+        """
+        top = self.outer_size[0] + self.margin  # отступ сверху
         _drawings.draw_text('Suomi NPP/VIIRS', (self.outer_size[3] / 2, top), ax0,
                             ha='center', va='top', weight='bold', fontsize=23, invert_y=True)
         top += self.margin * 2
         _drawings.draw_text('Состояние посевов', (self.outer_size[3] / 2, top), ax0,
                             ha='center', va='top', fontsize=20, invert_y=True)
-        top += cm(6)
+        top += cm(8)
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
+
+        data_mask = data >= -1
+        all_count = np.count_nonzero(data_mask)
+        bad_count = np.count_nonzero(data_mask * (data < 0.3))
+        ok_count = np.count_nonzero(data_mask * (data < 0.7) * (data >= 0.3))
+        good_count = np.count_nonzero(data_mask * (data >= 0.7))
         leg1 = ax0.legend(handles=[
-            patches.Patch(color='red', label='Плохое'),
-            patches.Patch(color='yellow', label='Удовлетворительное'),
-            patches.Patch(color='greenyellow', label='Хорошое'),
+            patches.Patch(color='red', label=f'Плохое\n< 0.3 ({round(100 * bad_count / all_count)}%)'),
+            patches.Patch(color='yellow', label=f'Удовлетворительное\n< 0.7 ({round(100 * ok_count / all_count)}%)'),
+            patches.Patch(color='greenyellow', label=f'Хорошое\n>= 0.7 ({round(100 * good_count / all_count)}%)'),
             patches.Patch(color='#aaa', label='Закрыто облаками'),
         ], loc=loc, edgecolor='none', fontsize=20)
 
@@ -113,10 +145,27 @@ class NDVIMapBuilder(MapBuilder):
         ], loc=loc, edgecolor='none', fontsize=20)
         ax0.add_artist(leg1)
 
-    def _draw_map_marks(self, ax0, file: DatasetReader, size):
+    def _get_pixels_per_km(self, file: DatasetReader):
+        pixels_per_km_x = 1000 / file.transform.a
+        xlim = self._get_lims(file)[0]
+        zoom = abs(xlim[0] - xlim[1]) / (file.transform.a * file.width)
+        pixels_per_km_x /= zoom
+        return pixels_per_km_x
+
+    def _draw_map_marks(self, ax0, file: DatasetReader):
+        """
+        Рисует пометки на карте, это включает в себя:
+            * отметка, обозначающая масштаб в виде "линейки"
+            * отметки о градусах широты/долготы на карте
+        Использование данной функции предпологает, что масштабы по осям X и Y одинаковы
+        :param ax0:  объект типа Axes, используемы для рисования и покрывающий весь рисунок
+        :param file: открытый файл rasterio
+        :return:
+        """
         transform = file.transform
 
-        pixels_per_km_x = 1000 / transform.a
+        # расчитываем, сколько дюймов должно приходится на один сегмент
+        pixels_per_km_x = self._get_pixels_per_km(file)
         inches_per_km_x = pixels_per_km_x / ax0.figure.dpi
         km_per_segment = math.floor(self.map_mark_min_length / inches_per_km_x)
         if km_per_segment > 30 and km_per_segment % 10 != 0:
@@ -126,7 +175,11 @@ class NDVIMapBuilder(MapBuilder):
         left = self.outer_size[3]
         odd = True
         km = 0
-        y = self.outer_size[2] - self.margin - self.map_mark_thickness
+        y = self.outer_size[2] - self.margin * 2 - self.map_mark_thickness
+
+        # рисуем отметки по указанным значениям распределения
+        # Напремер, если self.map_mark_dist = (1, 2, 3, 2, 5), это значит, что будет 5
+        # отметок, первая будет иметь длинну 100%, вторая 200% и т. д.
         for dist in self.map_mark_dist:
             km += km_per_segment * dist
             w_inches = dist * inches_per_segment
@@ -139,8 +192,150 @@ class NDVIMapBuilder(MapBuilder):
             left += w_inches
             odd = not odd
 
+        # рисуем окантовку
+        # TODO цвет окантовки
         _drawings.draw_rect_with_outside_border((self.outer_size[3], y),
                                                 sum(self.map_mark_dist) * inches_per_segment,
                                                 self.map_mark_thickness, ax0)
 
+        # отметки в грудусах
+        src_crs = file.crs.to_proj4()
+        points = utility.transform_points(src_crs, 'EPSG:4326', (
+            (transform.c, transform.f),
+            (transform.c + transform.a * file.width, transform.f),
+            (transform.c, transform.f + transform.e * file.height),
+            (transform.c + transform.a * file.width, transform.f + transform.e * file.height)
+        ))
+        bl, br, tl, tr = points
+        if transform.a < 0:
+            bl, br = br, bl
+            tl, tr = tr, tl
+        if transform.e < 0:
+            bl, tl = tl, bl
+            br, tr = tr, br
+
+        plot_w, plot_h = ax0.figure.get_size_inches()
+        raster_w = plot_w - self.outer_size[1] - self.outer_size[3]
+        raster_h = plot_h - self.outer_size[2] - self.outer_size[0]
+        xy_per_inch = (file.transform.a * file.width) / raster_w
+
+        # для каждой линии мы вычисляем точку откуда нужно начинать рисовать отметки после чего вычисляем
+        # координаты этой точкий в проекции, далее к X или Y данной точки начинаем прибовалять значение, высчитанное
+        # заранее, таким образом вычисляются координаты каждой точки для каждой линии
+        # количество точек в линии вычисляется на основании минимальной длинны между точками и длинне/высоте растра
+
+        # верхняя линия
+        inches_per_lon_deg_top = raster_w / int(tr[0] - tl[0])
+        degrees_per_segment_top = math.ceil(self.map_mark_degree_seg_len / inches_per_lon_deg_top * 3600) / 3600
+        segment_top_size = min(degrees_per_segment_top * inches_per_lon_deg_top, raster_w / 2)
+        segments_count_top = int(raster_w // segment_top_size)
+
+        # начинаем рисовать верхнюю линию
+        top = self.outer_size[0]
+        offset_x = (raster_w - (segments_count_top - 1) * segment_top_size) / 2
+        left = self.outer_size[3] + offset_x
+        left_xy = file.transform.c + xy_per_inch * offset_x
+        del offset_x
+
+        for i in range(segments_count_top):
+            w, h = self.map_latlong_mark_thickness, self.map_latlon_mark_len
+            long, lat = utility.transform_point(src_crs, 'EPSG:4326', (left_xy, transform.f))
+            print(long, lat)
+            degree, minutes, seconds = _split_degree(long)
+            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'', (left + cm(.05), plot_h - top + h + cm(.05)), ax0,
+                                va='bottom', ha='center', fontsize=14)
+
+            xy = _drawings.inches2axes(ax0, (left - w / 2, plot_h - top))
+            w, h = _drawings.inches2axes(ax0, (w, h))
+            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            ax0.add_artist(rect)
+
+            left += segment_top_size
+            left_xy += segment_top_size * xy_per_inch
+
+        # нижняя линия
+        inches_per_lon_deg_bottom = raster_w / int(br[0] - bl[0])
+        degrees_per_segment_bottom = math.ceil(self.map_mark_degree_seg_len / inches_per_lon_deg_bottom * 3600) / 3600
+        segment_bottom_size = min(degrees_per_segment_bottom * inches_per_lon_deg_bottom, raster_w / 2)
+        segments_count_bottom = int(raster_w // segment_bottom_size)
+
+        # начинаем рисовать нижнюю линию
+        top = self.outer_size[0] + raster_h
+        offset_x = (raster_w - (segments_count_bottom - 1) * segment_top_size) / 2
+        left = self.outer_size[3] + offset_x
+        left_xy = file.transform.c + xy_per_inch * offset_x
+        del offset_x
+
+        for i in range(segments_count_bottom):
+            w, h = self.map_latlong_mark_thickness, self.map_latlon_mark_len
+            xy = _drawings.inches2axes(ax0, (left - w / 2, plot_h - top - h - cm(.1)))
+            long = utility.transform_point(src_crs, 'EPSG:4326', (left_xy, transform.f + transform.e * file.height))[0]
+            degree, minutes, seconds = _split_degree(long)
+            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
+                                (left + cm(.05), plot_h - h - top - cm(.15)), ax0, va='top', ha='center', fontsize=14)
+
+            w, h = _drawings.inches2axes(ax0, (w, h))
+            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            ax0.add_artist(rect)
+
+            left += segment_top_size
+            left_xy += segment_top_size * xy_per_inch
+
+        # левая линия
+        inches_per_lat_deg_left = raster_h / int(tl[0] - bl[0])
+        degrees_per_segment_left = math.ceil(self.map_mark_degree_seg_len / inches_per_lat_deg_left * 3600) / 3600
+        segment_left_size = min(degrees_per_segment_left * inches_per_lat_deg_left, raster_h / 2)
+        segments_count_left = int(raster_h // segment_left_size)
+
+        # начинаем рисовать левую линию
+        left = self.outer_size[3] - self.map_latlon_mark_len
+        offset_y = (raster_h - (segments_count_left - 1) * segment_left_size) / 2
+        top = self.outer_size[0] + offset_y
+        top_xy = file.transform.f + xy_per_inch * offset_y
+        del offset_y
+
+        for i in range(segments_count_left):
+            h, w = self.map_latlong_mark_thickness, self.map_latlon_mark_len
+            xy = _drawings.inches2axes(ax0, (left - h, plot_h - top - h / 2))
+            long = utility.transform_point(src_crs, 'EPSG:4326', (transform.c, transform.f + top_xy))[1]
+            degree, minutes, seconds = _split_degree(long)
+            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
+                                (left - cm(.1), plot_h - top), ax0, va='center', ha='right',
+                                rotation=90, fontsize=14)
+
+            w, h = _drawings.inches2axes(ax0, (w, h))
+            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            ax0.add_artist(rect)
+
+            top += segment_left_size
+            top_xy += segment_left_size * xy_per_inch
+
+        # правая линия
+        inches_per_lat_deg_right = raster_h / int(tr[0] - br[0])
+        degrees_per_segment_right = math.ceil(self.map_mark_degree_seg_len / inches_per_lat_deg_right * 3600) / 3600
+        segment_right_size = min(degrees_per_segment_right * inches_per_lat_deg_right, raster_h / 2)
+        segments_count_right = int(raster_h // segment_right_size)
+
+        # начинаем рисовать правую линию
+        left = self.outer_size[3] + raster_w
+        offset_y = (raster_h - (segments_count_right - 1) * segment_right_size) / 2
+        top = self.outer_size[0] + offset_y
+        top_xy = file.transform.f + xy_per_inch * offset_y
+        del offset_y
+
+        for i in range(segments_count_left):
+            h, w = self.map_latlong_mark_thickness, self.map_latlon_mark_len
+            xy = _drawings.inches2axes(ax0, (left, plot_h - top - h / 2))
+            long = utility.transform_point(src_crs, 'EPSG:4326', (transform.c, transform.f + top_xy))[1]
+            degree, minutes, seconds = _split_degree(long)
+            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
+                                (left + h + cm(.2), plot_h - top), ax0, va='center', ha='left',
+                                rotation=-90, fontsize=14)
+
+            w, h = _drawings.inches2axes(ax0, (w, h))
+            rect = patches.Rectangle(xy, color='k', width=w, height=h, edgecolor='none')
+            ax0.add_artist(rect)
+
+            top += segment_left_size
+            top_xy += segment_left_size * xy_per_inch
 

@@ -34,16 +34,27 @@ class GDALViirsDB:
             for stmt in self.INIT_EXEC:
                 self._db.execute(stmt)
 
-    def has_processed(self, name: str, src_type: str):
+    def has_processed(self, name: str, src_type: str, strict=False):
         result = next(self._db.execute(
             'SELECT EXISTS(SELECT 1 FROM processed_data_sources WHERE name = ? AND type = ?)', (name, src_type)))
-        return result[0] == 1
+        if result[0] != 1:
+            return False
+        if not strict:
+            return True
+        output = next(self._db.execute(
+            'SELECT output FROM processed_data_sources WHERE name = ? AND type = ?', (name, src_type)))
+        if output is None or (output != '' and not os.path.isfile(output)):
+            logger.error('не удалось найти файл, который помечен как обработанный strict=True, поэтому этот файл'
+                         ' будет удален из БД, так как он не найден или информация о нём отсутсвует в БД')
+            self.delete_processed(name, src_type)
+            return False
+        return True
 
-    def add_processed(self, name: str, src_type: str = None):
+    def add_processed(self, name: str, src_type: str = None, output: str = None):
         logger.debug(name)
         now = datetime.now().timestamp()
-        query = 'INSERT INTO processed_data_sources(name, type, added_at_ts) VALUES (?, ?, ?)'
-        self._db.execute(query, (name, src_type, now))
+        query = 'INSERT INTO processed_data_sources(name, type, added_at_ts, output) VALUES (?, ?, ?, ?)'
+        self._db.execute(query, (name, src_type, now, output))
         self._db.commit()
 
     def delete_processed(self, name: str, src_type: str):

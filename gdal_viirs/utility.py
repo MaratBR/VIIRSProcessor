@@ -1,5 +1,6 @@
 import inspect
 import re
+import fiona.transform
 from typing import Dict, Optional
 
 import h5py
@@ -190,3 +191,17 @@ def apply_mask(data: np.ndarray,
         ][mask] = nd_value
 
     return data
+
+
+def transform_point(src_crs, dst_crs, point):
+    xs, ys = fiona.transform.transform(src_crs, dst_crs, [point[0]], [point[1]])
+    return xs[0], ys[0]
+
+
+def transform_points(src_crs, dst_crs, points):
+    points = np.array(points)
+    xs = points[:, 0]
+    ys = points[:, 1]
+    xs, ys = fiona.transform.transform(src_crs, dst_crs, xs, ys)
+    return np.array(list(zip(xs, ys)))
+

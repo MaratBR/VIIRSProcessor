@@ -28,30 +28,42 @@ class NPPProcessor:
         for d in directories:
             if not os.path.isdir(d):
                 continue
-            dirname = os.path.basename(d)
-            if not self.persistence.has_processed(d, 'level1'):
-                filesets = _utility.find_sdr_viirs_filesets(os.path.join(d, 'viirs/level1')).values()
-                for fs in filesets:
-                    output_file = self._dirname(dirname, fs.geoloc_file.file_type)
-                    _process.process_fileset(fs, output_file, self.scale)
-                self.persistence.add_processed(d, 'level1')
-
-            if not self.persistence.has_processed(d, 'level2'):
-                input_file = glob(os.path.join(d, 'viirs/level2/*CLOUDMASK.tif'))
-                if len(input_file) != 0:
-                    input_file = input_file[0]
-                    clouds_file = self._dirname(dirname, 'PROJECTED_CLOUDMASK')
-                    _process.process_cloud_mask(input_file, clouds_file, scale=self.scale)
-                    ndvi_file = self._dirname(dirname, 'NDVI')
-                    gimgo_tiff_file = self._dirname(dirname, 'GIMGO')
-                    if os.path.isfile(gimgo_tiff_file):
-                        _process.process_ndvi(gimgo_tiff_file, ndvi_file, clouds_file)
-                    else:
-                        logger.warning(f'не удалось найти файл {gimgo_tiff_file}, не могу обработать NDVI')
-                    self.persistence.add_processed(d, 'level2')
+            self._process_directory(d)
 
     def reset(self):
         self.persistence.delete_meta('last_check_time')
         self.persistence.reset()
+
+    def _process_directory(self, d):
+        dirname = os.path.basename(d)
+        if not self.persistence.has_processed(d, 'level1'):
+            filesets = _utility.find_sdr_viirs_filesets(os.path.join(d, 'viirs/level1')).values()
+            for fs in filesets:
+                output_file = self._dirname(dirname, fs.geoloc_file.file_type)
+                _process.process_fileset(fs, output_file, self.scale)
+            self.persistence.add_processed(d, 'level1')
+
+        clouds_file = self._dirname(dirname, 'PROJECTED_CLOUDMASK')
+
+        if not self.persistence.has_processed(d, 'cloud_mask'):
+            input_file = glob(os.path.join(d, 'viirs/level2/*CLOUDMASK.tif'))
+            if len(input_file) != 0:
+                input_file = input_file[0]
+                _process.process_cloud_mask(input_file, clouds_file, scale=self.scale)
+                self.persistence.add_processed(d, 'cloud_mask', clouds_file)
+
+
+        if self.persistence.has_processed(d, 'cloud_mask') and not self.persistence.has_processed(d, 'ndvi', strict=True):
+            ndvi_file = self._dirname(dirname, 'NDVI')
+            gimgo_tiff_file = self._dirname(dirname, 'GIMGO')
+            if os.path.isfile(gimgo_tiff_file):
+                _process.process_ndvi(gimgo_tiff_file, ndvi_file, clouds_file)
+                self.persistence.add_processed(d, 'ndvi', ndvi_file)
+
+            else:
+                logger.warning(f'не удалось найти файл {gimgo_tiff_file}, не могу обработать NDVI')
+
+        png_filetype = datetime.now().strftime('PNG_%Y_%m_%d')
+
 
 

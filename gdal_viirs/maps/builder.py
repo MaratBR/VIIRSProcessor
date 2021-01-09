@@ -1,4 +1,5 @@
 import rasterio.plot
+from matplotlib.colors import to_rgb
 
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
@@ -32,7 +33,7 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
     lakes_contour = cartopy.feature.NaturalEarthFeature(category='physical',
                                                         name='lakes',
                                                         scale=scale,
-                                                        facecolor='None')
+                                                        facecolor='blue')
     admin_0_countries = cartopy.feature.NaturalEarthFeature(category='cultural',
                                                             name='admin_0_countries',
                                                             scale=scale,
@@ -58,7 +59,7 @@ def plot_marks(points: dict, crs, ax, color='k'):
     plate_carree = cartopy.crs.PlateCarree()
     for coord, text in points.items():
         point = crs.transform_point(coord[0], coord[1], plate_carree)
-        ax.plot(*point, color=color, markersize=14, marker='o')
+        ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(color))
         ax.annotate(text, point, fontsize=25).set_clip_on(True)
 
 
@@ -79,12 +80,14 @@ class MapBuilder:
     cartopy_scale: str
     cmap = None
     norm = None
-    marks_color = 'blue'
+    points_color = 'k'
     font_size = 25
     outer_size: Tuple[Number, Number, Number, Number] = cm(.5), cm(.5), cm(.5), cm(.5)
     dpi = 100
     max_width = None
     max_height = None
+    min_width = None
+    min_height = None
 
     def __init__(self):
         self._points = {}
@@ -96,19 +99,8 @@ class MapBuilder:
         self._points[(lon, lat)] = text
 
     def plot(self, file: DatasetReader, band=1):
-        xlim = self.xlim or (file.transform.c, file.transform.a * file.width + file.transform.c)
-        ylim = self.ylim or (file.transform.e * file.height + file.transform.f, file.transform.f)
-        plot_width = abs(xlim[0] - xlim[1]) / file.transform.a / self.dpi
-        plot_height = abs(ylim[0] - ylim[1]) / file.transform.a / self.dpi
-        zoom = 1
-        if self.max_width is not None:
-            zoom = min(zoom, self.max_width / plot_width)
-        if self.max_height is not None:
-            zoom = min(zoom, self.max_height / plot_height)
-        plot_width *= zoom
-        plot_height *= zoom
-
-        plot_size = plot_width, plot_height
+        xlim, ylim = self._get_lims(file)
+        plot_size = self._get_raster_size_inches(file)
         data = file.read(band)
         crs = self.get_projection(file)
         figsize = plot_size[0] + self.outer_size[1] + self.outer_size[3], plot_size[1] + self.outer_size[0] + self.outer_size[2]
@@ -125,7 +117,7 @@ class MapBuilder:
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
         ax1.set_axis_off()
         build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform)
-        plot_marks(self._points, crs, ax1, color=self.marks_color)
+        plot_marks(self._points, crs, ax1, color=self.points_color)
 
         return fig, (ax0, ax1), plot_size
 
@@ -135,6 +127,30 @@ class MapBuilder:
 
     def get_projection(self, file):
         return cartopy.crs.PlateCarree()
+
+    def _get_lims(self, file: DatasetReader):
+        xlim = self.xlim or (file.transform.c, file.transform.a * file.width + file.transform.c)
+        ylim = self.ylim or (file.transform.e * file.height + file.transform.f, file.transform.f)
+        return xlim, ylim
+
+    def _get_raster_size_inches(self, file: DatasetReader):
+        xlim, ylim = self._get_lims(file)
+        plot_width = abs(xlim[0] - xlim[1]) / file.transform.a / self.dpi
+        plot_height = abs(ylim[0] - ylim[1]) / file.transform.a / self.dpi
+        zoom = 1
+
+        if self.max_width is not None:
+            zoom = min(zoom, self.max_width / plot_width)
+        if self.min_width is not None:
+            zoom = max(zoom, self.min_width / plot_width)
+        if self.max_height is not None:
+            zoom = min(zoom, self.max_height / plot_height)
+        if self.min_height is not None:
+            zoom = max(zoom, self.min_height / plot_height)
+        plot_width *= zoom
+        plot_height *= zoom
+        return plot_width, plot_height
+
 
 
 
