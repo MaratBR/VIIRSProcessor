@@ -19,6 +19,7 @@ def create_npp_processor(config=_default_config):
     args['data_dir'] = config['INPUT_DIR']
     args['output_dir'] = config['OUTPUT_DIR']
     args['png_config'] = config['PNG_CONFIG']
+    args['map_points'] = config.get('MAP_POINTS')
     if 'CONFIG_DIR' in config:
         args['config_dir'] = config['CONFIG_DIR']
     if 'SCALE' in config:

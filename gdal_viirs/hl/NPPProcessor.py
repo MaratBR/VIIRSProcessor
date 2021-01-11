@@ -126,12 +126,12 @@ class NPPProcessor:
             ylim = png_entry.get('ylim')
             filename = f'{name}.{category_name}.png' if category_name else f'{name}.png'
             filepath = os.path.join(png_dir, filename)
-            props = dict(bottom_subtitle=display_name)
+            props = dict(bottom_subtitle=display_name, map_points=self._config.get('map_points'))
             if xlim:
                 props['xlim'] = xlim
             if ylim:
                 props['ylim'] = ylim
-            produce_ndvi_image(merged_ndvi, filepath)
+            produce_ndvi_image(merged_ndvi, filepath, **props)
 
 
 

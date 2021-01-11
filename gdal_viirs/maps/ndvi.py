@@ -38,11 +38,12 @@ class NDVIMapBuilder(MapBuilder):
     bottom_title = 'Мониторинг состояния посевов зерновых культур'
     bottom_subtitle = None
 
-    def __init__(self, logo_path='./logo.png', **kwargs):
+    def __init__(self, logo_path='./logo.png', map_points=None, **kwargs):
         super(NDVIMapBuilder, self).__init__(**kwargs)
-        self.xlim = -500000, 800000
-        self.ylim = 1500000, 2100000
-        points.add_points(self, points.SIBERIA_CITIES)
+        points.add_points(self, [
+            *points.SIBERIA_CITIES,
+            *(map_points or []),
+        ])
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
