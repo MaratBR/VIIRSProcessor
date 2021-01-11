@@ -60,20 +60,26 @@ class NPPProcessor:
     def _process_directory(self, d):
         dirname = os.path.basename(d)
         logger.debug('level1')
-        if not self.persistence.has_processed(d, 'level1'):
+        if not self.persistence.has_processed(d, 'level1', strict=True):
             filesets = _utility.find_sdr_viirs_filesets(os.path.join(d, 'viirs/level1')).values()
             for fs in filesets:
                 fs.geoloc_file.date.strftime('')
                 output_file = self._fname(dirname, fs.geoloc_file.file_type)
                 _process.process_fileset(fs, output_file, self.scale)
-            self.persistence.add_processed(d, 'level1')
+            self.persistence.add_processed(d, 'level1', output_file)
 
         logger.debug('cloud_mask')
         clouds_file = self._process_clouds_file(d)
+        if clouds_file is None:
+            return
         logger.debug('ndvi')
         self._process_ndvi_files(d, clouds_file)
         logger.debug('merged_ndvi')
-        merged_ndvi = self._process_merged_ndvi_file()
+        try:
+            merged_ndvi = self._process_merged_ndvi_file()
+        except FileNotFoundError as e:
+            logger.error(str(e))
+            return
 
         logger.debug('png\'s')
         png_config = self.png_config
@@ -89,10 +95,12 @@ class NPPProcessor:
                 input_file = input_file[0]
                 _process.process_cloud_mask(input_file, clouds_file, scale=self.scale)
                 self.persistence.add_processed(d, 'cloud_mask', clouds_file)
+            else:
+                return None
         return clouds_file
 
     def _process_ndvi_files(self, d, clouds_file):
-        if self.persistence.has_processed(d, 'cloud_mask') and not self.persistence.has_processed(d, 'ndvi', strict=True):
+        if self.persistence.has_processed(d, 'cloud_mask', strict=True) and not self.persistence.has_processed(d, 'ndvi', strict=True):
             ndvi_file = self._fname(d, 'NDVI')
             gimgo_tiff_file = self._fname(d, 'GIMGO')
             if os.path.isfile(gimgo_tiff_file):
@@ -110,10 +118,14 @@ class NPPProcessor:
         merged_ndvi_file = merged_ndvi + '.tiff'
         output_file = os.path.join(self._output_dir, merged_ndvi_file)
         if not self.persistence.has_processed(merged_ndvi, '', strict=True):
-            ndvi_rasters = self.persistence.query_processed('created_at_ts >= ? AND type = ?',
-                                                            [math.floor(time.mktime(past_day.timetuple())), 'ndvi'],
-                                                            select='output')
-            ndvi_rasters = [o[0] for o in ndvi_rasters]
+            ndvi_rasters = self.persistence.get_processed('created_at_ts >= ? AND type = ?',
+                                                          [math.floor(time.mktime(past_day.timetuple())), 'ndvi'])
+            if len(ndvi_rasters) == 0:
+                logger.warning('не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
+                return None
+            for raster in ndvi_rasters:
+                if not os.path.isfile(raster):
+                    raise FileNotFoundError(f'файл {raster} не найден, обнаружено несоотсветсвие БД')
             merge_files2tiff(ndvi_rasters, output_file)
             self.persistence.add_processed(merged_ndvi, '', output_file)
         return output_file

@@ -2,8 +2,10 @@ import os
 
 import matplotlib.font_manager as _fm
 import rasterio.plot
+from affine import Affine
 from matplotlib.colors import to_rgb
 
+from gdal_viirs import utility
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
@@ -19,11 +21,11 @@ def cm(v):
 
 def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
                  ylim: Tuple[Number, Number] = None, scale='10m', cmap=None, norm=None, transform=None):
-    axes.set_axis_off()
     if xlim:
         axes.set_xlim(xlim)
     if ylim:
-        axes.set_ylim(ylim)
+        diff = abs(ylim[0] - ylim[1]) / 2
+        axes.set_ylim((transform.f + ylim[0] - diff, transform.f + ylim[1] - diff))
 
     coastline = cartopy.feature.NaturalEarthFeature(category='physical',
                                                     name='coastline',
@@ -46,8 +48,12 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
                                                                    scale=scale,
                                                                    facecolor='None')
 
-    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, transform=transform, origin='upper',
-                       interpolation='nearest')
+    # следующая строка кода меняет трансформацию изображения так, что оно перемещается выше на половину своей высоты
+    # я понятия не имею, почему это так работает и меня это нервирует, но дедлайн есть дедлайн
+    # TODO Понять что тут происходит
+    transform = Affine(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f - transform.e * data.shape[0] / 2)
+
+    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='bilinear', transform=transform)
 
     axes.add_feature(coastline, edgecolor='black', linewidth=2)
     axes.add_feature(minor_islands, edgecolor='black', linewidth=0.5)
@@ -131,7 +137,6 @@ class MapBuilder:
         ax0.set_axis_off()
         _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
-        ax1.set_axis_off()
         build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform)
         plot_marks(self._points, crs, ax1, color=self.points_color)
 

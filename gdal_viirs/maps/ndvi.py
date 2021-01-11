@@ -92,7 +92,7 @@ class NDVIMapBuilder(MapBuilder):
                             ha='left', va='top', weight='bold',
                             fontproperties=self._get_font_props(size=30, weight='bold'))
 
-        data = file.read(band)
+        data = file.read(band)#utility.apply_xy_lim(file.read(band), file.transform, *self._get_lims(file))
         self._draw_legend(ax0, data)
         del data
         self._draw_map_marks(ax0, file)
@@ -119,7 +119,7 @@ class NDVIMapBuilder(MapBuilder):
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
 
-        data_mask = data >= -1
+        data_mask = ~np.isnan(data) * (data >= -1)
         all_count = np.count_nonzero(data_mask)
         bad_count = np.count_nonzero(data_mask * (data < 0.3))
         ok_count = np.count_nonzero(data_mask * (data < 0.7) * (data >= 0.3))
@@ -205,24 +205,19 @@ class NDVIMapBuilder(MapBuilder):
 
         # отметки в грудусах
         src_crs = file.crs.to_proj4()
+        xlim, ylim = self._get_lims(file)
         points = utility.transform_points(src_crs, 'EPSG:4326', (
-            (transform.c, transform.f),
-            (transform.c + transform.a * file.width, transform.f),
-            (transform.c, transform.f + transform.e * file.height),
-            (transform.c + transform.a * file.width, transform.f + transform.e * file.height)
+            (xlim[0], ylim[0]),
+            (xlim[1], ylim[0]),
+            (xlim[0], ylim[1]),
+            (xlim[1], ylim[1])
         ))
         bl, br, tl, tr = points
-        if transform.a < 0:
-            bl, br = br, bl
-            tl, tr = tr, tl
-        if transform.e < 0:
-            bl, tl = tl, bl
-            br, tr = tr, br
 
         plot_w, plot_h = ax0.figure.get_size_inches()
         raster_w = plot_w - self.outer_size[1] - self.outer_size[3]
         raster_h = plot_h - self.outer_size[2] - self.outer_size[0]
-        xy_per_inch = (file.transform.a * file.width) / raster_w
+        xy_per_inch = abs(xlim[0] - xlim[1]) / raster_w
 
         # для каждой линии мы вычисляем точку откуда нужно начинать рисовать отметки после чего вычисляем
         # координаты этой точкий в проекции, далее к X или Y данной точки начинаем прибовалять значение, высчитанное
@@ -230,7 +225,7 @@ class NDVIMapBuilder(MapBuilder):
         # количество точек в линии вычисляется на основании минимальной длинны между точками и длинне/высоте растра
 
         # верхняя линия
-        inches_per_lon_deg_top = raster_w / int(tr[0] - tl[0])
+        inches_per_lon_deg_top = raster_w / (tr[0] - tl[0])
         degrees_per_segment_top = math.ceil(self.map_mark_degree_seg_len / inches_per_lon_deg_top * 3600) / 3600
         segment_top_size = min(degrees_per_segment_top * inches_per_lon_deg_top, raster_w / 2)
         segments_count_top = int(raster_w // segment_top_size)
@@ -239,7 +234,7 @@ class NDVIMapBuilder(MapBuilder):
         top = self.outer_size[0]
         offset_x = (raster_w - (segments_count_top - 1) * segment_top_size) / 2
         left = self.outer_size[3] + offset_x
-        left_xy = file.transform.c + xy_per_inch * offset_x
+        left_xy = tl[0] + xy_per_inch * offset_x
         del offset_x
 
         for i in range(segments_count_top):
@@ -258,7 +253,7 @@ class NDVIMapBuilder(MapBuilder):
             left_xy += segment_top_size * xy_per_inch
 
         # нижняя линия
-        inches_per_lon_deg_bottom = raster_w / int(br[0] - bl[0])
+        inches_per_lon_deg_bottom = raster_w / (br[0] - bl[0])
         degrees_per_segment_bottom = math.ceil(self.map_mark_degree_seg_len / inches_per_lon_deg_bottom * 3600) / 3600
         segment_bottom_size = min(degrees_per_segment_bottom * inches_per_lon_deg_bottom, raster_w / 2)
         segments_count_bottom = int(raster_w // segment_bottom_size)
@@ -267,7 +262,7 @@ class NDVIMapBuilder(MapBuilder):
         top = self.outer_size[0] + raster_h
         offset_x = (raster_w - (segments_count_bottom - 1) * segment_top_size) / 2
         left = self.outer_size[3] + offset_x
-        left_xy = file.transform.c + xy_per_inch * offset_x
+        left_xy = tl[0] + xy_per_inch * offset_x
         del offset_x
 
         for i in range(segments_count_bottom):
@@ -287,7 +282,7 @@ class NDVIMapBuilder(MapBuilder):
             left_xy += segment_top_size * xy_per_inch
 
         # левая линия
-        inches_per_lat_deg_left = raster_h / int(tl[0] - bl[0])
+        inches_per_lat_deg_left = raster_h / (tl[0] - bl[0])
         degrees_per_segment_left = math.ceil(self.map_mark_degree_seg_len / inches_per_lat_deg_left * 3600) / 3600
         segment_left_size = min(degrees_per_segment_left * inches_per_lat_deg_left, raster_h / 2)
         segments_count_left = int(raster_h // segment_left_size)
@@ -296,7 +291,7 @@ class NDVIMapBuilder(MapBuilder):
         left = self.outer_size[3] - self.map_latlon_mark_len
         offset_y = (raster_h - (segments_count_left - 1) * segment_left_size) / 2
         top = self.outer_size[0] + offset_y
-        top_xy = file.transform.f + xy_per_inch * offset_y
+        top_xy = tl[1] + xy_per_inch * offset_y
         del offset_y
 
         for i in range(segments_count_left):
@@ -316,7 +311,7 @@ class NDVIMapBuilder(MapBuilder):
             top_xy += segment_left_size * xy_per_inch
 
         # правая линия
-        inches_per_lat_deg_right = raster_h / int(tr[0] - br[0])
+        inches_per_lat_deg_right = raster_h / (tr[0] - br[0])
         degrees_per_segment_right = math.ceil(self.map_mark_degree_seg_len / inches_per_lat_deg_right * 3600) / 3600
         segment_right_size = min(degrees_per_segment_right * inches_per_lat_deg_right, raster_h / 2)
         segments_count_right = int(raster_h // segment_right_size)
@@ -325,7 +320,7 @@ class NDVIMapBuilder(MapBuilder):
         left = self.outer_size[3] + raster_w
         offset_y = (raster_h - (segments_count_right - 1) * segment_right_size) / 2
         top = self.outer_size[0] + offset_y
-        top_xy = file.transform.f + xy_per_inch * offset_y
+        top_xy = tl[1] + xy_per_inch * offset_y
         del offset_y
 
         for i in range(segments_count_left):

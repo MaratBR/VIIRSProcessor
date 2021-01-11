@@ -139,6 +139,23 @@ def get_intersection(x1, y1, w1, h1, x2, y2, w2, h2, scalex, scaley):
     return (round(top1), round(right1), round(bottom1), round(left1)), (round(top2), round(right2), round(bottom2), round(left2))
 
 
+def apply_xy_lim(data: np.ndarray, transform: Affine, xlim, ylim, fill_value=np.nan):
+    xleft = int(max(0, (xlim[0] - transform.c) // transform.a))
+    xright = int(max(0, (transform.c + data.shape[1] * transform.a - xlim[1]) // transform.a))
+    ybottom = int(max(0, (ylim[0] - transform.f) // transform.e))
+    ytop = int(max(0, (transform.f + data.shape[0] * transform.e - ylim[1]) // transform.a))
+    if ytop != 0:
+        data[:ytop, :] = fill_value
+    if ybottom != 0:
+        data[data.shape[0] - ybottom:, :] = fill_value
+    if xleft != 0:
+        data[:, :xleft] = fill_value
+    if xright != 0:
+        data[:, data.shape[1] - xright:] = fill_value
+
+    return data
+
+
 def apply_mask(data: np.ndarray,
                data_transform: Affine,
                mask: np.ndarray,

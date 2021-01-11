@@ -60,7 +60,7 @@ class GDALViirsDB:
         self._db.commit()
 
     def delete_processed(self, name: str, src_type: str):
-        self._db.execute('DELETE FROM processed_data_sources WHERE name = ?', (name, src_type))
+        self._db.execute('DELETE FROM processed_data_sources WHERE name = ? AND type = ?', (name, src_type))
         self._db.commit()
 
     def get_meta(self, key, default_value=None):
@@ -88,6 +88,14 @@ class GDALViirsDB:
 
     def query_processed(self, where, params, select='*'):
         return self.query(f'SELECT {select} FROM processed_data_sources WHERE {where}', params)
+
+    def get_processed(self, where, params):
+        data = self.query_processed(where, params, 'output')
+        result = []
+        for (output,) in data:
+            if os.path.isfile(output):
+                result.append(output)
+        return result
 
     def reset(self):
         self._db.execute('DELETE FROM processed_data_sources')
