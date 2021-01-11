@@ -1,5 +1,6 @@
 import os
 
+import fiona
 import matplotlib.font_manager as _fm
 import rasterio.plot
 from affine import Affine
@@ -21,11 +22,11 @@ def cm(v):
 
 def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
                  ylim: Tuple[Number, Number] = None, scale='10m', cmap=None, norm=None, transform=None):
-    if xlim:
-        axes.set_xlim(xlim)
-    if ylim:
-        diff = abs(ylim[0] - ylim[1]) / 2
-        axes.set_ylim((transform.f + ylim[0] - diff, transform.f + ylim[1] - diff))
+    #if xlim:
+    #    axes.set_xlim(xlim)
+    #if ylim:
+    #    diff = abs(ylim[0] - ylim[1]) / 2
+    #    axes.set_ylim((transform.f + ylim[0] - diff, transform.f + ylim[1] - diff))
 
     coastline = cartopy.feature.NaturalEarthFeature(category='physical',
                                                     name='coastline',
@@ -48,18 +49,19 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
                                                                    scale=scale,
                                                                    facecolor='None')
 
-    # следующая строка кода меняет трансформацию изображения так, что оно перемещается выше на половину своей высоты
-    # я понятия не имею, почему это так работает и меня это нервирует, но дедлайн есть дедлайн
-    # TODO Понять что тут происходит
-    transform = Affine(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f - transform.e * data.shape[0] / 2)
-
-    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='bilinear', transform=transform)
+    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='bilinear',
+                       transform=transform, alpha=1)
 
     axes.add_feature(coastline, edgecolor='black', linewidth=2)
     axes.add_feature(minor_islands, edgecolor='black', linewidth=0.5)
     axes.add_feature(lakes_contour, edgecolor='black', linewidth=0.4)
     axes.add_feature(admin_0_countries, edgecolor='black', linewidth=3)
     axes.add_feature(admin_1_states_provinces, edgecolor='black', linewidth=1, linestyle='-.')
+
+    if xlim:
+        axes.set_xlim(xlim)
+    if ylim:
+        axes.set_ylim(ylim)
 
     return axes
 
@@ -98,12 +100,14 @@ class MapBuilder:
     min_width = None
     min_height = None
     font_family = None
+    agro_mask_shp_file = None
 
     def __init__(self, **kwargs):
         self._points = {}
+        self.cartopy_scale = '10m'
+
         self.xlim = None
         self.ylim = None
-        self.cartopy_scale = '10m'
 
         for k, v in kwargs.items():
             if k.startswith('_'):

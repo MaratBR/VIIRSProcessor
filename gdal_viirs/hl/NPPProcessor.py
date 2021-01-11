@@ -131,19 +131,23 @@ class NPPProcessor:
         return output_file
 
     def _produce_pngs(self, merged_ndvi: str, png_config: list, png_dir: str, category_name=None):
-        for png_entry in png_config:
+        for index, png_entry in enumerate(png_config):
             name = png_entry['name']
             display_name = png_entry.get('display_name')
             xlim = png_entry.get('xlim')
             ylim = png_entry.get('ylim')
             filename = f'{name}.{category_name}.png' if category_name else f'{name}.png'
             filepath = os.path.join(png_dir, filename)
-            props = dict(bottom_subtitle=display_name, map_points=self._config.get('map_points'))
+            props = dict(bottom_subtitle=display_name, map_points=self._config.get('map_points'),
+                         )
             if xlim:
                 props['xlim'] = xlim
             if ylim:
                 props['ylim'] = ylim
-            produce_ndvi_image(merged_ndvi, filepath, **props)
+            shapefile = png_entry.get('mask_shapefile')
+            if shapefile is None:
+                logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
+            produce_ndvi_image(merged_ndvi, filepath, shp_mask_file=shapefile, **props)
 
 
 

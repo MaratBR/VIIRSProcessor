@@ -10,7 +10,8 @@ PNG_CONFIG = [
         'name': 'novosibirsk',
         'display_name': 'Новосибирская область',
         'xlim': (-300000, 350000),
-        'ylim': (-280000, 240000)
+        'ylim': (-280000, 240000),
+        'mask_shapefile': '/home/marat/Downloads/Agro/Vectors/Novosibirsk/novosib_agro.shp'
     }
 ]
 

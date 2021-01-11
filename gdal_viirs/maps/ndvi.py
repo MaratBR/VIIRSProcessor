@@ -100,7 +100,11 @@ class NDVIMapBuilder(MapBuilder):
         return fig, (ax0, ax1), size
 
     def get_projection(self, file):
-        return cartopy.crs.LambertConformal(standard_parallels=(67.41206675, 43.58046825), central_longitude=79.950619)
+        return cartopy.crs.LambertConformal(
+            standard_parallels=(67.41206675, 43.58046825),
+            central_longitude=80,
+            central_latitude=55.4962675
+        )
 
     def _draw_legend(self, ax0, data):
         """
