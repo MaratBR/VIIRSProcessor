@@ -28,14 +28,12 @@ def merge_files(datasets: List[str], **kw) -> Tuple[np.ndarray, rasterio.Affine,
             f.close()
 
 
-def merge_files2tiff(datasets: List[MergeDataset], out_dir: str, filename=None, **kw):
+def merge_files2tiff(datasets: List[MergeDataset], output_file: str, **kw):
     merged, transform, crs = merge_files(datasets, **kw)
-    filename = filename or datetime.now().strftime('merged_%Y_%m_%d_%H%M%S.tiff')
-    filepath = os.path.join(out_dir, filename)
     meta = _utility.make_rasterio_meta(merged.shape[1], merged.shape[2], merged.shape[0])
     meta.update({
         'transform': transform,
         'crs': crs
     })
-    with rasterio.open(filepath, 'w', **meta) as f:
+    with rasterio.open(output_file, 'w', **meta) as f:
         f.write(merged)
