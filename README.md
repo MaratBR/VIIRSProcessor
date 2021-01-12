@@ -63,3 +63,20 @@ processor = gdal_viirs.hl.NPPProcessor(
 
 _Примечание:_ если при обрезке по маске облачности происходит ошибку ПО продолжает работать и логирует
 ошибку. В выходном файле NDVI не будет значений -2, обозначающих облачность.
+
+## Траблшутинг
+
+## Minimum supported proj version is 7.2.0, installed version is #.#.#
+
+```
+Collecting pyproj
+  Using cached https://files.pythonhosted.org/packages/17/e5/3f5cdff3e955bcd768cdb0f4236f2d6e022aaa72f57caf7f4d5f552c88fc/pyproj-3.0.0.post1.tar.gz
+    Complete output from command python setup.py egg_info:
+    ERROR: Minimum supported proj version is 7.2.0, installed version is 4.9.3. For more information see: https://pyproj4.github.io/pyproj/stable/installation.html
+    
+    ----------------------------------------
+Command "python setup.py egg_info" failed with error code 1 in /tmp/pip-build-hmj8c_nf/pyproj/
+```
+Проблема: версия PROJ не поддерживается, необходимо изменить версию PROJ или установить более старую версию pyproj.
+Решение: обновить PROJ или закомментировать `pyproj` в requirements.txt и установить pyproj нужной версии в ручную 
+(подробнее: https://pyproj4.github.io/pyproj/stable/installation.html). 

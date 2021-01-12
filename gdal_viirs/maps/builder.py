@@ -1,17 +1,15 @@
 import os
 
-import fiona
 import matplotlib.font_manager as _fm
 import rasterio.plot
-from affine import Affine
 from matplotlib.colors import to_rgb
 
-from gdal_viirs import utility
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
 from matplotlib import pyplot, patches, offsetbox
 import cartopy
+import cartopy.io.shapereader
 
 _CM = 1/2.54
 
@@ -22,41 +20,37 @@ def cm(v):
 
 def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
                  ylim: Tuple[Number, Number] = None, scale='10m', cmap=None, norm=None, transform=None):
-    #if xlim:
-    #    axes.set_xlim(xlim)
-    #if ylim:
-    #    diff = abs(ylim[0] - ylim[1]) / 2
-    #    axes.set_ylim((transform.f + ylim[0] - diff, transform.f + ylim[1] - diff))
+    lakes_contour = cartopy.feature.NaturalEarthFeature(
+        category='physical',
+        name='lakes',
+        scale=scale,
+        fc='blue'
+    )
+    rivers_contour = cartopy.feature.NaturalEarthFeature(
+        category='physical',
+        name='rivers_lake_centerlines',
+        scale=scale,
+        fc='none', ec='blue', lw=3
+    )
+    level_6_russia_admin = cartopy.feature.ShapelyFeature(
+        cartopy.io.shapereader.Reader('/home/marat/Downloads/admin_level_6.shp').geometries(),
+        cartopy.crs.PlateCarree(),
+        fc='none', ec='#666666', linewidth=1
+    )
 
-    coastline = cartopy.feature.NaturalEarthFeature(category='physical',
-                                                    name='coastline',
-                                                    scale=scale,
-                                                    facecolor='None')
-    minor_islands = cartopy.feature.NaturalEarthFeature(category='physical',
-                                                        name='minor_islands',
-                                                        scale=scale,
-                                                        facecolor='None')
-    lakes_contour = cartopy.feature.NaturalEarthFeature(category='physical',
-                                                        name='lakes',
-                                                        scale=scale,
-                                                        facecolor='blue')
-    admin_0_countries = cartopy.feature.NaturalEarthFeature(category='cultural',
-                                                            name='admin_0_countries',
-                                                            scale=scale,
-                                                            facecolor='None')
-    admin_1_states_provinces = cartopy.feature.NaturalEarthFeature(category='cultural',
-                                                                   name='admin_1_states_provinces',
-                                                                   scale=scale,
-                                                                   facecolor='None')
+    level_4_russia_admin = cartopy.feature.ShapelyFeature(
+        cartopy.io.shapereader.Reader('/home/marat/Downloads/admin_level_4.shp').geometries(),
+        cartopy.crs.PlateCarree(),
+        fc='none', ec='k', lw=2
+    )
 
     rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='bilinear',
                        transform=transform, alpha=1)
 
-    axes.add_feature(coastline, edgecolor='black', linewidth=2)
-    axes.add_feature(minor_islands, edgecolor='black', linewidth=0.5)
-    axes.add_feature(lakes_contour, edgecolor='black', linewidth=0.4)
-    axes.add_feature(admin_0_countries, edgecolor='black', linewidth=3)
-    axes.add_feature(admin_1_states_provinces, edgecolor='black', linewidth=1, linestyle='-.')
+    axes.add_feature(lakes_contour)
+    axes.add_feature(rivers_contour)
+    axes.add_feature(level_6_russia_admin)
+    axes.add_feature(level_4_russia_admin)
 
     if xlim:
         axes.set_xlim(xlim)
@@ -70,7 +64,8 @@ def plot_marks(points: dict, crs, ax, color='k', props=None):
     plate_carree = cartopy.crs.PlateCarree()
     for coord, text in points.items():
         point = crs.transform_point(coord[0], coord[1], plate_carree)
-        ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(color))
+        ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(color),
+                markerfacecolor=to_rgb(color))
         ax.annotate(text, point, fontsize=25, fontproperties=props).set_clip_on(True)
 
 
@@ -91,9 +86,9 @@ class MapBuilder:
     cartopy_scale: str
     cmap = None
     norm = None
-    points_color = 'k'
+    points_color = '#7F00FF'
     font_size = 25
-    outer_size: Tuple[Number, Number, Number, Number] = cm(.5), cm(.5), cm(.5), cm(.5)
+    outer_size: Tuple[Number, Number, Number, Number] = (cm(.5), cm(.5), cm(.5), cm(.5))
     dpi = 100
     max_width = None
     max_height = None

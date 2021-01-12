@@ -146,8 +146,8 @@ class NDVIMapBuilder(MapBuilder):
         ax0.legend(handles=[
             lines.Line2D([], [], linewidth=2, color='k', linestyle='-.', label='Границы субъектов'),
             lines.Line2D([], [], linewidth=4, color='k', label='Границы стран'),
-            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor="none", color='none', markeredgecolor='k',
-                         linewidth=2, label='Населенные пункты'),
+            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor=self.points_color, color='none',
+                         markeredgecolor=self.points_color, linewidth=2, label='Населенные пункты'),
             patches.Patch(color='blue', label='Водоёмы'),
         ], loc=loc, edgecolor='none', prop=fontprops)
         ax0.add_artist(leg1)
