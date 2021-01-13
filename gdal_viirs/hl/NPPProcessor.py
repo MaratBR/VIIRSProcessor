@@ -72,7 +72,6 @@ class NPPProcessor:
         self.persistence.reset()
 
     def _process_directory(self, d):
-        logger.debug('level1')
         products = self._produce_level1_products(d)
 
         if 'l1_GIMGO' not in products:
@@ -82,12 +81,11 @@ class NPPProcessor:
             if clouds_file is None:
                 logger.warning(f'Маска облачности для папки {d} не была обработана: маска облачность в level2 еще не сгенерирована')
             else:
-                logger.debug('ndvi')
                 self._process_ndvi_files(d, clouds_file)
 
                 merged_ndvi, now, past = self._process_merged_ndvi_file_for_today()
 
-                if self.persistence.has_processed(d, 'png', strict=True):
+                if not self.persistence.has_processed(d, 'png', strict=True):
                     logger.debug('png\'s')
                     png_dir = os.path.join(self._output_dir, datetime.now().strftime('PNG.%Y_%b_%d'))
                     Path(png_dir).mkdir(parents=True, exist_ok=True)
@@ -102,11 +100,10 @@ class NPPProcessor:
         filesets = _utility.find_sdr_viirs_filesets(os.path.join(d, 'viirs/level1')).values()
         for fs in filesets:
             type_ = 'l1_' + fs.geoloc_file.file_type
-            logger.debug(type_)
             if self.persistence.has_processed(d, type_, strict=True):
                 products[type_] = self.persistence.get_processed(d, type_)
                 continue
-            fs.geoloc_file.date.strftime('')
+            logger.debug(type_ + ': ' + d)
             output_file = self._fname(d, fs.geoloc_file.file_type_out)
             _process.process_fileset(fs, output_file, self.scale)
             self.persistence.add_processed(d, type_, output_file)
@@ -128,6 +125,7 @@ class NPPProcessor:
 
     def _process_ndvi_files(self, d, clouds_file):
         if self.persistence.has_processed(d, 'cloud_mask', strict=True) and not self.persistence.has_processed(d, 'ndvi', strict=True):
+            logger.debug('ndvi')
             ndvi_file = self._fname(d, 'NDVI')
             gimgo_tiff_file = self._fname(d, 'VIMGO')
             if os.path.isfile(gimgo_tiff_file):

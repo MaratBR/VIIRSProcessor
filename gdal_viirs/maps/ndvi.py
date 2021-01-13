@@ -32,7 +32,6 @@ class NDVIMapBuilder(MapBuilder):
         * "Удовлетворительно" >= 0.3
         * "Плохо" >= -1
         * "Закрыто облаками" = -2
-        * "Водоёмы" = -4
     """
 
     bottom_title = 'Мониторинг состояния посевов зерновых культур'
@@ -132,16 +131,17 @@ class NDVIMapBuilder(MapBuilder):
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
 
-        data_mask = ~np.isnan(data) * (data >= -1)
+        data_mask = ~np.isnan(data)
         all_count = np.count_nonzero(data_mask)
-        bad_count = np.count_nonzero(data_mask * (data < 0.3))
+        bad_count = np.count_nonzero(data_mask * (data < 0.3) * (data >= -1))
         ok_count = np.count_nonzero(data_mask * (data < 0.7) * (data >= 0.3))
         good_count = np.count_nonzero(data_mask * (data >= 0.7))
+        clouds_count = np.count_nonzero(data == -2)
         leg1 = ax0.legend(handles=[
-            patches.Patch(color='red', label=f'Плохое\n< 0.3 ({round(100 * bad_count / all_count)}%)'),
-            patches.Patch(color='yellow', label=f'Удовлетворительное\n< 0.7 ({round(100 * ok_count / all_count)}%)'),
-            patches.Patch(color='greenyellow', label=f'Хорошое\n>= 0.7 ({round(100 * good_count / all_count)}%)'),
-            patches.Patch(color='#aaa', label='Закрыто облаками'),
+            patches.Patch(color='red', label=f'Плохое\n< 0.3 ({round(1000 * bad_count / all_count) / 10}%)'),
+            patches.Patch(color='yellow', label=f'Удовлетворительное\n< 0.7 ({round(1000 * ok_count / all_count) / 10}%)'),
+            patches.Patch(color='greenyellow', label=f'Хорошое\n>= 0.7 ({round(1000 * good_count / all_count) / 10}%)'),
+            patches.Patch(color='#aaa', label=f'Закрыто облаками ({round(1000 * clouds_count / all_count) / 10}%)'),
         ], loc=loc, edgecolor='none', fontsize=20, prop=fontprops)
 
         top += cm(1)
@@ -153,8 +153,8 @@ class NDVIMapBuilder(MapBuilder):
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
         ax0.legend(handles=[
-            lines.Line2D([], [], linewidth=2, color='k', linestyle='-.', label='Границы субъектов'),
-            lines.Line2D([], [], linewidth=4, color='k', label='Границы стран'),
+            lines.Line2D([], [], linewidth=2, color='#666666', label='Границы районов'),
+            lines.Line2D([], [], linewidth=4, color='k', label='Границы субъектов'),
             lines.Line2D([], [], marker='o', markersize=20, markerfacecolor=self.points_color, color='none',
                          markeredgecolor=self.points_color, linewidth=2, label='Населенные пункты'),
             patches.Patch(color='blue', label='Водоёмы'),
@@ -189,7 +189,7 @@ class NDVIMapBuilder(MapBuilder):
             km_per_segment = round(km_per_segment / 10) * 10
         inches_per_segment = km_per_segment * inches_per_km_x
 
-        left = self.outer_size[3]
+        left_offset = left = self.outer_size[3] + self._get_raster_size_inches(file)[0] - inches_per_segment * sum(self.map_mark_dist)
         odd = True
         km = 0
         y = self.outer_size[2] - self.margin * 2 - self.map_mark_thickness
@@ -212,7 +212,7 @@ class NDVIMapBuilder(MapBuilder):
 
         # рисуем окантовку
         # TODO цвет окантовки
-        _drawings.draw_rect_with_outside_border((self.outer_size[3], y),
+        _drawings.draw_rect_with_outside_border((left_offset, y),
                                                 sum(self.map_mark_dist) * inches_per_segment,
                                                 self.map_mark_thickness, ax0)
 
@@ -336,7 +336,7 @@ class NDVIMapBuilder(MapBuilder):
         top_xy = tl[1] + xy_per_inch * offset_y
         del offset_y
 
-        for i in range(segments_count_left):
+        for i in range(segments_count_right):
             h, w = self.map_latlong_mark_thickness, self.map_latlon_mark_len
             xy = _drawings.inches2axes(ax0, (left, plot_h - top - h / 2))
             long = utility.transform_point(src_crs, 'EPSG:4326', (transform.c, transform.f + top_xy))[1]
