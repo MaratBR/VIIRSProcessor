@@ -1,7 +1,6 @@
 import math
 import cartopy
 import numpy as np
-from PIL.ImageDraw import ImageDraw
 
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from rasterio import DatasetReader
@@ -48,7 +47,7 @@ class NDVIMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(6), self.margin, cm(7), self.margin + cm(13)
+        self.outer_size = cm(6), self.margin * 4, cm(7), self.margin + cm(13)
         self.min_height = cm(30)
 
         self.logo_path = logo_path
@@ -78,11 +77,13 @@ class NDVIMapBuilder(MapBuilder):
                              max_width=cm(2), max_height=cm(2),
                              origin=_drawings.BOTTOM_RIGHT)
 
-        text_left = self.margin + logo_size + logo_padding*2 + cm(.75)  # отступ текста слева
+        title_width = fig.get_size_inches()[0] - self.margin * 2 - logo_padding * 2 - logo_size
         _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ ФГБУ '
                             '"НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\nСИБИРСКИЙ ЦЕНТР',
-                            (fig.get_size_inches()[0] / 2, cm(1.5)), ax0,
-                            wrap=True, fontproperties=self._get_font_props(size=24), va='top', ha='center', invert_y=True)
+                            (self.margin * 2 + logo_padding * 2 + logo_size + title_width / 2, self.outer_size[0] / 2), ax0,
+                            max_size=(title_width, self.outer_size[0] - self.margin * 2),
+                            wrap=True, fontproperties=self._get_font_props(size=24),
+                            va='center', ha='center', invert_y=True)
         _drawings.draw_text('\n'.join([
             'Сибирский центр',
             'ФГБУ НИЦ «ПЛАНЕТА»',
@@ -94,12 +95,12 @@ class NDVIMapBuilder(MapBuilder):
             'http://rcpod.ru'
         ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=16), va='bottom', ha='left')
         _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
-                            (self.outer_size[3], self.outer_size[2] / 2), ax0,
-                            ha='left', va='top', fontproperties=self._get_font_props(size=24))
+                            (self.outer_size[3] + size[0] / 2, self.margin), ax0, max_size=(size[0], cm(2)),
+                            ha='center', va='bottom', fontproperties=self._get_font_props(size=24))
 
         if self.bottom_right_text:
             _drawings.draw_text(self.bottom_right_text,
-                                (fig.get_size_inches()[0] - self.margin, self.margin * 2 + cm(2)),
+                                (fig.get_size_inches()[0] - self.outer_size[1], self.margin * 1.3 + cm(2)),
                                 ax0, ha='right', va='bottom', fontproperties=self._get_font_props(size=22))
 
         data = file.read(band)

@@ -22,8 +22,8 @@ PNG_CONFIG = [
     },
     {
         'name': 'altai',
-        'display_name': 'Республика Алтай',
-        'xlim': (-155000, 710000),
+        'display_name': 'Алтайский край',
+        'xlim': (-155000, 490000),
         'ylim': (-690000, -100000),
         'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/altai/altkrai_agro.shp')
     },

@@ -2,6 +2,7 @@ import os
 
 import matplotlib.font_manager as _fm
 import rasterio.plot
+from adjustText import adjust_text
 from matplotlib.colors import to_rgb
 
 from gdal_viirs._config import CONFIG
@@ -9,7 +10,7 @@ from gdal_viirs.maps import _downloads
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
-from matplotlib import pyplot, patches, offsetbox
+from matplotlib import pyplot, patches, offsetbox, patheffects
 import cartopy
 import cartopy.io.shapereader
 
@@ -68,11 +69,16 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
 
 def plot_marks(points: dict, crs, ax, color='k', props=None):
     plate_carree = cartopy.crs.PlateCarree()
+    annotations = []
     for coord, text in points.items():
         point = crs.transform_point(coord[0], coord[1], plate_carree)
         ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(color),
                 markerfacecolor=to_rgb(color))
-        ax.annotate(text, point, fontsize=25, fontproperties=props).set_clip_on(True)
+        text = ax.annotate(text, point, fontsize=25, fontproperties=props)
+        text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='w')])
+        text.set_clip_on(True)
+        annotations.append(text)
+    adjust_text(annotations)
 
 
 def _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax):
