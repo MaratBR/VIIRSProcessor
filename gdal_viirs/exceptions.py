@@ -56,3 +56,7 @@ class InvalidFilename(ViirsException):
 class DriverNotFound(ViirsException):
     def __init__(self, driver):
         super(DriverNotFound, self).__init__(f'Драйвер {driver} необходим, но не найден')
+
+
+class ProcessingException(ViirsException):
+    pass

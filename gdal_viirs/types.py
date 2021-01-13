@@ -90,6 +90,10 @@ class GeofileInfo:
         self.file_ts = parts[6]
         self.data_source = parts[7]
 
+    @property
+    def file_type_out(self):
+        return 'V' + self.file_type[1:]
+
     def __repr__(self):
         if not self.is_known_type:
             info = 'UNKNOWN ' + self.file_type

@@ -1,4 +1,8 @@
-SCALE = 2000
+# по умолчанию 1000
+# SCALE = 1000
+
+LOGO_PATH = './logo.png'
+ISO_QUALITY_SIGN = ''
 IS_DEBUG = True
 
 # конфигурация PNG файлов, где
@@ -18,6 +22,8 @@ PNG_CONFIG = [
 # входые данные и папка с выходными
 INPUT_DIR = '/media/marat/Quack/Projects/GDAL_Data/NPP/'
 OUTPUT_DIR = '/home/marat/Documents'
+
+FONT_FAMILY = '/home/marat/Downloads/Agro/Font/times.ttf'
 
 # дополнительный точки на карте (Томск уже есть по-умолчанию и показан просто как пример)
 # MAP_POINTS = [

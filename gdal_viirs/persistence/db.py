@@ -89,13 +89,19 @@ class GDALViirsDB:
     def query_processed(self, where, params, select='*'):
         return self.query(f'SELECT {select} FROM processed_data_sources WHERE {where}', params)
 
-    def get_processed(self, where, params):
+    def find_processed(self, where, params):
         data = self.query_processed(where, params, 'output')
         result = []
         for (output,) in data:
             if os.path.isfile(output):
                 result.append(output)
         return result
+
+    def get_processed(self, name, src_type):
+        try:
+            return next(self.query_processed('name = ? AND type = ?', [name, src_type], select='output'))[0]
+        except StopIteration:
+            raise KeyError(f'запись об обработанных данных name={name} type={src_type} не найдена')
 
     def reset(self):
         self._db.execute('DELETE FROM processed_data_sources')

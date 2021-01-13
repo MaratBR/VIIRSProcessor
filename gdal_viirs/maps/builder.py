@@ -4,6 +4,8 @@ import matplotlib.font_manager as _fm
 import rasterio.plot
 from matplotlib.colors import to_rgb
 
+from gdal_viirs._config import CONFIG
+from gdal_viirs.maps import _downloads
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
@@ -13,13 +15,20 @@ import cartopy.io.shapereader
 
 _CM = 1/2.54
 
+__all__ = (
+    'build_figure',
+    'MapBuilder'
+)
+
 
 def cm(v):
     return v * _CM
 
 
-def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
-                 ylim: Tuple[Number, Number] = None, scale='10m', cmap=None, norm=None, transform=None):
+def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None,
+                 scale='10m', cmap=None, norm=None, transform=None):
+    RESOURCES_DIR = CONFIG['RESOURCES_DIR']
+
     lakes_contour = cartopy.feature.NaturalEarthFeature(
         category='physical',
         name='lakes',
@@ -33,19 +42,18 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None,
         fc='none', ec='blue', lw=3
     )
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader('/home/marat/Downloads/admin_level_6.shp').geometries(),
+        cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(6)).geometries(),
         cartopy.crs.PlateCarree(),
         fc='none', ec='#666666', linewidth=1
     )
 
     level_4_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader('/home/marat/Downloads/admin_level_4.shp').geometries(),
+        cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(4)).geometries(),
         cartopy.crs.PlateCarree(),
         fc='none', ec='k', lw=2
     )
 
-    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='bilinear',
-                       transform=transform, alpha=1)
+    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='none', transform=transform)
 
     axes.add_feature(lakes_contour)
     axes.add_feature(rivers_contour)

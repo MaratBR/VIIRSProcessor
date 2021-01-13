@@ -37,8 +37,9 @@ class NDVIMapBuilder(MapBuilder):
 
     bottom_title = 'Мониторинг состояния посевов зерновых культур'
     bottom_subtitle = None
+    bottom_right_text = None
 
-    def __init__(self, logo_path='./logo.png', map_points=None, **kwargs):
+    def __init__(self, logo_path='./logo.png', map_points=None, iso_sign_path=None, **kwargs):
         super(NDVIMapBuilder, self).__init__(**kwargs)
         points.add_points(self, [
             *points.SIBERIA_CITIES,
@@ -51,6 +52,7 @@ class NDVIMapBuilder(MapBuilder):
         self.min_height = cm(30)
 
         self.logo_path = logo_path
+        self.iso_sign_path = iso_sign_path
 
         # настройка параметров для меток на карте
         self.map_mark_min_length = cm(1)  # минимальная длина сегмента обозначения длинны
@@ -74,7 +76,8 @@ class NDVIMapBuilder(MapBuilder):
                              origin=_drawings.TOP_LEFT)
 
         text_left = self.margin + logo_size + logo_padding*2 + cm(.75)  # отступ текста слева
-        _drawings.draw_text('ФГБУ «НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ ГИДРОМЕТЕОРОЛОГИИ «ПЛАНЕТА»\nСИБИРСКИЙ ЦЕНТР',
+        _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ ФГБУ '
+                            '"НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\nСИБИРСКИЙ ЦЕНТР',
                             (text_left, cm(1.5)), ax0,
                             wrap=True, fontproperties=self._get_font_props(size=24), va='top', ha='left', invert_y=True)
         _drawings.draw_text('\n'.join([
@@ -89,10 +92,13 @@ class NDVIMapBuilder(MapBuilder):
         ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=16), va='bottom', ha='left')
         _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
                             (self.outer_size[3], self.outer_size[2] / 2), ax0,
-                            ha='left', va='top', weight='bold',
-                            fontproperties=self._get_font_props(size=30, weight='bold'))
+                            ha='left', va='top', fontproperties=self._get_font_props(size=30))
 
-        data = file.read(band)#utility.apply_xy_lim(file.read(band), file.transform, *self._get_lims(file))
+        if self.bottom_right_text:
+            _drawings.draw_text(self.bottom_right_text, (fig.get_size_inches()[0] - cm(.8), cm(.8)), ax0, ha='right', va='bottom',
+                                fontproperties=self._get_font_props(size=22))
+
+        data = file.read(band)
         self._draw_legend(ax0, data)
         del data
         self._draw_map_marks(ax0, file)
