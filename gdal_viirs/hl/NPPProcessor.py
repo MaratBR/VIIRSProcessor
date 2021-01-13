@@ -78,7 +78,6 @@ class NPPProcessor:
         if 'l1_GIMGO' not in products:
             raise ProcessingException('Не удалось обработать или найти уже обработанный GIMGO файл в БД')
         else:
-            logger.debug('cloud_mask')
             clouds_file = self._process_clouds_file(d)
             if clouds_file is None:
                 logger.warning(f'Маска облачности для папки {d} не была обработана: маска облачность в level2 еще не сгенерирована')
@@ -86,16 +85,17 @@ class NPPProcessor:
                 logger.debug('ndvi')
                 self._process_ndvi_files(d, clouds_file)
 
-                logger.debug('merged_ndvi')
                 merged_ndvi, now, past = self._process_merged_ndvi_file_for_today()
 
-                logger.debug('png\'s')
-                png_dir = os.path.join(self._output_dir, datetime.now().strftime('PNG.%Y_%b_%d'))
-                Path(png_dir).mkdir(parents=True, exist_ok=True)
+                if self.persistence.has_processed(d, 'png', strict=True):
+                    logger.debug('png\'s')
+                    png_dir = os.path.join(self._output_dir, datetime.now().strftime('PNG.%Y_%b_%d'))
+                    Path(png_dir).mkdir(parents=True, exist_ok=True)
 
-                png_config = self.png_config
-                self._produce_pngs(merged_ndvi, png_config, png_dir,
-                                   bottom_right_text=now.strftime('%Y.%m.%d') + ' - ' + past.strftime('%Y.%m.%d'))
+                    png_config = self.png_config
+                    self._produce_pngs(merged_ndvi, png_config, png_dir,
+                                       bottom_right_text=now.strftime('%Y.%m.%d') + ' - ' + past.strftime('%Y.%m.%d'))
+                    self.persistence.add_processed(d, 'png', png_dir)
 
     def _produce_level1_products(self, d):
         products = {}
@@ -118,6 +118,7 @@ class NPPProcessor:
         if not self.persistence.has_processed(d, 'cloud_mask', strict=True):
             input_file = glob(os.path.join(d, 'viirs/level2/*CLOUDMASK.tif'))
             if len(input_file) != 0:
+                logger.debug('cloud_mask')
                 input_file = input_file[0]
                 _process.process_cloud_mask(input_file, clouds_file, scale=self.scale)
                 self.persistence.add_processed(d, 'cloud_mask', clouds_file)
@@ -145,6 +146,7 @@ class NPPProcessor:
         merged_ndvi_file = merged_ndvi + '.tiff'
         output_file = os.path.join(self._output_dir, merged_ndvi_file)
         if not self.persistence.has_processed(merged_ndvi, '', strict=True):
+            logger.debug('merged_ndvi')
             ndvi_rasters = self.persistence.find_processed('created_at_ts >= ? AND type = ?',
                                                            [math.floor(time.mktime(past_day.timetuple())), 'ndvi'])
             if len(ndvi_rasters) == 0:

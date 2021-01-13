@@ -1,8 +1,8 @@
 # по умолчанию 1000
-# SCALE = 1000
+SCALE = 2000
 
 LOGO_PATH = './logo.png'
-ISO_QUALITY_SIGN = ''
+ISO_QUALITY_SIGN = './iso_sign.jpg'
 IS_DEBUG = True
 
 # конфигурация PNG файлов, где

@@ -44,7 +44,7 @@ class GDALViirsDB:
             return True
         output = next(v[0] for v in self._db.execute(
             'SELECT output FROM processed_data_sources WHERE name = ? AND type = ?', (name, src_type)))
-        if output is None or (output != '' and not os.path.isfile(output)):
+        if output is None or (output != '' and not os.path.isfile(output) and not os.path.isdir(output)):
             logger.error('не удалось найти файл, который помечен как обработанный strict=True, поэтому этот файл'
                          ' будет удален из БД, так как он не найден или информация о нём отсутсвует в БД')
             self.delete_processed(name, src_type)

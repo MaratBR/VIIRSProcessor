@@ -70,10 +70,13 @@ class NDVIMapBuilder(MapBuilder):
         logo_size = top_gap * .75  # размер лого - 75% от толщины верхней зоны
         logo_padding = top_gap * .0375 #
 
-        # рисуем логотип в верем левом углу
+        # рисуем логотип в верхнем левом углу
         _drawings.draw_image(self.logo_path, (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
                              max_width=logo_size, max_height=logo_size,
                              origin=_drawings.TOP_LEFT)
+        _drawings.draw_image(self.iso_sign_path, (self.margin, self.margin), ax0,
+                             max_width=cm(2), max_height=cm(2),
+                             origin=_drawings.BOTTOM_RIGHT)
 
         text_left = self.margin + logo_size + logo_padding*2 + cm(.75)  # отступ текста слева
         _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ ФГБУ '
@@ -95,7 +98,7 @@ class NDVIMapBuilder(MapBuilder):
                             ha='left', va='top', fontproperties=self._get_font_props(size=30))
 
         if self.bottom_right_text:
-            _drawings.draw_text(self.bottom_right_text, (fig.get_size_inches()[0] - cm(.8), cm(.8)), ax0, ha='right', va='bottom',
+            _drawings.draw_text(self.bottom_right_text, (fig.get_size_inches()[0] - cm(.8) - cm(2) - self.margin, cm(.8)), ax0, ha='right', va='bottom',
                                 fontproperties=self._get_font_props(size=22))
 
         data = file.read(band)
@@ -346,6 +349,6 @@ class NDVIMapBuilder(MapBuilder):
             rect = patches.Rectangle(xy, color='k', width=w, height=h)
             ax0.add_artist(rect)
 
-            top += segment_left_size
-            top_xy += segment_left_size * xy_per_inch
+            top += segment_right_size
+            top_xy += segment_right_size * xy_per_inch
 

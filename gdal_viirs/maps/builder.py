@@ -27,8 +27,6 @@ def cm(v):
 
 def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None,
                  scale='10m', cmap=None, norm=None, transform=None):
-    RESOURCES_DIR = CONFIG['RESOURCES_DIR']
-
     lakes_contour = cartopy.feature.NaturalEarthFeature(
         category='physical',
         name='lakes',
@@ -53,7 +51,7 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
         fc='none', ec='k', lw=2
     )
 
-    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='none', transform=transform)
+    rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='bilinear', transform=transform)
 
     axes.add_feature(lakes_contour)
     axes.add_feature(rivers_contour)
