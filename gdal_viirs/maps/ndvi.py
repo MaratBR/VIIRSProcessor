@@ -47,7 +47,7 @@ class NDVIMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(6), self.margin * 4, cm(7), self.margin + cm(13)
+        self.outer_size = cm(6), self.margin, cm(7), self.margin + cm(13)
         self.min_height = cm(30)
 
         self.logo_path = logo_path
