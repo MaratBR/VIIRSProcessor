@@ -1,6 +1,7 @@
 import math
 import cartopy
 import numpy as np
+from PIL.ImageDraw import ImageDraw
 
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from rasterio import DatasetReader
@@ -80,8 +81,8 @@ class NDVIMapBuilder(MapBuilder):
         text_left = self.margin + logo_size + logo_padding*2 + cm(.75)  # отступ текста слева
         _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ ФГБУ '
                             '"НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\nСИБИРСКИЙ ЦЕНТР',
-                            (text_left, cm(1.5)), ax0,
-                            wrap=True, fontproperties=self._get_font_props(size=24), va='top', ha='left', invert_y=True)
+                            (fig.get_size_inches()[0] / 2, cm(1.5)), ax0,
+                            wrap=True, fontproperties=self._get_font_props(size=24), va='top', ha='center', invert_y=True)
         _drawings.draw_text('\n'.join([
             'Сибирский центр',
             'ФГБУ НИЦ «ПЛАНЕТА»',
@@ -94,11 +95,12 @@ class NDVIMapBuilder(MapBuilder):
         ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=16), va='bottom', ha='left')
         _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
                             (self.outer_size[3], self.outer_size[2] / 2), ax0,
-                            ha='left', va='top', fontproperties=self._get_font_props(size=30))
+                            ha='left', va='top', fontproperties=self._get_font_props(size=24))
 
         if self.bottom_right_text:
-            _drawings.draw_text(self.bottom_right_text, (fig.get_size_inches()[0] - cm(.8) - cm(2) - self.margin, cm(.8)), ax0, ha='right', va='bottom',
-                                fontproperties=self._get_font_props(size=22))
+            _drawings.draw_text(self.bottom_right_text,
+                                (fig.get_size_inches()[0] - self.margin, self.margin * 2 + cm(2)),
+                                ax0, ha='right', va='bottom', fontproperties=self._get_font_props(size=22))
 
         data = file.read(band)
         self._draw_legend(ax0, data)

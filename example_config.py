@@ -1,3 +1,6 @@
+import os
+__BASE_DIR = os.path.dirname(__file__)
+
 # по умолчанию 1000
 SCALE = 2000
 
@@ -15,7 +18,42 @@ PNG_CONFIG = [
         'display_name': 'Новосибирская область',
         'xlim': (-300000, 350000),
         'ylim': (-280000, 240000),
-        'mask_shapefile': '/home/marat/Downloads/Agro/Vectors/Novosibirsk/novosib_agro.shp'
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/novosib/novosib_agro.shp')
+    },
+    {
+        'name': 'altai',
+        'display_name': 'Республика Алтай',
+        'xlim': (-155000, 710000),
+        'ylim': (-690000, -100000),
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/altai/altkrai_agro.shp')
+    },
+    {
+        'name': 'omsk',
+        'display_name': 'Омская область',
+        'xlim': (-700000, -150000),
+        'ylim': (-300000, 390000),
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/omsk/omsk_agro.shp')
+    },
+    {
+        'name': 'kemerovo',
+        'display_name': 'Кемеровская область',
+        'xlim': (255000, 615000),
+        'ylim': (-350000, 200000),
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/kemerovo/kem_agro.shp')
+    },
+    {
+        'name': 'krasnoyarsk',
+        'display_name': 'Красноярский край',
+        'xlim': (525000, 1090000),
+        'ylim': (-345000, 370000),
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/krasnoyarsk/krasn_agro.shp')
+    },
+    {
+        'name': 'region',
+        'display_name': '',
+        'xlim': (-606000, 612000),
+        'ylim': (-575000, 317000),
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/region/region_agro.shp')
     }
 ]
 
