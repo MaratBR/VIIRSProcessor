@@ -8,36 +8,60 @@
 ### Простой пример
 
 ```python
-import gdal_viirs
-folder = '/путь/к/папке/с_viirs_данными'
-datasets = gdal_viirs.utility.find_sdr_viirs_filesets(folder)
+from gdal_viirs.hl.shortcuts import process_recent
+import my_config
 
-for filename, dataset in datasets.items():
-    print(f"обработка {filename}...")
-    gdal_viirs.process.process_fileset(dataset, "/папка/куда/положить/данные")
-``` 
-
-### Пример с БД
-
-```python
-import gdal_viirs
-import time
-
-processor = gdal_viirs.hl.NPPProcessor('/папка/содержащая/данные/со/спутника', '/папка/для/выходных/данных')
-
-while True:
-    processor.process_recent()
-    time.sleep(3600)
+process_recent(my_config)
 ```
 
-По умолчанию NPPProcessor будет хранить информацию в SQLite БД в `~/.viirs_processor/store.db`. Расположение
-файла БД можно изменить, передав папку с файлом третьим аргументом в конструктор `NPPProcessor`:
+`my_config.py`:
 ```python
-processor = gdal_viirs.hl.NPPProcessor(
-    '/папка/содержащая/данные/со/спутника', 
-    '/папка/для/выходных/данных',
-    '/etc/viirs_config')
+import os
+__BASE_DIR = os.path.dirname(__file__)
+
+# по умолчанию 1000
+SCALE = 2000
+
+LOGO_PATH = os.path.join(__BASE_DIR, 'required_resources/logo.png')
+ISO_QUALITY_SIGN = os.path.join(__BASE_DIR, 'required_resources/iso_sign.jpg')
+IS_DEBUG = True
+
+# конфигурация PNG файлов, где
+# name - уникальный идентификатор изображения
+# display_name - имя, которое будет размещено на изображении
+# xlim и ylim - массив или кортеж с 2 элементами (предел по X и Y в проекции)
+# mask_shapefile - shp файл с маской посевов
+# можно добавлять несколько конфигураций в список, чтобы сгенерировать несколько изображений
+PNG_CONFIG = [
+    {
+        'name': 'novosibirsk',
+        'display_name': 'Новосибирская область',
+        'xlim': (-300000, 350000),
+        'ylim': (-280000, 240000),
+        'mask_shapefile': os.path.join(__BASE_DIR, 'required_resources/novosib/novosib_agro.shp')
+    }
+]
+
+# входые данные и папка с выходными
+INPUT_DIR = '/media/marat/Quack/Projects/GDAL_Data/NPP/'
+OUTPUT_DIR = '/home/marat/Documents'
+
+FONT_FAMILY = '/home/marat/Downloads/Agro/Font/times.ttf'
+
+# дополнительный точки на карте (Томск уже есть по-умолчанию и показан просто как пример)
+# MAP_POINTS = [
+#     (84.948197, 56.484680, 'Томск')
+# ]
+
+# папка с БД файлом (по умолчанию ~/.config/viirs_processor)
+# CONFIG_DIR = ''
 ```
+
+
+### Еще более простой пример
+1. Отредактировать config.py
+2. `python3 processor.py`
+3. PROFIT
 
 ## Обработка файлов
 При структуре папок:
@@ -60,6 +84,7 @@ processor = gdal_viirs.hl.NPPProcessor(
 | NPP_47470_25-DEC-2020_080844.GIMGO.tiff               |Файл содержащий проецированные данные с привязкой|
 | NPP_47470_25-DEC-2020_080844.NDVI.tiff                |NDVI с наложением маски облачности               |Значения от -1 до 1, -2 обозначает закрытую облачностью зону
 | NPP_47470_25-DEC-2020_080844.PROJECTED_CLOUDMASK.tiff |Проецированная маска облачности                  |
+| Папка PNG.2021_Jan_13                                 |Изображения с картой                             |
 
 _Примечание:_ если при обрезке по маске облачности происходит ошибку ПО продолжает работать и логирует
 ошибку. В выходном файле NDVI не будет значений -2, обозначающих облачность.
