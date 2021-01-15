@@ -4,8 +4,8 @@ __BASE_DIR = os.path.dirname(__file__)
 # по умолчанию 1000
 SCALE = 2000
 
-LOGO_PATH = './logo.png'
-ISO_QUALITY_SIGN = './iso_sign.jpg'
+LOGO_PATH = os.path.join(__BASE_DIR, 'required_resources/logo.png')
+ISO_QUALITY_SIGN = os.path.join(__BASE_DIR, 'required_resources/iso_sign.jpg')
 IS_DEBUG = True
 
 # конфигурация PNG файлов, где

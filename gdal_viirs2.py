@@ -2,7 +2,6 @@
 import sys
 from io import StringIO
 
-import gdal
 import loguru
 
 import gdal_viirs as viirs
