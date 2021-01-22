@@ -24,6 +24,14 @@ def _split_degree(deg):
     return degree, minutes, seconds
 
 
+NDVI_BAD = '#c0504d'
+NDVI_OK = '#ffff00'
+NDVI_GOOD = '#70a800'
+STATES_BORDER_COLOR = '#a80000'
+REGIONS_BORDER_COLOR = '#9c9c9c'
+NDVI_CLOUD = '#8c8c8c'
+
+
 class NDVIMapBuilder(MapBuilder):
     """
     Данная реализация класса MapBuilder предназначена для отображения NDVI карты
@@ -36,10 +44,18 @@ class NDVIMapBuilder(MapBuilder):
 
     bottom_title = 'Мониторинг состояния посевов зерновых культур'
     bottom_subtitle = None
-    bottom_right_text = None
+    date_text = None
 
     def __init__(self, logo_path='./logo.png', map_points=None, iso_sign_path=None, **kwargs):
         super(NDVIMapBuilder, self).__init__(**kwargs)
+        self.styles.update({
+            'regions_border': REGIONS_BORDER_COLOR,
+            'states_border': STATES_BORDER_COLOR,
+            'ndvi_ok': NDVI_OK,
+            'ndvi_good': NDVI_GOOD,
+            'ndvi_bad': NDVI_BAD,
+            'ndvi_cloud': NDVI_CLOUD
+        })
         points.add_points(self, [
             *points.SIBERIA_CITIES,
             *(map_points or []),
@@ -47,7 +63,7 @@ class NDVIMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(6), self.margin, cm(7), self.margin + cm(13)
+        self.outer_size = cm(10), self.margin, cm(8.5), self.margin + cm(14)
         self.min_height = cm(30)
 
         self.logo_path = logo_path
@@ -65,9 +81,8 @@ class NDVIMapBuilder(MapBuilder):
 
     def plot(self, file: DatasetReader, band=1):
         fig, (ax0, ax1), size = super(NDVIMapBuilder, self).plot(file, band)
-        top_gap = self.outer_size[0]
-        logo_size = top_gap * .75  # размер лого - 75% от толщины верхней зоны
-        logo_padding = top_gap * .0375 #
+        logo_size = cm(3)  # размер лого - 75% от толщины верхней зоны
+        logo_padding = cm(.7) #
 
         # рисуем логотип в верхнем левом углу
         _drawings.draw_image(self.logo_path, (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
@@ -77,12 +92,13 @@ class NDVIMapBuilder(MapBuilder):
                              max_width=cm(2), max_height=cm(2),
                              origin=_drawings.BOTTOM_RIGHT)
 
-        title_width = fig.get_size_inches()[0] - self.margin * 2 - logo_padding * 2 - logo_size
-        _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ ФГБУ '
-                            '"НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\nСИБИРСКИЙ ЦЕНТР',
-                            (self.margin * 2 + logo_padding * 2 + logo_size + title_width / 2, self.outer_size[0] / 2), ax0,
+        title_width = fig.get_size_inches()[0] - self.margin * 2 - logo_padding - logo_size
+        _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ\n'
+                            'ФГБУ "НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\n'
+                            'СИБИРСКИЙ ЦЕНТР',
+                            (self.margin * 2 + logo_padding + logo_size + title_width / 2, self.outer_size[0] / 2), ax0,
                             max_size=(title_width, self.outer_size[0] - self.margin * 2),
-                            wrap=True, fontproperties=self._get_font_props(size=24),
+                            wrap=True, fontproperties=self._get_font_props(size=30),
                             va='center', ha='center', invert_y=True)
         _drawings.draw_text('\n'.join([
             'Сибирский центр',
@@ -93,15 +109,17 @@ class NDVIMapBuilder(MapBuilder):
             'Факс. (383) 363-46-05',
             'E-mail: kav@rcpod.siberia.net',
             'http://rcpod.ru'
-        ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=16), va='bottom', ha='left')
-        _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
-                            (self.outer_size[3] + size[0] / 2, self.margin), ax0, max_size=(size[0], cm(2)),
-                            ha='center', va='bottom', fontproperties=self._get_font_props(size=24))
+        ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=18), va='bottom', ha='left')
 
-        if self.bottom_right_text:
-            _drawings.draw_text(self.bottom_right_text,
-                                (fig.get_size_inches()[0] - self.outer_size[1], self.margin * 1.3 + cm(2)),
-                                ax0, ha='right', va='bottom', fontproperties=self._get_font_props(size=22))
+        _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
+                            (self.outer_size[3] + size[0] / 2, self.margin), ax0, max_size=(size[0], cm(3.5)),
+                            ha='center', va='bottom', fontproperties=self._get_font_props(size=36))
+
+        if self.date_text:
+            _drawings.draw_text(self.date_text,
+                                (fig.get_size_inches()[0] - self.outer_size[1], self.margin * 1.3 + cm(3.5)),
+                                ax0, ha='right', va='bottom',
+                                fontproperties=self._get_font_props(size=26))
 
         data = file.read(band)
         self._draw_legend(ax0, data)
@@ -121,16 +139,19 @@ class NDVIMapBuilder(MapBuilder):
         """
         Рисуем легенду для изображенния и некоторый текст
         """
-        fontprops = self._get_font_props(size=20)
         top = self.outer_size[0] + self.margin  # отступ сверху
-        _drawings.draw_text('Suomi NPP/VIIRS', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', weight='bold', fontsize=23, invert_y=True,
+        _drawings.draw_text('КА Suomi NPP/VIIRS', (self.outer_size[3] / 2, top), ax0,
+                            ha='center', va='top', weight='bold', invert_y=True,
                             fontproperties=self._get_font_props(size=28))
+        top += cm(1.2)
+        _drawings.draw_text('Разрешение 375 м', (self.outer_size[3] / 2, top), ax0,
+                            ha='center', va='top', weight='bold', invert_y=True,
+                            fontproperties=self._get_font_props(size=22))
         top += self.margin * 2
         _drawings.draw_text('Состояние посевов', (self.outer_size[3] / 2, top), ax0,
                             ha='center', va='top', invert_y=True,
-                            fontproperties=fontprops)
-        top += cm(8)
+                            fontproperties=self._get_font_props(size=26))
+        top += cm(6.5)
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
 
@@ -141,17 +162,17 @@ class NDVIMapBuilder(MapBuilder):
         good_count = np.count_nonzero(data_mask * (data >= 0.7))
         clouds_count = np.count_nonzero(data == -2)
         leg1 = ax0.legend(handles=[
-            patches.Patch(color='red', label=f'Плохое\n< 0.3 ({round(1000 * bad_count / all_count) / 10}%)'),
-            patches.Patch(color='yellow', label=f'Удовлетворительное\n< 0.7 ({round(1000 * ok_count / all_count) / 10}%)'),
-            patches.Patch(color='greenyellow', label=f'Хорошое\n>= 0.7 ({round(1000 * good_count / all_count) / 10}%)'),
+            patches.Patch(color='red', label=f'Плохое ({round(1000 * bad_count / all_count) / 10}%)'),
+            patches.Patch(color='yellow', label=f'Удовлетворительное ({round(1000 * ok_count / all_count) / 10}%)'),
+            patches.Patch(color='greenyellow', label=f'Хорошое ({round(1000 * good_count / all_count) / 10}%)'),
             patches.Patch(color='#aaa', label=f'Закрыто облаками ({round(1000 * clouds_count / all_count) / 10}%)'),
-        ], loc=loc, edgecolor='none', fontsize=20, prop=fontprops)
+        ], loc=loc, edgecolor='none', prop=self._get_font_props(size=20))
 
         top += cm(1)
 
         _drawings.draw_text('Условные обозначения', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', fontsize=20, invert_y=True, fontproperties=fontprops)
-
+                            ha='center', va='top', fontsize=20, invert_y=True,
+                            fontproperties=self._get_font_props(size=26))
         top += cm(6)
         loc = _drawings.inches2axes(ax0, (self.margin, top))
         loc = loc[0], 1 - loc[1]
@@ -161,7 +182,7 @@ class NDVIMapBuilder(MapBuilder):
             lines.Line2D([], [], marker='o', markersize=20, markerfacecolor=self.points_color, color='none',
                          markeredgecolor=self.points_color, linewidth=2, label='Населенные пункты'),
             patches.Patch(color='blue', label='Водоёмы'),
-        ], loc=loc, edgecolor='none', prop=fontprops)
+        ], loc=loc, edgecolor='none', prop=self._get_font_props(size=20))
         ax0.add_artist(leg1)
 
     def _get_pixels_per_km(self, file: DatasetReader):
@@ -170,6 +191,44 @@ class NDVIMapBuilder(MapBuilder):
         zoom = abs(xlim[0] - xlim[1]) / (file.transform.a * file.width)
         pixels_per_km_x /= zoom
         return pixels_per_km_x
+
+    def _draw_scale_line(self, file: DatasetReader, ax):
+        fontprops = self._get_font_props()
+        # расчитываем, сколько дюймов должно приходится на один сегмент
+        pixels_per_km_x = self._get_pixels_per_km(file)
+        inches_per_km_x = pixels_per_km_x / ax.figure.dpi
+        km_per_segment = math.floor(self.map_mark_min_length / inches_per_km_x)
+        if km_per_segment > 30 and km_per_segment % 10 != 0:
+            km_per_segment = round(km_per_segment / 10) * 10
+        inches_per_segment = km_per_segment * inches_per_km_x
+
+        left_offset = left = self.outer_size[3] + self._get_raster_size_inches(file)[0] - inches_per_segment * sum(
+            self.map_mark_dist)
+        odd = True
+        km = 0
+        y = self.outer_size[2] - self.margin * 2 - self.map_mark_thickness
+
+        # рисуем отметки по указанным значениям распределения
+        # Напремер, если self.map_mark_dist = (1, 2, 3, 2, 5), это значит, что будет 5
+        # отметок, первая будет иметь длинну 100%, вторая 200% и т. д.
+        for dist in self.map_mark_dist:
+            km += km_per_segment * dist
+            w_inches = dist * inches_per_segment
+            w, h = _drawings.inches2axes(ax, (w_inches, self.map_mark_thickness))
+            xy = _drawings.inches2axes(ax, (left, y))
+            color = self.map_mark_colors[0] if odd else self.map_mark_colors[1]
+            rect1 = patches.Rectangle(xy, color=color, width=w, height=h)
+            ax.add_artist(rect1)
+            _drawings.draw_text(str(km), (left + w_inches, y - h - cm(.1)), ax, va='top', ha='right',
+                                fontproperties=fontprops)
+            left += w_inches
+            odd = not odd
+
+        # рисуем окантовку
+        # TODO цвет окантовки
+        _drawings.draw_rect_with_outside_border((left_offset, y),
+                                                sum(self.map_mark_dist) * inches_per_segment,
+                                                self.map_mark_thickness, ax)
 
     def _draw_map_marks(self, ax0, file: DatasetReader):
         """
@@ -181,54 +240,23 @@ class NDVIMapBuilder(MapBuilder):
         :param file: открытый файл rasterio
         :return:
         """
-        transform = file.transform
-        fontprops = self._get_font_props()
 
-        # расчитываем, сколько дюймов должно приходится на один сегмент
-        pixels_per_km_x = self._get_pixels_per_km(file)
-        inches_per_km_x = pixels_per_km_x / ax0.figure.dpi
-        km_per_segment = math.floor(self.map_mark_min_length / inches_per_km_x)
-        if km_per_segment > 30 and km_per_segment % 10 != 0:
-            km_per_segment = round(km_per_segment / 10) * 10
-        inches_per_segment = km_per_segment * inches_per_km_x
 
-        left_offset = left = self.outer_size[3] + self._get_raster_size_inches(file)[0] - inches_per_segment * sum(self.map_mark_dist)
-        odd = True
-        km = 0
-        y = self.outer_size[2] - self.margin * 2 - self.map_mark_thickness
-
-        # рисуем отметки по указанным значениям распределения
-        # Напремер, если self.map_mark_dist = (1, 2, 3, 2, 5), это значит, что будет 5
-        # отметок, первая будет иметь длинну 100%, вторая 200% и т. д.
-        for dist in self.map_mark_dist:
-            km += km_per_segment * dist
-            w_inches = dist * inches_per_segment
-            w, h = _drawings.inches2axes(ax0, (w_inches, self.map_mark_thickness))
-            xy = _drawings.inches2axes(ax0, (left, y))
-            color = self.map_mark_colors[0] if odd else self.map_mark_colors[1]
-            rect1 = patches.Rectangle(xy, color=color, width=w, height=h)
-            ax0.add_artist(rect1)
-            _drawings.draw_text(str(km), (left + w_inches, y - h - cm(.1)), ax0, va='top', ha='right',
-                                fontproperties=fontprops)
-            left += w_inches
-            odd = not odd
-
-        # рисуем окантовку
-        # TODO цвет окантовки
-        _drawings.draw_rect_with_outside_border((left_offset, y),
-                                                sum(self.map_mark_dist) * inches_per_segment,
-                                                self.map_mark_thickness, ax0)
 
         # отметки в грудусах
+        transform = file.transform
+        fontprops = self._get_font_props(size=16)
         src_crs = file.crs.to_proj4()
         xlim, ylim = self._get_lims(file)
-        points = utility.transform_points(src_crs, 'EPSG:4326', (
+        bl_xy, br_xy, tl_xy, tr_xy = (
             (xlim[0], ylim[0]),
             (xlim[1], ylim[0]),
             (xlim[0], ylim[1]),
             (xlim[1], ylim[1])
-        ))
-        bl, br, tl, tr = points
+        )
+        pts = utility.transform_points(src_crs, 'EPSG:4326', (bl_xy, br_xy, tl_xy, tr_xy))
+        bl, br, tl, tr = pts
+        del pts
 
         plot_w, plot_h = ax0.figure.get_size_inches()
         raster_w = plot_w - self.outer_size[1] - self.outer_size[3]
@@ -250,7 +278,7 @@ class NDVIMapBuilder(MapBuilder):
         top = self.outer_size[0]
         offset_x = (raster_w - (segments_count_top - 1) * segment_top_size) / 2
         left = self.outer_size[3] + offset_x
-        left_xy = tl[0] + xy_per_inch * offset_x
+        left_xy = tl_xy[0] + xy_per_inch * offset_x
         del offset_x
 
         for i in range(segments_count_top):
@@ -278,7 +306,7 @@ class NDVIMapBuilder(MapBuilder):
         top = self.outer_size[0] + raster_h
         offset_x = (raster_w - (segments_count_bottom - 1) * segment_top_size) / 2
         left = self.outer_size[3] + offset_x
-        left_xy = tl[0] + xy_per_inch * offset_x
+        left_xy = tl_xy[0] + xy_per_inch * offset_x
         del offset_x
 
         for i in range(segments_count_bottom):
@@ -307,7 +335,7 @@ class NDVIMapBuilder(MapBuilder):
         left = self.outer_size[3] - self.map_latlon_mark_len
         offset_y = (raster_h - (segments_count_left - 1) * segment_left_size) / 2
         top = self.outer_size[0] + offset_y
-        top_xy = tl[1] + xy_per_inch * offset_y
+        top_xy = tl_xy[1] + xy_per_inch * offset_y
         del offset_y
 
         for i in range(segments_count_left):
@@ -336,7 +364,7 @@ class NDVIMapBuilder(MapBuilder):
         left = self.outer_size[3] + raster_w
         offset_y = (raster_h - (segments_count_right - 1) * segment_right_size) / 2
         top = self.outer_size[0] + offset_y
-        top_xy = tl[1] + xy_per_inch * offset_y
+        top_xy = tl_xy[1] + xy_per_inch * offset_y
         del offset_y
 
         for i in range(segments_count_right):

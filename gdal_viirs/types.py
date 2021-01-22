@@ -4,9 +4,10 @@ types.py содержит объявление типов данных, кото
 """
 
 import os
+from dataclasses import dataclass
 from datetime import datetime, time
 from pathlib import Path
-from typing import NamedTuple, List, TypeVar, Union, Tuple
+from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
 
 import numpy as np
 import pyproj
@@ -77,6 +78,7 @@ class GeofileInfo:
         """
         p = Path(os.path.expandvars(os.path.expanduser(path)))
         self.path = str(p)
+        self.path_obj = Path(self.path)
         self.name = p.parts[-1]
         parts = self.name.split('_', 7)
         if len(parts) != 8:
@@ -208,7 +210,8 @@ class GeofileInfo:
 GDALGeotransformT = Tuple[Number, Number, Number, Number, Number, Number]
 
 
-class ProcessedGeolocFile(NamedTuple):
+@dataclass
+class ProcessedGeolocFile:
     lonlat_mask: np.ndarray
     geotransform_min_x: Number
     geotransform_max_y: Number
@@ -248,7 +251,8 @@ class ProcessedBandFile(NamedTuple):
     geoloc_file: ProcessedGeolocFile
 
 
-class ViirsFileset(NamedTuple):
+@dataclass
+class ViirsFileset:
     geoloc_file: GeofileInfo
     band_files: List[GeofileInfo]
 
@@ -269,6 +273,7 @@ class ViirsFileset(NamedTuple):
             raise InvalidFileType('could not detect band name, geoloc file type: ' + self.geoloc_file.file_type)
 
 
-class ProcessedFileSet(NamedTuple):
+@dataclass
+class ProcessedFileSet:
     geoloc_file: ProcessedGeolocFile
     bands_set: List[ProcessedBandFile]

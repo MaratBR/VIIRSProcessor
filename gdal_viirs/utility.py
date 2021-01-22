@@ -62,10 +62,6 @@ def find_sdr_viirs_filesets(root,
     return result
 
 
-def get_filename(fileset: Union[ViirsFileset, ProcessedFileSet], type_='out'):
-    return type_ + '_' + fileset.geoloc_file.name_without_extension + f'.tiff'
-
-
 def get_trimming_offsets(data: np.ndarray, nodata=None):
     if not inspect.isfunction(nodata):
         if nodata is None:

@@ -1,3 +1,4 @@
+import inspect
 import math
 import os
 import time
@@ -7,12 +8,13 @@ from pathlib import Path
 
 from loguru import logger
 
-from gdal_viirs._config import CONFIG
+from gdal_viirs._config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException
 from gdal_viirs.maps import produce_ndvi_image
 from gdal_viirs.merge import merge_files2tiff
 from gdal_viirs.persistence.db import GDALViirsDB
 from gdal_viirs import process as _process, utility as _utility
+import gdal_viirs.hl.utility as _hlutil
 
 
 def _validate_png_config(png_config):
@@ -35,27 +37,32 @@ def _validate_config(config):
     _validate_png_config(config['PNG_CONFIG'])
 
 
+def _mkpath(p):
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _todaystr():
+    return datetime.now().strftime('%Y%m%d')
+
+
 class NPPProcessor:
-    def __init__(self, config: dict):
-        config = {
-            **CONFIG,
-            **config
-        }
+    def __init__(self, config):
         logger.debug(f'config={config}')
+
+        config = ConfigWrapper(CONFIG, config)
         _validate_config(config)
         config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
         config_dir.mkdir(parents=True, exist_ok=True)
         self.persistence = GDALViirsDB(str(config_dir / 'store.db'))
-        self._output_dir = os.path.expandvars(os.path.expanduser(config['OUTPUT_DIR']))
-        self._data_dir = os.path.expandvars(os.path.expanduser(config['INPUT_DIR']))
-        Path(self._data_dir).mkdir(parents=True, exist_ok=True)
-        Path(self._output_dir).mkdir(parents=True, exist_ok=True)
+
+        self._processed_output = _mkpath(config.get_output('processed_data'))
+        self._ndvi_output = _mkpath(config.get_output('ndvi'))
+        self._data_dir = _mkpath(config.get_input('data'))
+
         self.scale = config['SCALE']
         self.png_config = config['PNG_CONFIG']
         self._config = config
-
-    def _fname(self, d, kind, ext='tiff'):
-        return os.path.join(self._output_dir, os.path.basename(d) + '.' + kind + '.' + ext)
 
     def process_recent(self):
         directories = glob(os.path.join(self._data_dir, '*'))
@@ -71,80 +78,113 @@ class NPPProcessor:
         self.persistence.delete_meta('last_check_time')
         self.persistence.reset()
 
+    # region вспомогательные функции
+
+    def _fname(self, fs: _hlutil.NPPViirsFileset, kind, ext='tiff'):
+        dir_path = _mkpath(self._processed_output / _todaystr() / fs.swath_id)
+        base_name = fs.root_dir.parts[-1]
+        return str(dir_path / (base_name + '.' + kind + '.' + ext))
+
+    def _on_before_processing(self, name, src_type):
+        logger.debug(f'обработка {src_type} @ {name}')
+
+    def _on_after_processing(self, name, src_type):
+        logger.debug(f'обработка завершена {src_type} @ {name}')
+
+    def _on_exception(self, exc):
+        logger.exception(exc)
+
+    # endregion
+
     def _process_directory(self, d):
-        products = self._produce_level1_products(d)
+        filesets = _hlutil.find_npp_viirs_filesets(d)
 
-        if 'l1_GIMGO' not in products:
-            raise ProcessingException('Не удалось обработать или найти уже обработанный GIMGO файл в БД')
-        else:
-            clouds_file = self._process_clouds_file(d)
-            if clouds_file is None:
-                logger.warning(f'Маска облачности для папки {d} не была обработана: маска облачность в level2 еще не сгенерирована')
-            else:
-                self._process_ndvi_files(d, clouds_file)
-
-                merged_ndvi, now, past = self._process_merged_ndvi_file_for_today()
-
-                if not self.persistence.has_processed(d, 'png', strict=True):
-                    logger.debug('png\'s')
-                    png_dir = os.path.join(self._output_dir, datetime.now().strftime('PNG.%Y_%b_%d'))
-                    Path(png_dir).mkdir(parents=True, exist_ok=True)
-
-                    png_config = self.png_config
-                    self._produce_pngs(merged_ndvi, png_config, png_dir,
-                                       bottom_right_text=now.strftime('%Y.%m.%d') + ' - ' + past.strftime('%Y.%m.%d'))
-                    self.persistence.add_processed(d, 'png', png_dir)
-
-    def _produce_level1_products(self, d):
-        products = {}
-        filesets = _utility.find_sdr_viirs_filesets(os.path.join(d, 'viirs/level1')).values()
         for fs in filesets:
-            type_ = 'l1_' + fs.geoloc_file.file_type
-            if self.persistence.has_processed(d, type_, strict=True):
-                products[type_] = self.persistence.get_processed(d, type_)
-                continue
-            logger.debug(type_ + ': ' + d)
-            output_file = self._fname(d, fs.geoloc_file.file_type_out)
-            _process.process_fileset(fs, output_file, self.scale)
-            self.persistence.add_processed(d, type_, output_file)
-            products[type_] = output_file
-        return products
+            # обработка данных с level1
+            l1_type = f'l1_{fs.geoloc_file.file_type}'
+            l1_output_file = self._fname(fs, fs.geoloc_file.file_type_out)
+            if not self.persistence.has_processed(l1_output_file, strict=True):
+                self._on_before_processing(l1_output_file, l1_type)
+                try:
+                    _process.process_fileset(fs, l1_output_file, self.scale)
+                except Exception as exc:
+                    self._on_exception(exc)
+                    raise
+                self.persistence.add_processed(l1_output_file, l1_type, fs.geoloc_file.date.timestamp())
+                self._on_after_processing(l1_output_file, l1_type)
 
-    def _process_clouds_file(self, d):
-        clouds_file = self._fname(d, 'PROJECTED_CLOUDMASK')
-        if not self.persistence.has_processed(d, 'cloud_mask', strict=True):
-            input_file = glob(os.path.join(d, 'viirs/level2/*CLOUDMASK.tif'))
-            if len(input_file) != 0:
-                logger.debug('cloud_mask')
-                input_file = input_file[0]
-                _process.process_cloud_mask(input_file, clouds_file, scale=self.scale)
-                self.persistence.add_processed(d, 'cloud_mask', clouds_file)
-            else:
-                return None
-        return clouds_file
+            handler_name = f'_process__{fs.geoloc_file.file_type.lower()}'
+            if hasattr(self, handler_name):
+                logger.debug(f'вызов обработчика {handler_name} ...')
+                fn = getattr(self, handler_name)
+                if hasattr(fn, '__call__'):
+                    try:
+                        fn(fs, l1_output_file)
+                    except Exception as exc:
+                        self._on_exception(exc)
+                        raise
+                else:
+                    raise TypeError(f'обработчик {handler_name} найден, но не является функцией')
 
-    def _process_ndvi_files(self, d, clouds_file):
-        if self.persistence.has_processed(d, 'cloud_mask', strict=True) and not self.persistence.has_processed(d, 'ndvi', strict=True):
-            logger.debug('ndvi')
-            ndvi_file = self._fname(d, 'NDVI')
-            gimgo_tiff_file = self._fname(d, 'VIMGO')
-            if os.path.isfile(gimgo_tiff_file):
-                _process.process_ndvi(gimgo_tiff_file, ndvi_file, clouds_file)
-                self.persistence.add_processed(d, 'ndvi', ndvi_file)
+    def _process__gimgo(self, fs: _hlutil.NPPViirsFileset, processed_gimgo):
+        root_dir = str(fs.root_dir)
+        l2_input_file = glob(os.path.join(root_dir, 'viirs/level2/*CLOUDMASK.tif'))
+        clouds_file = self._fname(fs, 'PROJECTED_CLOUDMASK')
+
+        if not self.persistence.has_processed(clouds_file, strict=True):
+            if len(l2_input_file) == 0:
+                # если маска облачности еще не была посчитана для level2
+                # мы не будем ничего делать и обработаем все потом
+                logger.info(f'папка {root_dir} не содержит маски облачности в level2, дальнейшая обработка отложена до следующего запуска')
+                return
+
+            # перепроецируем маску облачности
+            # все ошибки передаются в обработчик вызывающей функции
+            _process.process_cloud_mask(l2_input_file[0], clouds_file, scale=self.scale)
+
+            self.persistence.add_processed(clouds_file, 'cloud_mask')
+
+        # обработка NDVI
+        self._process_ndvi_files(fs, clouds_file, processed_gimgo)
+
+        # обработка ndvi изображений за последние N (5 по-умолчанию) дней
+        merged, now, past_day = self._process_merged_ndvi_file_for_today()
+
+        ndvi_dir = self._ndvi_output / _todaystr()
+        if not self.persistence.has_processed(str(ndvi_dir), strict=True):
+            _mkpath(ndvi_dir)
+            self._on_before_processing(str(ndvi_dir), 'ndvi_images')
+            ndvi_dir.mkdir(parents=True, exist_ok=True)
+            self._produce_pngs(merged, self._config.get('PNG_CONFIG'), str(ndvi_dir),
+                               category_name='ndvi',
+                               date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
+            self.persistence.add_processed(str(ndvi_dir), 'ndvi_images')
+            self._on_after_processing(str(ndvi_dir), 'ndvi')
+
+        # TODO второй продукт
+
+    def _process_ndvi_files(self, fs, clouds_file, gimgo_file):
+        ndvi_file = self._fname(fs, 'NDVI')
+        if not self.persistence.has_processed(ndvi_file, strict=True):
+            if os.path.isfile(gimgo_file):
+                self._on_before_processing(ndvi_file, 'ndvi')
+                _process.process_ndvi(gimgo_file, ndvi_file, clouds_file)
+                self.persistence.add_processed(ndvi_file, 'ndvi')
+                self._on_after_processing(ndvi_file, 'ndvi')
                 return ndvi_file
             else:
-                logger.warning(f'не удалось найти файл {gimgo_tiff_file}, не могу обработать NDVI')
-                raise ProcessingException(f'Файл GIMGO {gimgo_tiff_file} не найден')
+                logger.warning(f'не удалось найти файл {gimgo_file}, не могу обработать NDVI')
+                raise ProcessingException(f'Файл GIMGO {gimgo_file} не найден')
 
     def _process_merged_ndvi_file_for_today(self):
         ndvi_rasters_bound_in_days = self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5)
         now = datetime.now().date()
         past_day = now - timedelta(days=ndvi_rasters_bound_in_days)
-        merged_ndvi = 'NDVI_' + now.strftime('%Y_%b_%d') + '-' + past_day.strftime('%Y_%b_%d')
-        merged_ndvi_file = merged_ndvi + '.tiff'
-        output_file = os.path.join(self._output_dir, merged_ndvi_file)
-        if not self.persistence.has_processed(merged_ndvi, '', strict=True):
-            logger.debug('merged_ndvi')
+
+        merged_ndvi_filename = 'NDVI_' + now.strftime('%Y_%b_%d') + '-' + past_day.strftime('%Y_%b_%d') + '.tiff'
+        output_file = _mkpath(self._data_dir / 'daily') / merged_ndvi_filename
+
+        if not self.persistence.has_processed(output_file, strict=True):
             ndvi_rasters = self.persistence.find_processed('created_at_ts >= ? AND type = ?',
                                                            [math.floor(time.mktime(past_day.timetuple())), 'ndvi'])
             if len(ndvi_rasters) == 0:
@@ -153,12 +193,14 @@ class NPPProcessor:
             for raster in ndvi_rasters:
                 if not os.path.isfile(raster):
                     raise ProcessingException(f'файл {raster} не найден, обнаружено несоотсветсвие БД')
-            merge_files2tiff(ndvi_rasters, output_file)
-            self.persistence.add_processed(merged_ndvi, '', output_file)
+            self._on_before_processing(output_file, 'merged_ndvi')
+            merge_files2tiff(ndvi_rasters, output_file, method='max')
+            self.persistence.add_processed(output_file, 'merged_ndvi')
+            self._on_after_processing(output_file, 'merged_ndvi')
         return output_file, now, past_day
 
     def _produce_pngs(self, merged_ndvi: str, png_config: list, png_dir: str, category_name=None,
-                      bottom_right_text=None):
+                      date_text=None):
         for index, png_entry in enumerate(png_config):
             name = png_entry['name']
             display_name = png_entry.get('display_name')
@@ -169,7 +211,7 @@ class NPPProcessor:
             props = {
                 'bottom_subtitle': display_name,
                 'map_points': self._config.get('MAP_POINTS'),
-                'bottom_right_text': bottom_right_text
+                'date_text': date_text
             }
             if 'FONT_FAMILY' in self._config:
                 props['font_family'] = self._config['FONT_FAMILY']

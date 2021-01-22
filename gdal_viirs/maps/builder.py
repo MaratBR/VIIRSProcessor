@@ -27,7 +27,7 @@ def cm(v):
 
 
 def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None,
-                 scale='10m', cmap=None, norm=None, transform=None):
+                 scale='10m', cmap=None, norm=None, transform=None, states_border_color=None, region_border_color=None):
     lakes_contour = cartopy.feature.NaturalEarthFeature(
         category='physical',
         name='lakes',
@@ -43,13 +43,13 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
         cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(6)).geometries(),
         cartopy.crs.PlateCarree(),
-        fc='none', ec='#666666', linewidth=1
+        fc='none', ec=region_border_color or '#666666', linewidth=1
     )
 
     level_4_russia_admin = cartopy.feature.ShapelyFeature(
         cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(4)).geometries(),
         cartopy.crs.PlateCarree(),
-        fc='none', ec='k', lw=2
+        fc='none', ec=states_border_color or 'k', lw=2
     )
 
     rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='none', transform=transform)
@@ -109,6 +109,11 @@ class MapBuilder:
     font_family = None
     agro_mask_shp_file = None
 
+    styles = {
+        'regions_border': None,
+        'states_border': None
+    }
+
     def __init__(self, **kwargs):
         self._points = {}
         self.cartopy_scale = '10m'
@@ -148,7 +153,9 @@ class MapBuilder:
         ax0.set_axis_off()
         _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
-        build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform)
+        build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
+                     states_border_color=self.styles.get('states_border'),
+                     region_border_color=self.styles.get('regions_border'))
         plot_marks(self._points, crs, ax1, color=self.points_color)
 
         return fig, (ax0, ax1), plot_size

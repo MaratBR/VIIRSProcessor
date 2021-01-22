@@ -19,7 +19,6 @@ from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData
 from gdal_viirs.types import GeofileInfo, ProcessedFileSet, Number, \
     ProcessedGeolocFile, ProcessedBandFile, ViirsFileset, GDALGeotransformT
-from gdal_viirs.utility import get_filename
 
 
 _RASTERIO_DEFAULT_META = {
@@ -265,10 +264,6 @@ def process_cloud_mask(input_file: str,
                        output_file: str,
                        proj: str = PROJ_LCC,
                        scale: int = None):
-
-    import fiona
-    from shapely.geometry import shape, mapping
-    from shapely.geometry.multipolygon import MultiPolygon
 
     # открываем файл и читаем данные
     with rasterio.open(input_file) as f:
