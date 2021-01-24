@@ -156,9 +156,12 @@ class MapBuilder:
         build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
                      states_border_color=self.styles.get('states_border'),
                      region_border_color=self.styles.get('regions_border'))
-        plot_marks(self._points, crs, ax1, color=self.points_color)
+        plot_marks(self._points, crs, ax1, color=self.points_color, props=self._get_point_fontprops())
 
         return fig, (ax0, ax1), plot_size
+
+    def _get_point_fontprops(self):
+        return self._get_font_props(size=16)
 
     def plot_to_file(self, file: DatasetReader, output_file: str, band=1):
         figure, _1, _2 = self.plot(file, band)

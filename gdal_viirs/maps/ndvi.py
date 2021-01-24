@@ -126,6 +126,7 @@ class NDVIMapBuilder(MapBuilder):
         self._draw_legend(ax0, data)
         del data
         self._draw_map_marks(ax0, file)
+        self._draw_scale_line(file, ax0)
 
         return fig, (ax0, ax1), size
 
@@ -180,7 +181,7 @@ class NDVIMapBuilder(MapBuilder):
         return pixels_per_km_x
 
     def _draw_scale_line(self, file: DatasetReader, ax):
-        fontprops = self._get_font_props()
+        fontprops = self._get_font_props(size=16)
         # расчитываем, сколько дюймов должно приходится на один сегмент
         pixels_per_km_x = self._get_pixels_per_km(file)
         inches_per_km_x = pixels_per_km_x / ax.figure.dpi
@@ -189,11 +190,15 @@ class NDVIMapBuilder(MapBuilder):
             km_per_segment = round(km_per_segment / 10) * 10
         inches_per_segment = km_per_segment * inches_per_km_x
 
+        y = self.outer_size[2] - self.margin * 1.5 - self.map_mark_thickness
+        km_width = _drawings.draw_text('км', (self.outer_size[1], y + self.map_mark_thickness / 2), ax,
+                                       origin=_drawings.BOTTOM_RIGHT, fontproperties=fontprops,
+                                       align=_drawings.Alignment(hor=_drawings.RIGHT, ver=_drawings.VCENTER))[0]
+
         left_offset = left = self.outer_size[3] + self._get_raster_size_inches(file)[0] - inches_per_segment * sum(
-            self.map_mark_dist)
+            self.map_mark_dist) - km_width - cm(.2)
         odd = True
         km = 0
-        y = self.outer_size[2] - self.margin * 2 - self.map_mark_thickness
 
         # рисуем отметки по указанным значениям распределения
         # Напремер, если self.map_mark_dist = (1, 2, 3, 2, 5), это значит, что будет 5
@@ -227,8 +232,6 @@ class NDVIMapBuilder(MapBuilder):
         :param file: открытый файл rasterio
         :return:
         """
-
-
 
         # отметки в грудусах
         transform = file.transform
@@ -360,8 +363,8 @@ class NDVIMapBuilder(MapBuilder):
             long = utility.transform_point(src_crs, 'EPSG:4326', (transform.c, transform.f + top_xy))[1]
             degree, minutes, seconds = _split_degree(long)
             _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
-                                (left + h + cm(.2), plot_h - top), ax0, va='center', ha='left',
-                                rotation=-90, fontsize=14, fontproperties=fontprops)
+                                (left + h + cm(.4), plot_h - top), ax0, va='center', ha='left',
+                                rotation=90, fontsize=14, fontproperties=fontprops)
 
             w, h = _drawings.inches2axes(ax0, (w, h))
             rect = patches.Rectangle(xy, color='k', width=w, height=h)
