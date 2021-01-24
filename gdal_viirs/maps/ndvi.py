@@ -4,7 +4,7 @@ import numpy as np
 
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from rasterio import DatasetReader
-from matplotlib import rcParams, patches, lines
+from matplotlib import patches, lines
 
 from gdal_viirs import utility
 from gdal_viirs.hl import points
@@ -82,7 +82,7 @@ class NDVIMapBuilder(MapBuilder):
     def plot(self, file: DatasetReader, band=1):
         fig, (ax0, ax1), size = super(NDVIMapBuilder, self).plot(file, band)
         logo_size = cm(3)  # размер лого - 75% от толщины верхней зоны
-        logo_padding = cm(.7) #
+        logo_padding = cm(.7)  #
 
         # рисуем логотип в верхнем левом углу
         _drawings.draw_image(self.logo_path, (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
@@ -96,10 +96,11 @@ class NDVIMapBuilder(MapBuilder):
         _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ\n'
                             'ФГБУ "НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\n'
                             'СИБИРСКИЙ ЦЕНТР',
-                            (self.margin * 2 + logo_padding + logo_size + title_width / 2, self.outer_size[0] / 2), ax0,
-                            max_size=(title_width, self.outer_size[0] - self.margin * 2),
+                            (self.margin * 2 + logo_padding + logo_size + title_width / 2,
+                             self.outer_size[0] / 2), ax0,
+                            max_size=(title_width, self.outer_size[0]),
                             wrap=True, fontproperties=self._get_font_props(size=30),
-                            va='center', ha='center', invert_y=True)
+                            va='center', ha='center', origin=_drawings.TOP_LEFT)
         _drawings.draw_text('\n'.join([
             'Сибирский центр',
             'ФГБУ НИЦ «ПЛАНЕТА»',
@@ -140,20 +141,22 @@ class NDVIMapBuilder(MapBuilder):
         Рисуем легенду для изображенния и некоторый текст
         """
         top = self.outer_size[0] + self.margin  # отступ сверху
-        _drawings.draw_text('КА Suomi NPP/VIIRS', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', weight='bold', invert_y=True,
-                            fontproperties=self._get_font_props(size=28))
-        top += cm(1.2)
-        _drawings.draw_text('Разрешение 375 м', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', weight='bold', invert_y=True,
-                            fontproperties=self._get_font_props(size=22))
-        top += self.margin * 2
-        _drawings.draw_text('Состояние посевов', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', invert_y=True,
-                            fontproperties=self._get_font_props(size=26))
-        top += cm(6.5)
-        loc = _drawings.inches2axes(ax0, (self.margin, top))
-        loc = loc[0], 1 - loc[1]
+
+        l = _drawings.LinearLayout(ax0, (self.outer_size[3] / 2, top), origin=_drawings.TOP_LEFT)
+        l.set_spacing(cm(.6))
+        l.text('КА Suomi NPP/VIIRS', fontproperties=self._get_font_props(size=28))
+        l.text('Разрешение 375 м', fontproperties=self._get_font_props(size=22))
+        l.spacing(cm(.9))
+        l.text('Условные обозначения', fontproperties=self._get_font_props(size=26))
+        l.spacing(cm(.4))
+        l.legend(handles=[
+            lines.Line2D([], [], linewidth=2, color='#666666', label='Границы районов'),
+            lines.Line2D([], [], linewidth=4, color='k', label='Границы субъектов'),
+            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor=self.points_color, color='none',
+                         markeredgecolor=self.points_color, linewidth=2, label='Населенные пункты'),
+            patches.Patch(color='blue', label='Водоёмы'),
+        ], edgecolor='none', prop=self._get_font_props(size=20))
+        l.text('Состояние посевов', fontproperties=self._get_font_props(size=22))
 
         data_mask = ~np.isnan(data)
         all_count = np.count_nonzero(data_mask)
@@ -161,29 +164,13 @@ class NDVIMapBuilder(MapBuilder):
         ok_count = np.count_nonzero(data_mask * (data < 0.7) * (data >= 0.3))
         good_count = np.count_nonzero(data_mask * (data >= 0.7))
         clouds_count = np.count_nonzero(data == -2)
-        leg1 = ax0.legend(handles=[
+
+        l.legend(handles=[
             patches.Patch(color='red', label=f'Плохое ({round(1000 * bad_count / all_count) / 10}%)'),
             patches.Patch(color='yellow', label=f'Удовлетворительное ({round(1000 * ok_count / all_count) / 10}%)'),
             patches.Patch(color='greenyellow', label=f'Хорошое ({round(1000 * good_count / all_count) / 10}%)'),
             patches.Patch(color='#aaa', label=f'Закрыто облаками ({round(1000 * clouds_count / all_count) / 10}%)'),
-        ], loc=loc, edgecolor='none', prop=self._get_font_props(size=20))
-
-        top += cm(1)
-
-        _drawings.draw_text('Условные обозначения', (self.outer_size[3] / 2, top), ax0,
-                            ha='center', va='top', fontsize=20, invert_y=True,
-                            fontproperties=self._get_font_props(size=26))
-        top += cm(6)
-        loc = _drawings.inches2axes(ax0, (self.margin, top))
-        loc = loc[0], 1 - loc[1]
-        ax0.legend(handles=[
-            lines.Line2D([], [], linewidth=2, color='#666666', label='Границы районов'),
-            lines.Line2D([], [], linewidth=4, color='k', label='Границы субъектов'),
-            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor=self.points_color, color='none',
-                         markeredgecolor=self.points_color, linewidth=2, label='Населенные пункты'),
-            patches.Patch(color='blue', label='Водоёмы'),
-        ], loc=loc, edgecolor='none', prop=self._get_font_props(size=20))
-        ax0.add_artist(leg1)
+        ], edgecolor='none', prop=self._get_font_props(size=20))
 
     def _get_pixels_per_km(self, file: DatasetReader):
         pixels_per_km_x = 1000 / file.transform.a
@@ -226,9 +213,9 @@ class NDVIMapBuilder(MapBuilder):
 
         # рисуем окантовку
         # TODO цвет окантовки
-        _drawings.draw_rect_with_outside_border((left_offset, y),
+        _drawings.draw_rect_with_outside_border(ax, (left_offset, y),
                                                 sum(self.map_mark_dist) * inches_per_segment,
-                                                self.map_mark_thickness, ax)
+                                                self.map_mark_thickness)
 
     def _draw_map_marks(self, ax0, file: DatasetReader):
         """
