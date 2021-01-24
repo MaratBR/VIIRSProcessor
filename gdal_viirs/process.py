@@ -295,3 +295,25 @@ def process_cloud_mask(input_file: str,
     }
     with rasterio.open(output_file, 'w', **meta) as f:
         f.write(data)
+
+
+def calc_ndvi_dynamics(b1, b2):
+    return 100 * (b2 - b1) / b1
+
+
+def process_ndvi_dynamics(composite_b1_input, composite_b2_input, output_file):
+    with rasterio.open(composite_b1_input) as b1_f:
+        with rasterio.open(composite_b2_input) as b2_f:
+            b1_data = b1_f.read(1)
+            b2_data = b2_f.read(1)
+            b1_data, b1_transform, b2_data, b2_transform = utility.crop_intersection(
+                b1_data, b1_f.transform, b2_data, b2_f.transform)
+            mask = (b1_data > 0) * (b2_data > 0)
+            b3 = calc_ndvi_dynamics(b1_data, b2_data)
+            b3[~mask] = np.nan
+
+            with rasterio.open(output_file, 'w', driver='GTiff', count=1, crs=b1_f.crs, transform=b1_transform,
+                               nodata=np.nan, width=b3.shape[1], height=b3.shape[0]) as out:
+                out.write(1, b3)
+
+
