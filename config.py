@@ -64,8 +64,8 @@ PNG_CONFIG = [
 # входые данные и папка с выходными
 
 OUTPUTS = {
-    'ndvi': '~/Documents/viirs/processed/products',
-    '': '',
+    'ndvi': '~/Documents/viirs/processed/products/ndvi',
+    'ndvi_dynamics': '~/Documents/viirs/processed/products/ndvi_dynamics',
     'processed_data': '~/Documents/viirs/processed/data'
 }
 

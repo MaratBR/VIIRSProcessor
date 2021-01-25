@@ -310,10 +310,10 @@ def process_ndvi_dynamics(composite_b1_input, composite_b2_input, output_file):
                 b1_data, b1_f.transform, b2_data, b2_f.transform)
             mask = (b1_data > 0) * (b2_data > 0)
             b3 = calc_ndvi_dynamics(b1_data, b2_data)
-            b3[~mask] = np.nan
+            b3[~mask] = -np.inf
 
             with rasterio.open(output_file, 'w', driver='GTiff', count=1, crs=b1_f.crs, transform=b1_transform,
-                               nodata=np.nan, width=b3.shape[1], height=b3.shape[0]) as out:
+                               nodata=np.nan, width=b3.shape[1], height=b3.shape[0], dtype='float32') as out:
                 out.write(1, b3)
 
 

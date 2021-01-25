@@ -5,7 +5,7 @@ from rasterio.mask import mask
 from gdal_viirs.maps.ndvi import NDVIMapBuilder
 
 
-def produce_ndvi_image(ndvi_file, output_file, shp_mask_file=None, builder=NDVIMapBuilder, **kwargs):
+def produce_ndvi_image(ndvi_file, output_file, shp_mask_file=None, builder=NDVI, **kwargs):
     builder_instance = builder(**kwargs)
     if shp_mask_file:
         # прочитать данные маски и применить её
