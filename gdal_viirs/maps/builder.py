@@ -26,20 +26,9 @@ def cm(v):
     return v * _CM
 
 
-def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None,
-                 scale='10m', cmap=None, norm=None, transform=None, states_border_color=None, region_border_color=None):
-    lakes_contour = cartopy.feature.NaturalEarthFeature(
-        category='physical',
-        name='lakes',
-        scale=scale,
-        fc='blue'
-    )
-    rivers_contour = cartopy.feature.NaturalEarthFeature(
-        category='physical',
-        name='rivers_lake_centerlines',
-        scale=scale,
-        fc='none', ec='blue', lw=3
-    )
+def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None, cmap=None,
+                 norm=None, transform=None, states_border_color=None, region_border_color=None,
+                 water_shp_file=None):
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
         cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(6)).geometries(),
         cartopy.crs.PlateCarree(),
@@ -54,8 +43,14 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
 
     rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='none', transform=transform)
 
-    axes.add_feature(lakes_contour)
-    axes.add_feature(rivers_contour)
+    if water_shp_file:
+        water_feature = cartopy.feature.ShapelyFeature(
+            cartopy.io.shapereader.Reader(water_shp_file).geometries(),
+            cartopy.crs.PlateCarree(),
+            fc='blue', ec='blue', lw=2
+        )
+        axes.add_feature(water_feature)
+
     axes.add_feature(level_6_russia_admin)
     axes.add_feature(level_4_russia_admin)
 
@@ -67,13 +62,13 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
     return axes
 
 
-def plot_marks(points: dict, crs, ax, color='k', props=None):
+def plot_marks(points: dict, crs, ax, ec='k', fc='white', props=None):
     plate_carree = cartopy.crs.PlateCarree()
     annotations = []
     for coord, text in points.items():
         point = crs.transform_point(coord[0], coord[1], plate_carree)
-        ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(color),
-                markerfacecolor=to_rgb(color))
+        ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(ec),
+                markerfacecolor=to_rgb(fc))
         text = ax.annotate(text, point, fontsize=25, fontproperties=props)
         text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='w')])
         text.set_clip_on(True)
@@ -108,6 +103,7 @@ class MapBuilder:
     min_height = None
     font_family = None
     agro_mask_shp_file = None
+    water_shp_file = None
 
     styles = {
         'regions_border': None,
@@ -153,12 +149,16 @@ class MapBuilder:
         ax0.set_axis_off()
         _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
-        build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
-                     states_border_color=self.styles.get('states_border'),
-                     region_border_color=self.styles.get('regions_border'))
-        plot_marks(self._points, crs, ax1, color=self.points_color, props=self._get_point_fontprops())
+        self._build_figure(data, ax1, xlim, ylim, file)
+        plot_marks(self._points, crs, ax1, props=self._get_point_fontprops())
 
         return fig, (ax0, ax1), plot_size
+
+    def _build_figure(self, data, ax1, xlim, ylim, file):
+        build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
+                     states_border_color=self.styles.get('states_border'),
+                     region_border_color=self.styles.get('regions_border'),
+                     water_shp_file=self.water_shp_file)
 
     def _get_point_fontprops(self):
         return self._get_font_props(size=16)

@@ -5,8 +5,8 @@ from rasterio.mask import mask
 from gdal_viirs.maps.ndvi import NDVIMapBuilder
 
 
-def produce_ndvi_image(ndvi_file, output_file, shp_mask_file=None, builder=NDVI, **kwargs):
-    builder_instance = builder(**kwargs)
+def produce_image(ndvi_file, output_file, shp_mask_file=None, builder=None, **kwargs):
+    builder_instance = (builder or NDVIMapBuilder)(**kwargs)
     if shp_mask_file:
         # прочитать данные маски и применить её
         with fiona.open(shp_mask_file) as shp_file:

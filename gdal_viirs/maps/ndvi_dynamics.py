@@ -7,6 +7,8 @@ from gdal_viirs.maps.rcpod import RCPODMapBuilder
 
 
 class NDVIDynamicsMapBuilder(RCPODMapBuilder):
+    bottom_title = 'Динамика развития посевов'
+
     def init(self):
         self.cmap = ListedColormap(['#8c8c8c', "#a11f14", "#ffaa00", '#ffff00', '#98e600', '#3b7a17'])
         self.norm = BoundaryNorm([-np.inf, -45, -15, 15, 45, np.inf], 6)

@@ -149,8 +149,8 @@ class RCPODMapBuilder(MapBuilder):
         l.legend(handles=[
             lines.Line2D([], [], linewidth=2, color='#666666', label='Границы районов'),
             lines.Line2D([], [], linewidth=4, color='k', label='Границы субъектов'),
-            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor=self.points_color, color='none',
-                         markeredgecolor=self.points_color, linewidth=2, label='Населенные пункты'),
+            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor='white', color='none',
+                         markeredgecolor='k', linewidth=2, label='Населенные пункты'),
             patches.Patch(color='blue', label='Водоёмы'),
         ], edgecolor='none', prop=self._get_font_props(size=20))
         l.text('Состояние посевов', fontproperties=self._get_font_props(size=22))

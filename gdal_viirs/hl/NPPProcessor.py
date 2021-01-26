@@ -10,7 +10,8 @@ from loguru import logger
 
 from gdal_viirs._config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException
-from gdal_viirs.maps import produce_ndvi_image
+from gdal_viirs.maps import produce_image
+from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
 from gdal_viirs.merge import merge_files2tiff
 from gdal_viirs.persistence.db import GDALViirsDB
 from gdal_viirs import process as _process, utility as _utility
@@ -29,6 +30,13 @@ def _validate_png_config(png_config):
             raise TypeError(f'png_config[{i}]["name"] не является строкой или отсутсвует')
         if 'display_name' in entry and entry['display_name'] is not None and not isinstance(entry['display_name'], str):
             raise TypeError(f'png_config[{i}]["display_name"] не является строкой или None')
+        for k in ('water_shapefile', 'mask_shapefile'):
+            if k in entry and entry[k] is not None:
+                if not isinstance(entry[k], str):
+                    raise TypeError(f'парамент png_config[{i}]["{k}"] не является строкой или None')
+                if not os.path.isfile(entry[k]):
+                    logger.warning(f'файл указанный в конфигурации не найден: {entry[k]}')
+
         for k in ('xlim', 'ylim'):
             if 'name' not in entry or not isinstance(entry[k], (tuple, list)) or len(entry[k]) != 2:
                 raise TypeError(f'обязательный параметр png_config[{i}]["{k}"] не является списком или кортежом с длинной 2')
@@ -83,7 +91,7 @@ class NPPProcessor:
     # region вспомогательные функции
 
     def _fname(self, fs: _hlutil.NPPViirsFileset, kind, ext='tiff'):
-        dir_path = _mkpath(self._processed_output / _todaystr() / fs.swath_id)
+        dir_path = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id)
         base_name = fs.root_dir.parts[-1]
         return str(dir_path / (base_name + '.' + kind + '.' + ext))
 
@@ -163,14 +171,15 @@ class NPPProcessor:
         ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
         if not os.path.isdir(ndvi_dynamics_dir):
             # создать tiff c ndvi динамикой, если его нет
-            ndvi_dynamic_tiff = self._process_ndvi_dynamics_for_today()
+            ndvi_dynamic_tiff, past_day, now = self._process_ndvi_dynamics_for_today()
             if ndvi_dynamic_tiff is None:
                 logger.warning('не удалось создать карты динамики развития посевов: недостаточно данных (композиты за последние 10 дней не найдены)')
             else:
                 _mkpath(ndvi_dynamics_dir)
                 # создание карт динамики
                 self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-                self._produce_ndvi_dynamics_maps(ndvi_dynamic_tiff, str(ndvi_dynamics_dir))
+                self._produce_ndvi_dynamics_maps(ndvi_dynamic_tiff, str(ndvi_dynamics_dir),
+                                                 date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
                 self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
     def _process_ndvi_files(self, fs: _hlutil.NPPViirsFileset, clouds_file, gimgo_file):
@@ -232,20 +241,24 @@ class NPPProcessor:
             self._on_before_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
             _process.process_ndvi_dynamics(b1, b2, str(dynamics_tiff_output))
             self._on_after_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
-        return str(dynamics_tiff_output)
+        return str(dynamics_tiff_output), past_10days, now
 
-    def _produce_ndvi_dynamics_maps(self, ndvi_dynamics_input: str, output_dir: str):
-        pass
+    def _produce_ndvi_dynamics_maps(self, ndvi_dynamics_input: str, output_dir: str, date_text=None):
+        self._produce_images(ndvi_dynamics_input, output_dir, date_text, builder=NDVIDynamicsMapBuilder)
 
     def _produce_ndvi_maps(self, merged_ndvi: str, png_config: list, png_dir: str, category_name=None,
                            date_text=None):
+        self._produce_images(merged_ndvi, png_dir, date_text)
+
+    def _produce_images(self, input_file, output_directory, date_text=None, builder=None):
+        png_config = self._config.get("PNG_CONFIG")
         for index, png_entry in enumerate(png_config):
             name = png_entry['name']
             display_name = png_entry.get('display_name')
             xlim = png_entry.get('xlim')
             ylim = png_entry.get('ylim')
-            filename = f'{name}.{category_name}.png' if category_name else f'{name}.png'
-            filepath = os.path.join(png_dir, filename)
+            filename = f'{name}.png'
+            filepath = os.path.join(output_directory, filename)
             props = {
                 'bottom_subtitle': display_name,
                 'map_points': self._config.get('MAP_POINTS'),
@@ -257,13 +270,15 @@ class NPPProcessor:
                 props['xlim'] = xlim
             if ylim:
                 props['ylim'] = ylim
+            props['water_shp_file'] = png_entry.get('water_shapefile')
             shapefile = png_entry.get('mask_shapefile')
             if shapefile is None:
                 logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
-            produce_ndvi_image(merged_ndvi, filepath,
-                               logo_path=self._config['LOGO_PATH'],
-                               iso_sign_path=self._config['ISO_QUALITY_SIGN'],
-                               shp_mask_file=shapefile, **props)
+            produce_image(input_file, filepath,
+                          builder=builder,
+                          logo_path=self._config['LOGO_PATH'],
+                          iso_sign_path=self._config['ISO_QUALITY_SIGN'],
+                          shp_mask_file=shapefile, **props)
 
 
 

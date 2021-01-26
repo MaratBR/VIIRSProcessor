@@ -23,6 +23,7 @@ __all__ = (
 
 
 def _mkfig(**kwargs):
+    # TODO понять, почему данная функция иногда
     f = pyplot.figure(**kwargs)
     ax = f.add_axes([0, 0, 1, 1])
     ax.set_axis_off()
@@ -157,7 +158,7 @@ def get_axes_area(fig, xy, w, h, origin=Origin.BOTTOM_LEFT, align=None):
     xy = apply_origin(fig, xy, origin or Origin.BOTTOM_LEFT, w, h, align)
     xy = inches2axes(fig, xy)
     w, h = inches2axes(fig, (w, h))
-    return fig.add_axes([*xy, w, h])
+    return fig.add_axes([*xy, w, h], label=f'{xy[0]}_{xy[1]}_{w}_{h}')
 
 
 def draw_rect_with_outside_border(ax, xy, w, h):
