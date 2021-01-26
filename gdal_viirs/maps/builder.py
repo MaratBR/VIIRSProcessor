@@ -166,6 +166,7 @@ class MapBuilder:
     def plot_to_file(self, file: DatasetReader, output_file: str, band=1):
         figure, _1, _2 = self.plot(file, band)
         figure.savefig(output_file, bbox_inches=None, pad_inches=0, transparent=False)
+        pyplot.close(figure)
 
     def get_projection(self, file):
         return cartopy.crs.PlateCarree()

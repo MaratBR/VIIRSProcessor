@@ -61,6 +61,7 @@ class RCPODMapBuilder(MapBuilder):
 
         # настройка параметров для меток на карте
         self.map_mark_min_length = cm(1)  # минимальная длина сегмента обозначения длинны
+        self.map_mark_max_length = cm(2.5)  # максимальная длина сегмента обозначения длинны
         self.map_mark_thickness = cm(.25)  # толщина сегмента
         self.map_mark_dist = 1, 1, 2, 2, 3  # длинная сегментов, измеренная в процентах по сравнению с минимальной
         self.map_mark_colors = 'black', 'white'  # чередующиеся цвета сегментов
@@ -166,12 +167,26 @@ class RCPODMapBuilder(MapBuilder):
     def _draw_scale_line(self, file: DatasetReader, ax):
         fontprops = self._get_font_props(size=16)
         # расчитываем, сколько дюймов должно приходится на один сегмент
-        pixels_per_km_x = self._get_pixels_per_km(file)
-        inches_per_km_x = pixels_per_km_x / ax.figure.dpi
-        km_per_segment = math.floor(self.map_mark_min_length / inches_per_km_x)
-        if km_per_segment > 30 and km_per_segment % 10 != 0:
-            km_per_segment = round(km_per_segment / 10) * 10
-        inches_per_segment = km_per_segment * inches_per_km_x
+        inches_per_unit_x = self._get_pixels_per_km(file) / ax.figure.dpi
+        units_per_segment = self.map_mark_min_length / inches_per_unit_x
+        unit = 'км'
+
+        if units_per_segment < 1:
+            # на один сегмент приходится менее 1 км
+            if inches_per_unit_x < self.map_mark_max_length:
+                # если один сегмент равен 1 км и сегмент не становится слишком большим, сделаем 1 км на сегмент
+                units_per_segment = 1
+            else:
+                # ...иначе поменяем ед. изменерения на метры
+                units_per_segment = math.floor(units_per_segment * 1000)
+                unit = 'м'
+                inches_per_unit_x /= 1000
+        else:
+            units_per_segment = math.floor(units_per_segment)
+
+        if units_per_segment > 30 and units_per_segment % 10 != 0:
+            units_per_segment = round(units_per_segment / 10) * 10
+        inches_per_segment = units_per_segment * inches_per_unit_x
 
         y = self.outer_size[2] - self.margin * 1.5 - self.map_mark_thickness
         km_width = _drawings.draw_text('км', (self.outer_size[1], y + self.map_mark_thickness / 2), ax,
@@ -187,7 +202,7 @@ class RCPODMapBuilder(MapBuilder):
         # Напремер, если self.map_mark_dist = (1, 2, 3, 2, 5), это значит, что будет 5
         # отметок, первая будет иметь длинну 100%, вторая 200% и т. д.
         for dist in self.map_mark_dist:
-            km += km_per_segment * dist
+            km += units_per_segment * dist
             w_inches = dist * inches_per_segment
             w, h = _drawings.inches2axes(ax, (w_inches, self.map_mark_thickness))
             xy = _drawings.inches2axes(ax, (left, y))
