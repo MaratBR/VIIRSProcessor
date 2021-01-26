@@ -13,17 +13,6 @@ from gdal_viirs.maps import _drawings
 from gdal_viirs.maps.builder import MapBuilder, cm
 
 
-def _split_degree(deg):
-    degree = int(deg)
-    deg -= degree
-    deg *= 60
-    minutes = int(deg)
-    deg -= minutes
-    deg *= 60
-    seconds = int(deg)
-    return degree, minutes, seconds
-
-
 NDVI_BAD = '#c0504d'
 NDVI_OK = '#ffff00'
 NDVI_GOOD = '#70a800'
@@ -37,7 +26,7 @@ class RCPODMapBuilder(MapBuilder):
     bottom_subtitle = None
     date_text = None
 
-    def __init__(self, logo_path='./logo.png', map_points=None, iso_sign_path=None, **kwargs):
+    def __init__(self, logo_path='./logo.png', iso_sign_path=None, **kwargs):
         super(RCPODMapBuilder, self).__init__(**kwargs)
         self.styles.update({
             'regions_border': REGIONS_BORDER_COLOR,
@@ -47,15 +36,12 @@ class RCPODMapBuilder(MapBuilder):
             'ndvi_bad': NDVI_BAD,
             'ndvi_cloud': NDVI_CLOUD
         })
-        points.add_points(self, [
-            *points.SIBERIA_CITIES,
-            *(map_points or []),
-        ])
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(10), self.margin, cm(8.5), self.margin + cm(14)
-        self.min_height = cm(30)
+        self.outer_size = cm(10), self.margin * 2, cm(10), self.margin + cm(14)
+        self.min_height = cm(26)
+        self.min_width = cm(22)
         self.logo_path = logo_path
         self.iso_sign_path = iso_sign_path
 
@@ -112,17 +98,17 @@ class RCPODMapBuilder(MapBuilder):
         ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=18), va='bottom', ha='left')
 
         _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
-                            (self.outer_size[3] + size[0] / 2, self.margin), ax0, max_size=(size[0], cm(3.5)),
-                            ha='center', va='bottom', fontproperties=self._get_font_props(size=36))
+                            (self.outer_size[3] + size[0] / 2, self.margin + cm(2)), ax0, max_size=(size[0] - cm(2), cm(6)),
+                            ha='center', va='center', wrap=True, fontproperties=self._get_font_props(size=36))
 
         if self.date_text:
             _drawings.draw_text(self.date_text,
-                                (fig.get_size_inches()[0] - self.outer_size[1], self.margin * 1.3 + cm(3.5)),
+                                (fig.get_size_inches()[0] - self.outer_size[1], self.margin * 1.3 + cm(5)),
                                 ax0, ha='right', va='bottom',
                                 fontproperties=self._get_font_props(size=26))
 
         self._draw_legend(ax0, file)
-        self._draw_map_marks(ax0, file)
+        # self._draw_map_marks(ax0, file)
         self._draw_scale_line(file, ax0)
 
         return fig, (ax0, ax1), size

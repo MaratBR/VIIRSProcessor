@@ -4,14 +4,17 @@ import matplotlib.font_manager as _fm
 import rasterio.plot
 from adjustText import adjust_text
 from matplotlib.colors import to_rgb
+from matplotlib.ticker import Formatter
 
 from gdal_viirs._config import CONFIG
+from gdal_viirs.hl import points
 from gdal_viirs.maps import _downloads
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
 from matplotlib import pyplot, patches, offsetbox, patheffects
 import cartopy
+import cartopy.mpl.gridliner
 import cartopy.io.shapereader
 
 _CM = 1/2.54
@@ -26,9 +29,36 @@ def cm(v):
     return v * _CM
 
 
+def _split_degree(deg):
+    degree = int(deg)
+    deg -= degree
+    deg *= 60
+    minutes = int(deg)
+    deg -= minutes
+    deg *= 60
+    seconds = int(deg)
+    return degree, minutes, seconds
+
+
+class DegreeFormatter(Formatter):
+
+    def __call__(self, x, pos=None):
+        deg, minutes, seconds = _split_degree(x)
+        r = f'{deg}°'
+        if minutes or seconds:
+            if minutes <= 9:
+                r += '0'
+            r += f'{minutes}\''
+            if seconds:
+                if seconds <= 9:
+                    r += '0'
+                r += f'{seconds}\'\''
+        return r
+
+
 def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None, cmap=None,
                  norm=None, transform=None, states_border_color=None, region_border_color=None,
-                 water_shp_file=None):
+                 water_shp_file=None, gridlines_font_props=None):
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
         cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(6)).geometries(),
         cartopy.crs.PlateCarree(),
@@ -53,6 +83,12 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
 
     axes.add_feature(level_6_russia_admin)
     axes.add_feature(level_4_russia_admin)
+
+    pyplot.yticks(rotation='vertical')
+    gridlines = axes.gridlines(draw_labels=True, xformatter=DegreeFormatter(), yformatter=DegreeFormatter(),
+                               y_inline=False, x_inline=False)
+    gridlines.ylabel_style = dict(fontproperties=gridlines_font_props)
+    gridlines.xlabel_style = dict(fontproperties=gridlines_font_props)
 
     if xlim:
         axes.set_xlim(xlim)
@@ -111,11 +147,15 @@ class MapBuilder:
     }
 
     def __init__(self, **kwargs):
-        self._points = {}
+        self.points = {}
         self.cartopy_scale = '10m'
 
         self.xlim = None
         self.ylim = None
+
+        if 'points' in kwargs:
+            points.add_points(self, kwargs['points'])
+            del kwargs['points']
 
         for k, v in kwargs.items():
             if k.startswith('_'):
@@ -129,8 +169,8 @@ class MapBuilder:
                 kwargs['fname'] = self.font_family
         return _fm.FontProperties(**kwargs)
 
-    def add_point(self, lon: Number, lat: Number, text: str):
-        self._points[(lon, lat)] = text
+    def add_point(self, lat: Number, lon: Number, text: str):
+        self.points[(lon, lat)] = text
 
     def plot(self, file: DatasetReader, band=1):
         xlim, ylim = self._get_lims(file)
@@ -147,10 +187,10 @@ class MapBuilder:
         plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(plot_size))
         ax0 = fig.add_axes([0, 0, 1, 1])
         ax0.set_axis_off()
-        _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
+        # _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
         self._build_figure(data, ax1, xlim, ylim, file)
-        plot_marks(self._points, crs, ax1, props=self._get_point_fontprops())
+        plot_marks(self.points, crs, ax1, props=self._get_point_fontprops())
 
         return fig, (ax0, ax1), plot_size
 
@@ -158,7 +198,8 @@ class MapBuilder:
         build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
                      states_border_color=self.styles.get('states_border'),
                      region_border_color=self.styles.get('regions_border'),
-                     water_shp_file=self.water_shp_file)
+                     water_shp_file=self.water_shp_file,
+                     gridlines_font_props=self._get_font_props(size=16))
 
     def _get_point_fontprops(self):
         return self._get_font_props(size=16)

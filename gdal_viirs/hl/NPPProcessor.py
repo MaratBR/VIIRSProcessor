@@ -161,8 +161,7 @@ class NPPProcessor:
             _mkpath(ndvi_dir)
             self._on_before_processing(str(ndvi_dir), 'ndvi_images')
             ndvi_dir.mkdir(parents=True, exist_ok=True)
-            self._produce_ndvi_maps(merged, self._config.get('PNG_CONFIG'), str(ndvi_dir),
-                                    category_name='ndvi',
+            self._produce_ndvi_maps(merged, str(ndvi_dir),
                                     date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
             self.persistence.add_ndvi_map(str(ndvi_dir))
             self._on_after_processing(str(ndvi_dir), 'ndvi')
@@ -171,10 +170,11 @@ class NPPProcessor:
         ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
         if not os.path.isdir(ndvi_dynamics_dir):
             # создать tiff c ndvi динамикой, если его нет
-            ndvi_dynamic_tiff, past_day, now = self._process_ndvi_dynamics_for_today()
-            if ndvi_dynamic_tiff is None:
+            ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+            if ndvi_dynamics is None:
                 logger.warning('не удалось создать карты динамики развития посевов: недостаточно данных (композиты за последние 10 дней не найдены)')
             else:
+                ndvi_dynamic_tiff, past_day, now = ndvi_dynamics
                 _mkpath(ndvi_dynamics_dir)
                 # создание карт динамики
                 self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
@@ -246,8 +246,7 @@ class NPPProcessor:
     def _produce_ndvi_dynamics_maps(self, ndvi_dynamics_input: str, output_dir: str, date_text=None):
         self._produce_images(ndvi_dynamics_input, output_dir, date_text, builder=NDVIDynamicsMapBuilder)
 
-    def _produce_ndvi_maps(self, merged_ndvi: str, png_config: list, png_dir: str, category_name=None,
-                           date_text=None):
+    def _produce_ndvi_maps(self, merged_ndvi: str, png_dir: str, date_text=None):
         self._produce_images(merged_ndvi, png_dir, date_text)
 
     def _produce_images(self, input_file, output_directory, date_text=None, builder=None):
@@ -271,9 +270,12 @@ class NPPProcessor:
             if ylim:
                 props['ylim'] = ylim
             props['water_shp_file'] = png_entry.get('water_shapefile')
+            props['points'] = png_entry.get('points')
             shapefile = png_entry.get('mask_shapefile')
             if shapefile is None:
                 logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
+
+            logger.debug('обработка изображения ' + filepath)
             produce_image(input_file, filepath,
                           builder=builder,
                           logo_path=self._config['LOGO_PATH'],
