@@ -275,7 +275,7 @@ class NPPProcessor:
             if shapefile is None:
                 logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
 
-            logger.debug('обработка изображения ' + filepath)
+            logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
             produce_image(input_file, filepath,
                           builder=builder,
                           logo_path=self._config['LOGO_PATH'],

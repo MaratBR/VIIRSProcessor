@@ -49,14 +49,14 @@ class DegreeFormatter(Formatter):
             if minutes <= 9:
                 r += '0'
             r += f'{minutes}\''
-            if seconds:
+            if seconds and 58 > seconds > 3:
                 if seconds <= 9:
                     r += '0'
                 r += f'{seconds}\'\''
         return r
 
 
-def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None, cmap=None,
+def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None, cmap=None,
                  norm=None, transform=None, states_border_color=None, region_border_color=None,
                  water_shp_file=None, gridlines_font_props=None):
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
@@ -76,7 +76,7 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
     if water_shp_file:
         water_feature = cartopy.feature.ShapelyFeature(
             cartopy.io.shapereader.Reader(water_shp_file).geometries(),
-            cartopy.crs.PlateCarree(),
+            crs=crs,
             fc='blue', ec='blue', lw=2
         )
         axes.add_feature(water_feature)
@@ -89,6 +89,7 @@ def build_figure(data, axes, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[
                                y_inline=False, x_inline=False)
     gridlines.ylabel_style = dict(fontproperties=gridlines_font_props)
     gridlines.xlabel_style = dict(fontproperties=gridlines_font_props)
+    gridlines.rotate_labels = False
 
     if xlim:
         axes.set_xlim(xlim)
@@ -189,13 +190,13 @@ class MapBuilder:
         ax0.set_axis_off()
         # _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
-        self._build_figure(data, ax1, xlim, ylim, file)
-        plot_marks(self.points, crs, ax1, props=self._get_point_fontprops())
+        self._build_figure(data, crs, ax1, xlim, ylim, file)
+        plot_marks(self.points, crs, ax1)
 
         return fig, (ax0, ax1), plot_size
 
-    def _build_figure(self, data, ax1, xlim, ylim, file):
-        build_figure(data, ax1, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
+    def _build_figure(self, data, crs, ax1, xlim, ylim, file):
+        build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
                      states_border_color=self.styles.get('states_border'),
                      region_border_color=self.styles.get('regions_border'),
                      water_shp_file=self.water_shp_file,
