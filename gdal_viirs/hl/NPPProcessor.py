@@ -187,7 +187,7 @@ class NPPProcessor:
         if not self.persistence.has_processed('ndvi', ndvi_file, strict=True):
             if os.path.isfile(gimgo_file):
                 self._on_before_processing(ndvi_file, 'ndvi')
-                _process.process_ndvi(gimgo_file, ndvi_file, clouds_file)
+                _process.process_ndvi(gimgo_file, ndvi_file) # clouds_file
                 self.persistence.add_ndvi(ndvi_file, fs.geoloc_file.date)
                 self._on_after_processing(ndvi_file, 'ndvi')
                 return ndvi_file
@@ -210,7 +210,8 @@ class NPPProcessor:
                 return None
             for raster in ndvi_rasters:
                 if not os.path.isfile(raster):
-                    raise ProcessingException(f'файл {raster} не найден, обнаружено несоотсветсвие БД')
+                    logger.error(f'файл {raster} не найден, обнаружено несоотсветсвие БД')
+            ndvi_rasters = list(filter(os.path.isfile, ndvi_rasters))
             self._on_before_processing(output_file, 'merged_ndvi')
             merge_files2tiff(ndvi_rasters, output_file, method='max')
             self.persistence.add_ndvi_composite(output_file, past_day.date(), now.date())

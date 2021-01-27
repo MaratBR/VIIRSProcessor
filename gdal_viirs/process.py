@@ -190,15 +190,18 @@ def process_band_file(geofile: GeofileInfo,
     assert len(image_shape) == 2
     assert all(d > 1 for d in image_shape), 'image must be at least 2x2'
 
-    image = np.zeros(image_shape, 'uint16') + ND_NA
-    image[y_index, x_index] = arr
+    image = np.zeros(image_shape, 'float32')
+    image[y_index, x_index] = arr.astype('float32')
     del arr
     image = np.flip(image, 0)
-    image = _fill_nodata(image)
-    image = image.astype('float32')
+    image[image == ND_OBPT] = 0
+    image[np.isnan(image)] = 0
+    image = _fill_nodata(image, nd_value=0, smoothing_iterations=0, max_search_dist=10)
     # Поменять nodata на nan
     mask = image > no_data_threshold
     image[mask] = np.nan
+    image[image == 0] = np.nan
+
 
     # factors
     data = utility.h5py_get_dataset(geofile.path, dataset_name + "Factors")

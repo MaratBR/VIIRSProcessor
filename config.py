@@ -7,7 +7,7 @@ def __resource(path):
 
 
 # по умолчанию 1000
-SCALE = 750
+SCALE = 375
 LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
@@ -492,3 +492,5 @@ PNG_CONFIG = [
         )
     },
 ]
+
+PNG_CONFIG = list(filter(lambda e: e['name'] == 'omsk', PNG_CONFIG))

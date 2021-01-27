@@ -43,7 +43,7 @@ class NDVIMapBuilder(RCPODMapBuilder):
     def get_legend_handles(self, file: DatasetReader):
         data = file.read(1)
         data_mask = ~np.isnan(data)
-        all_count = np.count_nonzero(data_mask)
+        all_count = max(1, np.count_nonzero(data_mask))
         bad_count = np.count_nonzero(data_mask * (data < 0.3) * (data >= -1))
         ok_count = np.count_nonzero(data_mask * (data < 0.7) * (data >= 0.3))
         good_count = np.count_nonzero(data_mask * (data >= 0.7))
