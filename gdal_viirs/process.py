@@ -201,8 +201,6 @@ def process_band_file(geofile: GeofileInfo,
     mask = image > no_data_threshold
     image[mask] = np.nan
     image[image == 0] = np.nan
-
-
     # factors
     data = utility.h5py_get_dataset(geofile.path, dataset_name + "Factors")
     if data is not None:

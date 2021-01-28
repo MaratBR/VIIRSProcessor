@@ -492,5 +492,3 @@ PNG_CONFIG = [
         )
     },
 ]
-
-PNG_CONFIG = list(filter(lambda e: e['name'] == 'omsk', PNG_CONFIG))

@@ -3,6 +3,7 @@ import os
 import matplotlib.font_manager as _fm
 import rasterio.plot
 from adjustText import adjust_text
+from affine import Affine
 from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
 
@@ -196,7 +197,8 @@ class MapBuilder:
         return fig, (ax0, ax1), plot_size
 
     def _build_figure(self, data, crs, ax1, xlim, ylim, file):
-        build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim, transform=file.transform,
+        build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim,
+                     transform=file.transform,
                      states_border_color=self.styles.get('states_border'),
                      region_border_color=self.styles.get('regions_border'),
                      water_shp_file=self.water_shp_file,
