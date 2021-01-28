@@ -48,7 +48,7 @@ def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=Tr
         raise InvalidData('Band-файлы не найдены')
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
 
-    crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC)
+    crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC, morph_from_esri_dialect=True)
 
     geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     height, width = geoloc_file.out_image_shape

@@ -24,7 +24,7 @@ def is_nodata(v):
 
 
 # Проекция по умолчанию
-PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
+PROJ_LCC = '''PROJCS["WGS_1984_Lambert_Conformal_Conic",
      GEOGCS["GCS_WGS_1984",
          DATUM["WGS_1984",
              SPHEROID["WGS_84",6378137.0,298.252223563]
@@ -35,11 +35,11 @@ PROJ_LCC = '''PROJCS["Lambert_Conformal_Conic",
      PROJECTION["Lambert_Conformal_Conic_2SP"],
      PARAMETER["False_Easting",0.0],
      PARAMETER["False_Northing",0.0],
-     PARAMETER["Central_Meridian",80],
-     PARAMETER["Standard_Parallel_1",67.41206675],
-     PARAMETER["Standard_Parallel_2",43.58046825],
-     PARAMETER["Scale_Factor",1],
+     PARAMETER["Standard_Parallel_1",43.58046825],
+     PARAMETER["Standard_Parallel_2",67.41206675],
      PARAMETER["Latitude_Of_Origin",55.4962675],
+     PARAMETER["Longitude_Of_Origin",79.950619],
+     PARAMETER["Scale_Factor",1],
      UNIT["Meter",1.0]
 ]'''
 
