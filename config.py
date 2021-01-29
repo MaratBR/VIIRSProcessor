@@ -24,7 +24,7 @@ INPUTS = {
     'data': '/media/marat/Quack/Projects/GDAL_Data/NPP/'
 }
 
-FONT_FAMILY = '/home/marat/Downloads/Agro/Font/times.ttf'
+FONT_FAMILY = __resource('times.ttf')
 
 # дополнительный точки на карте (Томск уже есть по-умолчанию и показан просто как пример)
 # MAP_POINTS = [
