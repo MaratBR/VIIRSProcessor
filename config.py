@@ -1,9 +1,10 @@
 import os
+from gdal_viirs.config import req_resource_path as __resource_path
 __BASE_DIR = os.path.dirname(__file__)
 
 
-def __resource(path):
-    return os.path.join(__BASE_DIR, 'required_resources', path)
+def __resource(res):
+    return str(__resource_path(res))
 
 
 # по умолчанию 1000

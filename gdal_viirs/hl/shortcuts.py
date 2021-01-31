@@ -5,7 +5,7 @@ import sys
 
 import loguru
 
-from gdal_viirs._config import ConfigWrapper
+from gdal_viirs.config import ConfigWrapper
 from gdal_viirs.hl import _default_config, NPPProcessor
 
 

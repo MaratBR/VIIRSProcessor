@@ -7,9 +7,9 @@ from affine import Affine
 from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
 
-from gdal_viirs._config import CONFIG
+from gdal_viirs.config import CONFIG
 from gdal_viirs.hl import points
-from gdal_viirs.maps import _downloads
+from gdal_viirs.maps import utils
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
@@ -61,13 +61,13 @@ def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: T
                  norm=None, transform=None, states_border_color=None, region_border_color=None,
                  water_shp_file=None, gridlines_font_props=None):
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(6)).geometries(),
+        cartopy.io.shapereader.Reader(utils.get_russia_admin_shp(6)).geometries(),
         cartopy.crs.PlateCarree(),
         fc='none', ec=region_border_color or '#666666', linewidth=1
     )
 
     level_4_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader(_downloads.get_russia_admin_shp(4)).geometries(),
+        cartopy.io.shapereader.Reader(utils.get_russia_admin_shp(4)).geometries(),
         cartopy.crs.PlateCarree(),
         fc='none', ec=states_border_color or 'k', lw=2
     )

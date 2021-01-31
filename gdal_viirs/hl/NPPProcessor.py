@@ -8,7 +8,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from gdal_viirs._config import CONFIG, ConfigWrapper
+from gdal_viirs.config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException
 from gdal_viirs.maps import produce_image
 from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
@@ -154,33 +154,35 @@ class NPPProcessor:
         self._process_ndvi_files(fs, clouds_file, processed_gimgo)
 
         # обработка ndvi изображений за последние N (5 по-умолчанию) дней
-        merged, now, past_day = self._process_merged_ndvi_file_for_today()
+        merged = self._process_merged_ndvi_file_for_today()
+        if merged is None:
+            return
+        merged, now, past_day = merged
 
         ndvi_dir = self._ndvi_output / _todaystr()
-        if not self.persistence.has_processed('maps_ndvi', str(ndvi_dir), strict=True):
+        if not ndvi_dir.is_dir():
             _mkpath(ndvi_dir)
-            self._on_before_processing(str(ndvi_dir), 'ndvi_images')
-            ndvi_dir.mkdir(parents=True, exist_ok=True)
-            self._produce_ndvi_maps(merged, str(ndvi_dir),
-                                    date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
-            self.persistence.add_ndvi_map(str(ndvi_dir))
-            self._on_after_processing(str(ndvi_dir), 'ndvi')
+        self._on_before_processing(str(ndvi_dir), 'ndvi_images')
+        self._produce_ndvi_maps(merged, str(ndvi_dir),
+                                date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
+        self._on_after_processing(str(ndvi_dir), 'ndvi')
 
         # NDVI динамика
         ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
-        if not os.path.isdir(ndvi_dynamics_dir):
-            # создать tiff c ndvi динамикой, если его нет
-            ndvi_dynamics = self._process_ndvi_dynamics_for_today()
-            if ndvi_dynamics is None:
-                logger.warning('не удалось создать карты динамики развития посевов: недостаточно данных (композиты за последние 10 дней не найдены)')
-            else:
-                ndvi_dynamic_tiff, past_day, now = ndvi_dynamics
-                _mkpath(ndvi_dynamics_dir)
-                # создание карт динамики
-                self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-                self._produce_ndvi_dynamics_maps(ndvi_dynamic_tiff, str(ndvi_dynamics_dir),
-                                                 date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
-                self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
+        if not ndvi_dynamics_dir.is_dir():
+            _mkpath(ndvi_dynamics_dir)
+        # создать tiff c ndvi динамикой, если его нет
+        ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+        if ndvi_dynamics is None:
+            logger.warning('не удалось создать карты динамики развития посевов: недостаточно данных (композиты за последние 10 дней не найдены)')
+        else:
+            ndvi_dynamic_tiff, past_day, now = ndvi_dynamics
+            _mkpath(ndvi_dynamics_dir)
+            # создание карт динамики
+            self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
+            self._produce_ndvi_dynamics_maps(ndvi_dynamic_tiff, str(ndvi_dynamics_dir),
+                                             date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
+            self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
     def _process_ndvi_files(self, fs: _hlutil.NPPViirsFileset, clouds_file, gimgo_file):
         ndvi_file = self._fname(fs, 'NDVI')
@@ -254,11 +256,13 @@ class NPPProcessor:
         png_config = self._config.get("PNG_CONFIG")
         for index, png_entry in enumerate(png_config):
             name = png_entry['name']
+            filename = f'{name}.png'
+            filepath = os.path.join(output_directory, filename)
+            if os.path.isfile(filepath):
+                continue
             display_name = png_entry.get('display_name')
             xlim = png_entry.get('xlim')
             ylim = png_entry.get('ylim')
-            filename = f'{name}.png'
-            filepath = os.path.join(output_directory, filename)
             props = {
                 'bottom_subtitle': display_name,
                 'map_points': self._config.get('MAP_POINTS'),

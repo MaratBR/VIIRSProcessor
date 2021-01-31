@@ -52,16 +52,12 @@ class GDALViirsDB:
         _tbl_create('ndvi', [
             'dataset_timestamp INTEGER'
         ]),
-        _tbl_create('level1', [
-            'type VARCHAR(255)'
-        ]),
         _tbl_create('ndvi_dynamics', [
             'ds1_from INTEGER',
             'ds2_from INTEGER',
             'ds1_to INTEGER',
             'ds2_to INTEGER'
         ]),
-        _tbl_create('maps_ndvi'),
         _tbl_create('ndvi_composite', [
             'from_date CHAR(8)',
             'to_date CHAR(8)'
@@ -72,8 +68,13 @@ class GDALViirsDB:
         file_exists = os.path.isfile(file)
         self._db = sqlite3.connect(file)
         if not file_exists:
-            for stmt in self.INIT_EXEC:
-                self._db.execute(stmt)
+            self._init_db()
+
+    def _init_db(self):
+        for stmt in self.INIT_EXEC:
+            self._db.execute(stmt)
+        self._db.commit()
+        self.set_meta('ver', '1')
 
     def remove_processed(self, name, path):
         self._db.execute(f'DELETE FROM {_tbl_name(name)} WHERE output_path = ?', [path])
@@ -136,12 +137,6 @@ class GDALViirsDB:
                            ds2_from=int(ds2_timespan[0].timestamp()),
                            ds1_to=int(ds1_timespan[1].timestamp()),
                            ds2_to=int(ds2_timespan[1].timestamp()))
-
-    def add_ndvi_map(self, path):
-        self.add_processed('maps_ndvi', path)
-
-    def add_ndvi_dynamics_map(self, path):
-        self.add_processed('maps_ndvi_dynamics', path)
 
     def _find(self, name, where=None, select='*', params=None):
         if where is None:
