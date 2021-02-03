@@ -73,12 +73,12 @@ class NPPProcessor:
         self.scale = config['SCALE']
         self.png_config = config['PNG_CONFIG']
         self._config = config
-
+        
     def process_recent(self):
         directories = glob(os.path.join(self._data_dir, '*'))
+        directories = list(filter(os.path.isdir, directories))
+        logger.debug(f'Найдено {len(directories)} папок с данными')
         for d in directories:
-            if not os.path.isdir(d):
-                continue
             try:
                 logger.debug(f'проверка папки {d} ...')
                 self._process_directory(d)
