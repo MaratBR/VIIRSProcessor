@@ -108,6 +108,7 @@ class NPPProcessor:
 
     def _process_directory(self, d):
         filesets = _hlutil.find_npp_viirs_filesets(d)
+        logger.debug(f'найдено {len(filesets)} в папке {d}')
 
         for fs in filesets:
             # обработка данных с level1
