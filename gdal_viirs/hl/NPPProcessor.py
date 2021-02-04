@@ -72,12 +72,12 @@ class NPPProcessor:
 
         self.png_config = config['PNG_CONFIG']
         self._config = config
-
+        
     def process_recent(self):
         directories = glob(os.path.join(self._data_dir, '*'))
+        directories = list(filter(os.path.isdir, directories))
+        logger.debug(f'Найдено {len(directories)} папок с данными')
         for d in directories:
-            if not os.path.isdir(d):
-                continue
             try:
                 logger.debug(f'проверка папки {d} ...')
                 self._process_directory(d)
@@ -117,6 +117,7 @@ class NPPProcessor:
 
     def _process_directory(self, d):
         filesets = _hlutil.find_npp_viirs_filesets(d)
+        logger.debug(f'найдено {len(filesets)} в папке {d}')
 
         for fs in filesets:
             # обработка данных с level1
