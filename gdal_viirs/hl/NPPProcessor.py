@@ -198,7 +198,7 @@ class NPPProcessor:
         if not self.persistence.has_processed('ndvi', ndvi_file, strict=True):
             if os.path.isfile(gimgo_file):
                 self._on_before_processing(ndvi_file, 'ndvi')
-                _process.process_ndvi(gimgo_file, ndvi_file) # clouds_file
+                _process.process_ndvi(gimgo_file, ndvi_file, clouds_file)
                 self.persistence.add_ndvi(ndvi_file, fs.geoloc_file.date)
                 self._on_after_processing(ndvi_file, 'ndvi')
                 return ndvi_file

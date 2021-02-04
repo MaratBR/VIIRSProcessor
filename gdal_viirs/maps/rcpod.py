@@ -175,7 +175,7 @@ class RCPODMapBuilder(MapBuilder):
         inches_per_segment = units_per_segment * inches_per_unit_x
 
         y = self.outer_size[2] - self.margin * 1.5 - self.map_mark_thickness
-        km_width = _drawings.draw_text('км', (self.outer_size[1], y + self.map_mark_thickness / 2), ax,
+        km_width = _drawings.draw_text(unit, (self.outer_size[1], y + self.map_mark_thickness / 2), ax,
                                        origin=_drawings.BOTTOM_RIGHT, fontproperties=fontprops,
                                        align=_drawings.Alignment(hor=_drawings.RIGHT, ver=_drawings.VCENTER))[0]
 
