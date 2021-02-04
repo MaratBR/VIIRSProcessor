@@ -70,7 +70,6 @@ class NPPProcessor:
         self._ndvi_dynamics_output = _mkpath(config.get_output('ndvi_dynamics'))
         self._data_dir = _mkpath(config.get_input('data'))
 
-        self.scale = config['SCALE']
         self.png_config = config['PNG_CONFIG']
         self._config = config
 
@@ -87,6 +86,16 @@ class NPPProcessor:
 
     def reset(self):
         self.persistence.reset()
+
+    # region scale
+
+    def _get_scale(self, band):
+        scale = self._config.get(f'SCALE_BAND_{band}')
+        if scale is None:
+            raise ValueError(f'масштаб для канала {band} не найден')
+        return scale
+
+    # endregion
 
     # region вспомогательные функции
 
@@ -115,7 +124,7 @@ class NPPProcessor:
             if not os.path.exists(l1_output_file):
                 self._on_before_processing(l1_output_file, fs.geoloc_file.file_type)
                 try:
-                    _process.process_fileset(fs, l1_output_file, self.scale)
+                    _process.process_fileset(fs, l1_output_file, self._get_scale(fs.geoloc_file.band))
                 except Exception as exc:
                     self._on_exception(exc)
                     raise
@@ -148,7 +157,7 @@ class NPPProcessor:
 
             # перепроецируем маску облачности
             # все ошибки передаются в обработчик вызывающей функции
-            _process.process_cloud_mask(l2_input_file[0], clouds_file, scale=self.scale)
+            _process.process_cloud_mask(l2_input_file[0], clouds_file, scale=self._get_scale('I'))
 
         # обработка NDVI
         self._process_ndvi_files(fs, clouds_file, processed_gimgo)

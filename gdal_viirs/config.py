@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 
 CONFIG = {
-    'SCALE': 1000,
+    'SCALE_BAND_I': 375,
+    'SCALE_BAND_M': 750,
+    'SCALE_BAND_DN': 750,
     'CONFIG_DIR': os.path.expanduser('./viirs_processor_cfg')
 }
 

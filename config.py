@@ -7,8 +7,6 @@ def __resource(res):
     return str(__resource_path(res))
 
 
-# по умолчанию 1000
-SCALE = 375
 LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
