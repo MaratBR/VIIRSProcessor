@@ -4,7 +4,22 @@ __BASE_DIR = os.path.dirname(__file__)
 
 
 def __resource(res):
+    """
+    Возвращает путь до ресурса, который находится в папке ресурсов (required_resources)
+    :param res:
+    :return:
+    """
     return str(__resource_path(res))
+
+# сколько дней приходит на один композит NDVI
+# например, если поставить 3 дня то прога будет каждый день
+# делать композит за последние 3 дня
+# NDVI_MERGE_PERIOD_IN_DAYS = 5
+
+# сколько дней должно пройти между началом одного композита и концом другого
+# значение по умолчанию в 2 раза больше, чем NDVI_MERGE_PERIOD_IN_DAYS, поэтому
+# менять это значение лучше не стоит
+# NDVI_DYNAMICS_PERIOD = NDVI_MERGE_PERIOD_IN_DAYS * 2
 
 
 LOGO_PATH = __resource('logo.png')
@@ -12,7 +27,6 @@ ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
 
 # входые данные и папка с выходными
-
 OUTPUTS = {
     'ndvi': '~/Documents/viirs/processed/products/ndvi',
     'ndvi_dynamics': '~/Documents/viirs/processed/products/ndvi_dynamics',
@@ -25,11 +39,6 @@ INPUTS = {
 
 FONT_FAMILY = __resource('times.ttf')
 
-# дополнительный точки на карте (Томск уже есть по-умолчанию и показан просто как пример)
-# MAP_POINTS = [
-#     (84.948197, 56.484680, 'Томск')
-# ]
-
 # папка с БД файлом
 # CONFIG_DIR = ''
 
@@ -37,6 +46,7 @@ FONT_FAMILY = __resource('times.ttf')
 # name - уникальный идентификатор изображения
 # display_name - имя, которое будет размещено на изображении
 # xlim и ylim - массив с 2 элементами (предел по X и Y в проекции)
+# points - точки, которые надо отметить на карте и их координаты (см. пример ниже)
 PNG_CONFIG = [
     {
         'name': 'region',

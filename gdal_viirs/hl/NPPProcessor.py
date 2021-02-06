@@ -232,12 +232,16 @@ class NPPProcessor:
 
     def _process_ndvi_dynamics_for_today(self):
         now = datetime.now().date()
-        past_10days = now - timedelta(days=10)
+        ndvi_dynamics_period_in_days = self._config.get(
+            'NDVI_DYNAMICS_PERIOD',
+            self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5) * 2
+        )
+        past_10days = now - timedelta(days=ndvi_dynamics_period_in_days)
         b2 = self.persistence.find_composite(ends_at=now)
         b1 = self.persistence.find_composite(starts_at=past_10days)
 
         if b1 is None:
-            logger.warning(f'не удалось найти композит начинающийся с {past_10days} (b2)')
+            logger.warning(f'не удалось найти композит начинающийся с {past_10days} (b1)')
             return None
         if b2 is None:
             logger.error('не удалось найти композит, сделанный сегодня (b2)')
