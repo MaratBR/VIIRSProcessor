@@ -344,7 +344,7 @@ PNG_CONFIG = [
         'ylim': (-204762.969680975, -122437.352197025),
         'mask_shapefile': __resource('maps/Novosibirsk/krasnoz/krasnoz_nso_agro.shp'),
         'points': (
-            (55.299542, 79.685893, 'Убинское'),
+            (53.983815, 79.238604, 'Краснозерское'),
         )
     },
     {
