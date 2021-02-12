@@ -21,6 +21,16 @@ def __resource(res):
 # менять это значение лучше не стоит
 # NDVI_DYNAMICS_PERIOD = NDVI_MERGE_PERIOD_IN_DAYS * 2
 
+# Если True будет генерировать проекцию с облачностью,
+# даже если она уже сгенерирована
+# FORCE_CLOUD_MASK_PROCESSING = False
+
+# TODO описание FORCE_NDVI_DYNAMICS_PROCESSING
+# FORCE_NDVI_DYNAMICS_PROCESSING = True
+
+# число на которуе будет умножен масштаб при подсчете
+# SCALE_MULTIPLIER = 1
+
 
 LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')

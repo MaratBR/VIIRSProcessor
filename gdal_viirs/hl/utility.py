@@ -19,13 +19,20 @@ class NPPViirsFileset(ViirsFileset):
         return self.geoloc_file.path_obj.parent.parent.parent
 
 
+def extract_swath_id(dirname):
+    match = re.match(r'^[a-zA-Z]+_(\d+)_.*', dirname)
+    if match:
+        return match.group(1)
+    return None
+
+
 def find_npp_viirs_filesets(root_dir, **kwargs) -> List[NPPViirsFileset]:
     filesets = []
     for fs in find_sdr_viirs_filesets(os.path.join(root_dir, 'viirs/level1'), **kwargs).values():
         dirname = fs.geoloc_file.path_obj.parts[-4]
-        match = re.match(r'^[a-zA-Z]+_(\d+)_.*', dirname)
-        if match:
-            fs = NPPViirsFileset(**asdict(fs), swath_id=match.group(1))
+        swath_id = extract_swath_id(dirname)
+        if swath_id is not None:
+            fs = NPPViirsFileset(**asdict(fs), swath_id=swath_id)
             filesets.append(fs)
         else:
             logger.warning(f'Папка {dirname} не сооответствует шаблону и не начинается на ЧТОТО_12345_... (где 12345 - '

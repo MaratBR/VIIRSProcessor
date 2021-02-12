@@ -1,11 +1,10 @@
-import inspect
-import math
 import os
-import time
 from datetime import datetime, timedelta
 from glob import glob
 from pathlib import Path
+from typing import List
 
+import peewee
 from loguru import logger
 
 from gdal_viirs.config import CONFIG, ConfigWrapper
@@ -14,9 +13,9 @@ from gdal_viirs.maps import produce_image
 from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
 from gdal_viirs.merge import merge_files2tiff
 from gdal_viirs.persistence.db import GDALViirsDB
-from gdal_viirs import process as _process, utility as _utility
+from gdal_viirs.persistence.models import *
+from gdal_viirs import process as _process
 import gdal_viirs.hl.utility as _hlutil
-from gdal_viirs.types import ViirsFileset
 
 
 def _validate_png_config(png_config):
@@ -39,11 +38,31 @@ def _validate_png_config(png_config):
 
         for k in ('xlim', 'ylim'):
             if 'name' not in entry or not isinstance(entry[k], (tuple, list)) or len(entry[k]) != 2:
-                raise TypeError(f'обязательный параметр png_config[{i}]["{k}"] не является списком или кортежом с длинной 2')
+                raise TypeError(
+                    f'обязательный параметр png_config[{i}]["{k}"] не является списком или кортежом с длинной 2')
+
+
+def _check_config_values(config):
+    if config['SCALE_BAND_I'] != CONFIG['SCALE_BAND_I']:
+        logger.warning(f'SCALE_BAND_I = {config["SCALE_BAND_I"]}')
+    if config['SCALE_BAND_M'] != CONFIG['SCALE_BAND_M']:
+        logger.warning(f'SCALE_BAND_M = {config["SCALE_BAND_M"]}')
+    if config['SCALE_BAND_I'] != CONFIG['SCALE_BAND_I']:
+        logger.warning(f'SCALE_BAND_DN = {config["SCALE_BAND_DN"]}')
+
+    if 'SCALE_MULTIPLIER' in config:
+        if config['SCALE_MULTIPLIER'] < 1:
+            logger.warning('коэфициент масштаба (SCALE_MULTIPLIER в конфигурации) меньше 1 и будет проигнорирован')
+        elif config['SCALE_MULTIPLIER'] > 1:
+            multiplier = config['SCALE_MULTIPLIER']
+            logger.warning(f'коэфициент масштаба установлен {multiplier}, масштаб будет '
+                           f'{config["SCALE_BAND_I"] * multiplier}, {config["SCALE_BAND_M"] * multiplier}, '
+                           f'{config["SCALE_BAND_DN"] * multiplier} для I, M и DN каналов соответственно')
 
 
 def _validate_config(config):
     _validate_png_config(config['PNG_CONFIG'])
+    _check_config_values(config)
 
 
 def _mkpath(p):
@@ -58,7 +77,6 @@ def _todaystr():
 class NPPProcessor:
     def __init__(self, config):
         logger.debug(f'config={config}')
-
         config = ConfigWrapper(CONFIG, config)
         _validate_config(config)
         config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
@@ -72,32 +90,35 @@ class NPPProcessor:
 
         self.png_config = config['PNG_CONFIG']
         self._config = config
-        
-    def process_recent(self):
+
+        # db
+        self._db = peewee.SqliteDatabase(str(config_dir / 'viirs_processor.db'))
+        db_proxy.initialize(self._db)
+        self._db.create_tables(PEEWEE_MODELS)
+
+    def _find_viirs_directories(self):
         directories = glob(os.path.join(self._data_dir, '*'))
         directories = list(filter(os.path.isdir, directories))
         logger.debug(f'Найдено {len(directories)} папок с данными')
-        for d in directories:
+        return directories
+
+    def process_recent(self):
+        for d in self._find_viirs_directories():
             try:
                 logger.debug(f'проверка папки {d} ...')
                 self._process_directory(d)
             except ProcessingException as e:
                 logger.exception(e)
 
-    def reset(self):
-        self.persistence.reset()
-
-    # region scale
+    # region вспомогательные функции
 
     def _get_scale(self, band):
         scale = self._config.get(f'SCALE_BAND_{band}')
         if scale is None:
             raise ValueError(f'масштаб для канала {band} не найден')
+        if 'SCALE_MULTIPLIER' in self._config:
+            scale *= max(1, self._config['SCALE_MULTIPLIER'])
         return scale
-
-    # endregion
-
-    # region вспомогательные функции
 
     def _fname(self, fs: _hlutil.NPPViirsFileset, kind, ext='tiff'):
         dir_path = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id)
@@ -115,21 +136,34 @@ class NPPProcessor:
 
     # endregion
 
-    def _process_directory(self, d):
-        filesets = _hlutil.find_npp_viirs_filesets(d)
-        logger.debug(f'найдено {len(filesets)} в папке {d}')
+    def _process_directory(self, input_directory):
+        filesets = _hlutil.find_npp_viirs_filesets(input_directory)
+        if len(filesets) == 0:
+            logger.warning(f'не найдено ни одного датасета в папке {input_directory}')
+        logger.debug(f'найдено {len(filesets)} в папке {input_directory}')
 
         for fs in filesets:
             # обработка данных с level1
-            l1_output_file = self._fname(fs, fs.geoloc_file.file_type_out)
-            if not os.path.exists(l1_output_file):
-                self._on_before_processing(l1_output_file, fs.geoloc_file.file_type)
+            l1_output_file = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id) \
+                             / f'{fs.root_dir.parts[-1]}'
+            if not l1_output_file.is_file():
+                self._on_before_processing(str(l1_output_file), fs.geoloc_file.file_type)
                 try:
-                    _process.process_fileset(fs, l1_output_file, self._get_scale(fs.geoloc_file.band))
+                    _process.process_fileset(fs, str(l1_output_file), self._get_scale(fs.geoloc_file.band))
                 except Exception as exc:
                     self._on_exception(exc)
                     raise
-                self._on_after_processing(l1_output_file, fs.geoloc_file.file_type)
+
+                self._on_after_processing(str(l1_output_file), fs.geoloc_file.file_type)
+
+            processed: ProcessedViirsL1 = ProcessedViirsL1.get_or_none(ProcessedViirsL1.output_file == l1_output_file)
+            if processed is None:
+                # сохранить данные в БД
+                processed = ProcessedViirsL1(l1_output_file, fs.geoloc_file.date,
+                                             geoloc_filename=fs.geoloc_file.path_obj.parts[-1],
+                                             type=fs.geoloc_file.file_type,
+                                             input_directory=input_directory)
+                processed.save(True)
 
             handler_name = f'_process__{fs.geoloc_file.file_type.lower()}'
             if hasattr(self, handler_name):
@@ -137,75 +171,98 @@ class NPPProcessor:
                 fn = getattr(self, handler_name)
                 if hasattr(fn, '__call__'):
                     try:
-                        fn(fs, l1_output_file)
+                        fn(processed)
                     except Exception as exc:
                         self._on_exception(exc)
                         raise
                 else:
                     raise TypeError(f'обработчик {handler_name} найден, но не является функцией')
 
-    def _process__gimgo(self, fs: _hlutil.NPPViirsFileset, processed_gimgo):
-        root_dir = str(fs.root_dir)
-        l2_input_file = glob(os.path.join(root_dir, 'viirs/level2/*CLOUDMASK.tif'))
-        clouds_file = self._fname(fs, 'PROJECTED_CLOUDMASK')
+    def _process__gimgo(self, processed: ProcessedViirsL1):
+        clouds_file = self._process_cloud_mask(processed)
+        # обработка NDVI
+        self._process_ndvi_files(processed, clouds_file)
+        # обработка ndvi изображений за последние N (5 по-умолчанию) дней
+        self._process_merged_ndvi_file_for_today()
+        self._process_ndvi_dynamics_for_today()
 
-        if not os.path.isfile(clouds_file):
+    def _produce_maps(self):
+        self._produce_ndvi_dynamics_maps()
+
+    def _produce_ndvi_dynamics_maps(self, day=None):
+        if self._config.get('UPDATE_DYNAMICS_WHEN_MAKING_MAPS', False):
+            day = day or datetime.now().date()
+            ndvi_dynamics = NDVIDynamicsTiff.select() \
+                .join(NDVIComposite, on=(NDVIComposite.id == NDVIDynamicsTiff.b2_composite))\
+                .where(NDVIComposite.ends_at == day)
+            ndvi_dynamics = list(ndvi_dynamics)
+            if len(ndvi_dynamics):
+                logger.warning('не удалось найти не одной записи о NDVI динамики, которая бы заканчивалась'
+                               f' {day}, не могу создать карты динамики NDVI')
+                return
+        ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+        ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
+        _mkpath(ndvi_dynamics_dir)
+        # создание карт динамики
+        self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
+        date_text = ndvi_dynamics.b1_composite.starts_at.strftime('%d.%m - ') + ndvi_dynamics.b1_composite.ends_at.strftime('%d.%m.%Y')
+        self._produce_images(ndvi_dynamics.output_file, str(ndvi_dynamics_dir),
+                             date_text=date_text, builder=NDVIDynamicsMapBuilder)
+
+        self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
+
+    # region ndvi / ndvi dynamics
+
+    def _process_cloud_mask(self, processed: ProcessedViirsL1):
+        level2_folder = os.path.join(processed.input_directory, 'viirs/level2')
+        l2_input_file = glob(os.path.join(level2_folder, '*CLOUDMASK.tif'))
+        clouds_file = _mkpath(self._processed_output / _todaystr()) / f'{processed.directory_name}.PROJECTED_CLOUDMASK.tiff'
+
+        if not os.path.isfile(clouds_file) or self._config.get('FORCE_CLOUD_MASK_PROCESSING', False):
             if len(l2_input_file) == 0:
                 # если маска облачности еще не была посчитана для level2
                 # мы не будем ничего делать и обработаем все потом
-                logger.info(f'папка {root_dir} не содержит маски облачности в level2, дальнейшая обработка отложена до следующего запуска')
+                logger.info(
+                    f'папка {processed.input_directory} не содержит маски облачности в level2, дальнейшая обработка отложена до следующего запуска')
                 return
 
             # перепроецируем маску облачности
             # все ошибки передаются в обработчик вызывающей функции
             _process.process_cloud_mask(l2_input_file[0], clouds_file, scale=self._get_scale('I'))
 
-        # обработка NDVI
-        self._process_ndvi_files(fs, clouds_file, processed_gimgo)
+        return clouds_file
 
-        # обработка ndvi изображений за последние N (5 по-умолчанию) дней
-        merged = self._process_merged_ndvi_file_for_today()
-        if merged is None:
-            return
-        merged, now, past_day = merged
+    def _process_ndvi_files(self, based_on: ProcessedViirsL1, clouds_file):
+        assert based_on.type == 'GIMGO'
+        ndvi_file = _mkpath(
+            self._processed_output / based_on.dataset_date.strftime('%Y%m%d') / based_on.swath_id
+        ) / f'{based_on.directory_name}.NDVI.tiff'
 
-        ndvi_dir = self._ndvi_output / _todaystr()
-        if not ndvi_dir.is_dir():
-            _mkpath(ndvi_dir)
-        self._on_before_processing(str(ndvi_dir), 'ndvi_images')
-        self._produce_ndvi_maps(merged, str(ndvi_dir),
-                                date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
-        self._on_after_processing(str(ndvi_dir), 'ndvi')
+        ndvi_record: NDVITiff = NDVITiff.get_or_none(NDVITiff.based_on == based_on)
 
-        # NDVI динамика
-        ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
-        if not ndvi_dynamics_dir.is_dir():
-            _mkpath(ndvi_dynamics_dir)
-        # создать tiff c ndvi динамикой, если его нет
-        ndvi_dynamics = self._process_ndvi_dynamics_for_today()
-        if ndvi_dynamics is None:
-            logger.warning('не удалось создать карты динамики развития посевов: недостаточно данных (композиты за последние 10 дней не найдены)')
-        else:
-            ndvi_dynamic_tiff, past_day, now = ndvi_dynamics
-            _mkpath(ndvi_dynamics_dir)
-            # создание карт динамики
-            self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-            self._produce_ndvi_dynamics_maps(ndvi_dynamic_tiff, str(ndvi_dynamics_dir),
-                                             date_text=now.strftime('%d.%m - ') + past_day.strftime('%d.%m.%Y'))
-            self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-
-    def _process_ndvi_files(self, fs: _hlutil.NPPViirsFileset, clouds_file, gimgo_file):
-        ndvi_file = self._fname(fs, 'NDVI')
-        if not self.persistence.has_processed('ndvi', ndvi_file, strict=True):
-            if os.path.isfile(gimgo_file):
+        if not os.path.isfile(ndvi_file):
+            if os.path.isfile(based_on.output_file):
                 self._on_before_processing(ndvi_file, 'ndvi')
-                _process.process_ndvi(gimgo_file, ndvi_file, clouds_file)
-                self.persistence.add_ndvi(ndvi_file, fs.geoloc_file.date)
+                _process.process_ndvi(based_on.output_file, ndvi_file, clouds_file)
+
+                # сохраняем запись с БД
+                tiff_record = NDVITiff(ndvi_file, based_on.dataset_date)
+                tiff_record.based_on = based_on
+                tiff_record.save(True)
                 self._on_after_processing(ndvi_file, 'ndvi')
                 return ndvi_file
             else:
-                logger.warning(f'не удалось найти файл {gimgo_file}, не могу обработать NDVI')
-                raise ProcessingException(f'Файл GIMGO {gimgo_file} не найден')
+                logger.warning(f'не удалось найти файл {based_on.output_file}, не могу обработать NDVI')
+                raise ProcessingException(f'Файл GIMGO {based_on.output_file} не найден')
+
+        if ndvi_record is None:
+            ndvi_record = NDVITiff(ndvi_file, based_on=based_on)
+            ndvi_record.save(True)
+        elif ndvi_record.output_file != ndvi_file:
+            ndvi_record.update({
+                NDVITiff.output_file: ndvi_file
+            })
+        return ndvi_record
 
     def _process_merged_ndvi_file_for_today(self):
         ndvi_rasters_bound_in_days = self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5)
@@ -215,18 +272,24 @@ class NPPProcessor:
         merged_ndvi_filename = 'merged_ndvi_' + now.strftime('%Y%m%d') + '_' + past_day.strftime('%Y%m%d') + '.tiff'
         output_file = _mkpath(self._processed_output / _todaystr() / 'daily') / merged_ndvi_filename
 
-        if not self.persistence.has_processed('ndvi_composite', output_file, strict=True):
-            ndvi_rasters = self.persistence.find_ndvi(past_day)
-            if len(ndvi_rasters) == 0:
+        if not os.path.isfile(merged_ndvi_filename):
+            ndvi_records = NDVITiff.select()\
+                .join(ProcessedViirsL1)\
+                .where((ProcessedViirsL1.dataset_date <= now) & (ProcessedViirsL1.dataset_date >= past_day))
+            ndvi_records: List[NDVITiff] = list(ndvi_records)
+
+            if len(ndvi_records) == 0:
                 logger.warning('не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
                 return None
-            for raster in ndvi_rasters:
-                if not os.path.isfile(raster):
+            for raster in ndvi_records:
+                if not os.path.isfile(raster.output_file):
                     logger.error(f'файл {raster} не найден, обнаружено несоотсветсвие БД')
-            ndvi_rasters = list(filter(os.path.isfile, ndvi_rasters))
+            ndvi_rasters = list(filter(lambda r: os.path.isfile(r.output_file), ndvi_records))
+            ndvi_rasters = list(map(lambda r: r.output_file, ndvi_rasters))
             self._on_before_processing(output_file, 'merged_ndvi')
             merge_files2tiff(ndvi_rasters, output_file, method='max')
-            self.persistence.add_ndvi_composite(output_file, past_day.date(), now.date())
+            composite = NDVIComposite(output_file, starts_at=past_day, ends_at=now)
+            composite.save(True)
             self._on_after_processing(output_file, 'merged_ndvi')
         return output_file, now, past_day
 
@@ -236,15 +299,15 @@ class NPPProcessor:
             'NDVI_DYNAMICS_PERIOD',
             self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5) * 2
         )
-        past_10days = now - timedelta(days=ndvi_dynamics_period_in_days)
-        b2 = self.persistence.find_composite(ends_at=now)
-        b1 = self.persistence.find_composite(starts_at=past_10days)
+        past_days = now - timedelta(days=ndvi_dynamics_period_in_days)
+        b2: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.ends_at == now)
+        b1: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.starts_at == past_days)
 
         if b1 is None:
-            logger.warning(f'не удалось найти композит начинающийся с {past_10days} (b1)')
+            logger.warning(f'не удалось найти композит начинающийся с {past_days} (b1)')
             return None
         if b2 is None:
-            logger.error('не удалось найти композит, сделанный сегодня (b2)')
+            logger.error(f'не удалось найти композит, сделанный сегодня (b2, now={now})')
             return None
 
         filename = ''.join((
@@ -254,14 +317,27 @@ class NPPProcessor:
         ))
         dynamics_tiff_output = _mkpath(self._processed_output / 'daily') / filename
 
-        if not dynamics_tiff_output.is_file():
+        if not dynamics_tiff_output.is_file() or self._config.get('FORCE_NDVI_DYNAMICS_PROCESSING', True):
             self._on_before_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
-            _process.process_ndvi_dynamics(b1, b2, str(dynamics_tiff_output))
+            _process.process_ndvi_dynamics(b1.output_file, b2.output_file, str(dynamics_tiff_output))
             self._on_after_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
-        return str(dynamics_tiff_output), past_10days, now
 
-    def _produce_ndvi_dynamics_maps(self, ndvi_dynamics_input: str, output_dir: str, date_text=None):
-        self._produce_images(ndvi_dynamics_input, output_dir, date_text, builder=NDVIDynamicsMapBuilder)
+        record: NDVIDynamicsTiff = NDVIDynamicsTiff.get_or_none((NDVIDynamicsTiff.b1_composite == b1) & (NDVIDynamicsTiff.b2_composite == b2))
+        if record is None:
+            record = NDVIDynamicsTiff(dynamics_tiff_output)
+            record.b1_composite = b1
+            record.b2_composite = b2
+            record.save(True)
+        elif record.output_file != dynamics_tiff_output:
+            record.update({
+                NDVIDynamicsTiff.output_file: dynamics_tiff_output
+            })
+
+        return record
+
+    # endregion
+
+    # region maps
 
     def _produce_ndvi_maps(self, merged_ndvi: str, png_dir: str, date_text=None):
         self._produce_images(merged_ndvi, png_dir, date_text)
@@ -301,8 +377,4 @@ class NPPProcessor:
                           iso_sign_path=self._config['ISO_QUALITY_SIGN'],
                           shp_mask_file=shapefile, **props)
 
-
-
-
-
-
+    # endregion

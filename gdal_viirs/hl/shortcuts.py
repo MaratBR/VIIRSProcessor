@@ -6,7 +6,7 @@ import sys
 import loguru
 
 from gdal_viirs.config import ConfigWrapper
-from gdal_viirs.hl import _default_config, NPPProcessor
+from gdal_viirs.hl import NPPProcessor
 
 
 def _set_debug_off():
@@ -14,7 +14,7 @@ def _set_debug_off():
     loguru.logger.add(sys.stdout, colorize=True, level='INFO')
 
 
-def create_npp_processor(config=_default_config):
+def create_npp_processor(config):
     if isinstance(config, str):
         config = importlib.import_module(config)
     config = ConfigWrapper(config)
@@ -26,5 +26,5 @@ def create_npp_processor(config=_default_config):
     return processor
 
 
-def process_recent(config=_default_config):
+def process_recent(config):
     create_npp_processor(config).process_recent()

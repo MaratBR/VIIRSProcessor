@@ -19,14 +19,14 @@ def _tbl_create(name, columns=None):
     columns = columns or ()
     if len(columns) == 0:
         return f'''
-            CREATE TABLE {_tbl_name(name)}(
+            CREATE TABLE {name}(
                 output_path VARCHAR(255) PRIMARY KEY,
                 created_at INTEGER
             );
             '''
     columns = ", \n".join(columns)
     return f'''
-    CREATE TABLE {_tbl_name(name)}(
+    CREATE TABLE {name}(
         output_path VARCHAR(255) PRIMARY KEY,
         created_at INTEGER,
         {columns}
@@ -49,19 +49,30 @@ class GDALViirsDB:
             value VARCHAR(60000)
         );
         ''',
-        _tbl_create('ndvi', [
+        _tbl_create('products_ndvi', [
             'dataset_timestamp INTEGER'
         ]),
-        _tbl_create('ndvi_dynamics', [
+        _tbl_create('products_ndvi_dynamics', [
             'ds1_from INTEGER',
             'ds2_from INTEGER',
             'ds1_to INTEGER',
             'ds2_to INTEGER'
         ]),
-        _tbl_create('ndvi_composite', [
+        _tbl_create('products_ndvi_composite', [
             'from_date CHAR(8)',
             'to_date CHAR(8)'
         ])
+    ]
+
+    _MIGRATIONS = [
+        [
+            _tbl_create('processed_viirs_tiffs', [
+                'record_type VARCHAR(30)',
+                'timestamp INTEGER',
+                'date_str CHAR(6)',
+                'geoloc_file_path VARCHAR(255)'
+            ])
+        ]
     ]
 
     def __init__(self, file: str):
@@ -69,6 +80,7 @@ class GDALViirsDB:
         self._db = sqlite3.connect(file)
         if not file_exists:
             self._init_db()
+        self._migrate()
 
     def _init_db(self):
         for stmt in self.INIT_EXEC:
@@ -76,19 +88,22 @@ class GDALViirsDB:
         self._db.commit()
         self.set_meta('ver', '1')
 
-    def remove_processed(self, name, path):
-        self._db.execute(f'DELETE FROM {_tbl_name(name)} WHERE output_path = ?', [path])
-        try:
-            self._db.commit()
-        finally:
-            self._db.rollback()
+    def _migrate(self):
+        ver = int(self.get_meta('ver', '1'))
+        for migration_index in range(len(self._MIGRATIONS)):
+            if migration_index + 2 > ver:
+                logger.debug(f'миграция БД до версии {migration_index + 2} ...')
+                for stmt in self._MIGRATIONS[migration_index]:
+                    self._db.execute(stmt)
+                self._db.commit()
+        self.set_meta('ver', str(len(self._MIGRATIONS) + 1))
 
     def add_processed(self, name, path, **kwargs):
         path = str(path)
         now = int(datetime.now().timestamp())
         if len(kwargs) == 0:
             self._db.execute(
-                f'INSERT INTO {_tbl_name(name)} (output_path, created_at) VALUES (?, ?)', [path, now])
+                f'INSERT INTO {name} (output_path, created_at) VALUES (?, ?)', [path, now])
         else:
 
             items = list(kwargs.items())
@@ -119,12 +134,12 @@ class GDALViirsDB:
         self._db.commit()
 
     def add_ndvi_composite(self, path: str, from_date: date, to_date: date):
-        self.add_processed('ndvi_composite', path,
+        self.add_processed('products_ndvi_composite', path,
                            from_date=from_date.strftime('%Y%m%d'),
                            to_date=to_date.strftime('%Y%m%d'))
 
     def add_ndvi(self, path: str, dt: datetime):
-        self.add_processed('ndvi', path,
+        self.add_processed('products_ndvi', path,
                            dataset_timestamp=int(dt.timestamp()))
 
     def add_ndvi_dynamics(self, path: str,
@@ -132,11 +147,18 @@ class GDALViirsDB:
                           ds2_timespan: Tuple[datetime, datetime]):
         assert ds1_timespan[0] < ds1_timespan[1]
         assert ds2_timespan[0] < ds2_timespan[1]
-        self.add_processed('ndvi_dynamics', path,
+        self.add_processed('products_ndvi_dynamics', path,
                            ds1_from=int(ds1_timespan[0].timestamp()),
                            ds2_from=int(ds2_timespan[0].timestamp()),
                            ds1_to=int(ds1_timespan[1].timestamp()),
                            ds2_to=int(ds2_timespan[1].timestamp()))
+
+    def add_viirs_tiff(self, path: str, record_type: str, dt: datetime, geoloc_path: str):
+        self.add_processed('processed_viirs_tiffs', str(path),
+                           record_type=record_type,
+                           timestamp=dt.timestamp(),
+                           date_str=dt.strftime('%Y%m%d'),
+                           geoloc_file_path=geoloc_path)
 
     def _find(self, name, where=None, select='*', params=None):
         if where is None:
@@ -193,7 +215,3 @@ class GDALViirsDB:
             ''', [key, value])
         self._db.commit()
         logger.debug(f'{key} = {value}')
-
-    def reset(self):
-        self._db.execute('DELETE FROM processed')
-        self._db.commit()
