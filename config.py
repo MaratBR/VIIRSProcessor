@@ -14,7 +14,7 @@ def __resource(res):
 # сколько дней приходит на один композит NDVI
 # например, если поставить 3 дня то прога будет каждый день
 # делать композит за последние 3 дня
-# NDVI_MERGE_PERIOD_IN_DAYS = 5
+NDVI_MERGE_PERIOD_IN_DAYS = 40
 
 # сколько дней должно пройти между началом одного композита и концом другого
 # значение по умолчанию в 2 раза больше, чем NDVI_MERGE_PERIOD_IN_DAYS, поэтому
@@ -28,8 +28,11 @@ def __resource(res):
 # TODO описание FORCE_NDVI_DYNAMICS_PROCESSING
 # FORCE_NDVI_DYNAMICS_PROCESSING = True
 
+# FORCE_NDVI_COMPOSITE_PROCESSING = True
+
 # число на которуе будет умножен масштаб при подсчете
-# SCALE_MULTIPLIER = 1
+# не может быть меньше 1
+SCALE_MULTIPLIER = 9
 
 
 LOGO_PATH = __resource('logo.png')

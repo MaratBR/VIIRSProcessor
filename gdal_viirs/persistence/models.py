@@ -14,6 +14,8 @@ __all__ = (
     'PEEWEE_MODELS'
 )
 
+from peewee import ModelSelect
+
 from gdal_viirs.hl import utility
 
 db_proxy = Proxy()
@@ -64,14 +66,19 @@ class ProcessedViirsL1(DatasetRelatedFile):
             setattr(self, '_swath_id', utility.extract_swath_id(self.directory_name))
         return self._swath_id
 
+    @classmethod
+    def select_gimgo_without_ndvi(cls) -> ModelSelect:
+        sub = NDVITiff.select(SQL('1')).where(NDVITiff.based_on == cls.id)
+        return cls.select().where((cls.type == 'GIMGO') & ~fn.EXISTS(sub))
+
 
 class NDVITiff(ProcessedFile):
     based_on = ForeignKeyField(ProcessedViirsL1)
 
 
 class NDVIComposite(ProcessedFile):
-    starts_at = DateField()
-    ends_at = DateField()
+    starts_at: Union[DateField, datetime] = DateField()
+    ends_at: Union[DateField, datetime] = DateField()
 
 
 class NDVICompositeComponents(BaseModel):
