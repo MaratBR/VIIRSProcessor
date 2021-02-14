@@ -63,7 +63,7 @@ FONT_FAMILY = __resource('times.ttf')
 PNG_CONFIG = [
     {
         'name': 'region',
-        'display_name': None,
+        'display_name': 'Юг Западной Сибири',
         'xlim': (-613316.28569515, 602479.25968115),
         'ylim': (-545676.98683915, 338037.04381214996),
         'mask_shapefile': __resource('maps/Region/region_agro.shp'),
@@ -171,7 +171,7 @@ PNG_CONFIG = [
     },
     {
         'name': 'kolivan_nso',
-        'display_name': 'Коливанский район',
+        'display_name': 'Колыванский район ',
         'xlim': (139343.20705549998, 221942.46203650002),
         'ylim': (-34333.9072325, 50356.8942145),
         'mask_shapefile': __resource('maps/Novosibirsk/kolivan/kolivan_nso_agro.shp'),
@@ -187,7 +187,7 @@ PNG_CONFIG = [
         'ylim': (-19520.5197196, 77468.7255126),
         'mask_shapefile': __resource('maps/Novosibirsk/kuibichev/kuibichev_nso_agro.shp'),
         'points': (
-            (55.4475300, 78.3218100, 'Куйбышево'),
+            (55.4475300, 78.3218100, 'Куйбышев'),
         )
     },
     {
@@ -357,7 +357,7 @@ PNG_CONFIG = [
         'ylim': (-204762.969680975, -122437.352197025),
         'mask_shapefile': __resource('maps/Novosibirsk/krasnoz/krasnoz_nso_agro.shp'),
         'points': (
-            (53.983815, 79.238604, 'Краснозерское'),
+            (53.983815, 79.238604, 'Краснозёрское'),
         )
     },
     {
@@ -433,16 +433,16 @@ PNG_CONFIG = [
             (55.354968, 86.087314, 'Кемерово'),
             (56.209250, 87.735094, 'Мариинск'),
             (53.757547, 87.136044, 'Новокузнецк'),
-            (53.686596, 88.070372, 'Междуречинск'),
+            (53.686596, 88.070372, 'Междуреченск'),
             (54.663609, 86.162243, 'Ленинск-Кузнецкий'),
-            (56.078684, 86.020129, 'Анжеро-Суджинск'),
+            (56.078684, 86.020129, 'Анжеро-Судженск'),
         )
     },
     {
         'name': 'krasn',
         'display_name': 'Красноярский край',
-        'xlim': (528521.623824975, 1026909.0671050249),
-        'ylim': (-213767.708166025, 336838.83205302496),
+        'xlim': (-168000, 1460000),
+        'ylim': (-366000, 3020000),
         'mask_shapefile': __resource('maps/Krasnoyarsk/krasn_agro.shp'),
         'water_shapefile': __resource('maps/Krasnoyarsk/krasn_vodoem.shp'),
         'points': (
@@ -450,13 +450,13 @@ PNG_CONFIG = [
             (56.205060, 95.705109, 'Канск'),
             (56.205060, 95.705109, 'Канск'),
             (56.269496, 90.495231, 'Ачинск'),
-            (57.7004000, 93.2809000, 'Казаченское'),
+            (57.7004000, 93.2809000, 'Казачинское'),
 
         )
     },
     {
         'name': 'Kansk',
-        'display_name': 'Канский район',
+        'display_name': 'Канская группа районов Красноярского края',
         'xlim': (841592.3278167, 1019796.6924013),
         'ylim': (51904.5589087, 303791.3615713),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Kansk/Kansk_agro.shp'),
@@ -467,7 +467,7 @@ PNG_CONFIG = [
     },
     {
         'name': 'Krasn_Gr',
-        'display_name': 'Красноярская группа районов красноярского края',
+        'display_name': 'Красноярская группа районов Красноярского краяe ',
         'xlim': (648850.163683375, 873551.559537625),
         'ylim': (-39402.565349625, 313952.306378625),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Krasn_Gr/Krasn_Gr_agro.shp'),
@@ -478,7 +478,7 @@ PNG_CONFIG = [
     },
     {
         'name': 'Achinsk',
-        'display_name': 'Ачинский район',
+        'display_name': 'Ачинская группа районов Красноярского края',
         'xlim': (537325.0007644, 680040.9534535999),
         'ylim': (-14119.8061776, 166744.9025856),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Achinsk/Achinsk_agro.shp'),
@@ -489,7 +489,7 @@ PNG_CONFIG = [
     },
     {
         'name': 'Minusinsk',
-        'display_name': 'Минусинский район',
+        'display_name': 'Минусинская группа районов Красноярского края',
         'xlim': (712096.60938435, 864493.62974565),
         'ylim': (-205207.68312265002, -14122.19472535),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Minusinsk/Minusinsk_agro.shp'),

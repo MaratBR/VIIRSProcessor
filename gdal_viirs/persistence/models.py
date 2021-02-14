@@ -80,6 +80,10 @@ class NDVIComposite(ProcessedFile):
     starts_at: Union[DateField, datetime] = DateField()
     ends_at: Union[DateField, datetime] = DateField()
 
+    @property
+    def date_text(self):
+        return self.ends_at.strftime('%d.%m') + ' - ' + self.ends_at.strftime('%d.%m.%Y')
+
 
 class NDVICompositeComponents(BaseModel):
     composite = ForeignKeyField(NDVIComposite)

@@ -127,7 +127,7 @@ def _draw_text_as_image(text, size=None, **kwargs) -> Tuple[np.ndarray, Tuple[fl
     if va == 'center':
         y = .5
     elif va == 'top':
-        y = 1
+        y = .9999
 
     if ha == 'center':
         x = .5

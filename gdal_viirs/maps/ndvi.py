@@ -51,8 +51,8 @@ class NDVIMapBuilder(RCPODMapBuilder):
         del data
 
         return [
-            patches.Patch(color='red', label=f'Плохое ({round(1000 * bad_count / all_count) / 10}%)'),
-            patches.Patch(color='yellow', label=f'Удовлетворительное ({round(1000 * ok_count / all_count) / 10}%)'),
-            patches.Patch(color='greenyellow', label=f'Хорошое ({round(1000 * good_count / all_count) / 10}%)'),
-            patches.Patch(color='#aaa', label=f'Закрыто облаками ({round(1000 * clouds_count / all_count) / 10}%)'),
+            patches.Patch(color=NDVI_BAD, label=f'Плохое ({round(1000 * bad_count / all_count) / 10}%)'),
+            patches.Patch(color=NDVI_OK, label=f'Удовлетворительное ({round(1000 * ok_count / all_count) / 10}%)'),
+            patches.Patch(color=NDVI_GOOD, label=f'Хорошее ({round(1000 * good_count / all_count) / 10}%)'),
+            patches.Patch(color=NDVI_CLOUD, label=f'Закрытые облачностью посевы ({round(1000 * clouds_count / all_count) / 10}%)'),
         ]

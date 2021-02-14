@@ -111,6 +111,7 @@ class NPPProcessor:
                 logger.exception(e)
 
         self._produce_daily_products()
+        self._produce_maps()
 
     # region вспомогательные функции
 
@@ -205,17 +206,20 @@ class NPPProcessor:
                 .join(NDVIComposite, on=(NDVIComposite.id == NDVIDynamicsTiff.b2_composite))\
                 .where(NDVIComposite.ends_at == day)
             ndvi_dynamics = list(ndvi_dynamics)
-            if len(ndvi_dynamics):
-                logger.warning('не удалось найти не одной записи о NDVI динамики, которая бы заканчивалась'
+            if len(ndvi_dynamics) == 0:
+                logger.warning('не удалось найти ни одной записи о NDVI динамики, которая бы заканчивалась'
                                f' {day}, не могу создать карты динамики NDVI')
                 return
 
         ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+        if ndvi_dynamics is None:
+            logger.warning('не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
+            return
         ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
         _mkpath(ndvi_dynamics_dir)
         # создание карт динамики
         self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-        date_text = ndvi_dynamics.b1_composite.starts_at.strftime('%d.%m - ') + ndvi_dynamics.b1_composite.ends_at.strftime('%d.%m.%Y')
+        date_text = ndvi_dynamics.b1_composite.date_text
         self._produce_images(ndvi_dynamics.output_file, str(ndvi_dynamics_dir),
                              date_text=date_text, builder=NDVIDynamicsMapBuilder)
 
@@ -331,9 +335,17 @@ class NPPProcessor:
     # region maps
 
     def _produce_ndvi_maps(self):
-        merged_ndvi = self._produce_merged_ndvi_file_for_today()
+        force_merged_ndvi = self._config.get('FORCE_MERGED_NDVI_PRODUCING', True)
+        if force_merged_ndvi:
+            merged_ndvi = self._produce_merged_ndvi_file_for_today()
+        else:
+            merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == datetime.now().date())
+            if merged_ndvi is None:
+                logger.warning('не удалось сгенерировать NDVI карты, так как композит NDVI не найден, а '
+                               'FORCE_MERGED_NDVI_PRODUCING = False, поэтому нельзя сгенерировать NDVI карты')
+                return
         png_dir = str(_mkpath(self._ndvi_output / _todaystr()))
-        date_text = merged_ndvi.ends_at.strftime('%d.%m - ') + merged_ndvi.starts_at.strftime('%d.%m.%Y')
+        date_text = merged_ndvi.date_text
         self._produce_images(merged_ndvi.output_file, png_dir, date_text)
 
     def _process_ndvi_dynamics_for_today(self):

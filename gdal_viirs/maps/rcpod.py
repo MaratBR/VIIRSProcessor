@@ -39,9 +39,11 @@ class RCPODMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(10), self.margin * 2, cm(10), self.margin + cm(14)
+        self.outer_size = cm(10), self.margin * 2, cm(10), self.margin + cm(16)
         self.min_height = cm(26)
         self.min_width = cm(22)
+        self.max_width = cm(50)
+        self.max_height = cm(50)
         self.logo_path = logo_path
         self.iso_sign_path = iso_sign_path
 
@@ -79,13 +81,13 @@ class RCPODMapBuilder(MapBuilder):
 
         title_width = fig.get_size_inches()[0] - self.margin * 2 - logo_padding - logo_size
         _drawings.draw_text('ФЕДЕРАЛЬНАЯ СЛУЖБА ПО ГИДРОМЕТЕОРОЛОГИИ И МОНИТОРИНГУ ОКРУЖАЮЩЕЙ СРЕДЫ\n'
-                            'ФГБУ "НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ МЕТЕОРОЛОГИИ "ПЛАНЕТА"\n'
+                            'ФГБУ "НАУЧНО-ИССЛЕДОВАТЕЛЬСКИЙ ЦЕНТР КОСМИЧЕСКОЙ ГИДРОМЕТЕОРОЛОГИИ "ПЛАНЕТА"\n'
                             'СИБИРСКИЙ ЦЕНТР',
                             (self.margin * 2 + logo_padding + logo_size + title_width / 2,
-                             self.outer_size[0] / 2), ax0,
+                             logo_padding + cm(.5)), ax0,
                             max_size=(title_width, self.outer_size[0]),
-                            wrap=True, fontproperties=self._get_font_props(size=30),
-                            va='center', ha='center', origin=_drawings.TOP_LEFT)
+                            wrap=True, fontproperties=self._get_font_props(size=25.5),
+                            va='top', ha='center', origin=_drawings.TOP_LEFT)
         _drawings.draw_text('\n'.join([
             'Сибирский центр',
             'ФГБУ НИЦ «ПЛАНЕТА»',
@@ -94,7 +96,7 @@ class RCPODMapBuilder(MapBuilder):
             'Тел. (383) 363-46-05',
             'Факс. (383) 363-46-05',
             'E-mail: kav@rcpod.siberia.net',
-            'http://rcpod.ru'
+            'http://www.rcpod.ru'
         ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=18), va='bottom', ha='left')
 
         _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
@@ -126,7 +128,7 @@ class RCPODMapBuilder(MapBuilder):
         """
         top = self.outer_size[0] + self.margin  # отступ сверху
 
-        l = _drawings.LinearLayout(ax0, (self.outer_size[3] / 2, top), origin=_drawings.TOP_LEFT)
+        l = _drawings.LinearLayout(ax0, (self.outer_size[3] / 2 - cm(1.2), top), origin=_drawings.TOP_LEFT)
         l.set_spacing(cm(.6))
         l.text('КА Suomi NPP/VIIRS', fontproperties=self._get_font_props(size=28))
         l.text('Разрешение 375 м', fontproperties=self._get_font_props(size=22))
@@ -134,26 +136,28 @@ class RCPODMapBuilder(MapBuilder):
         l.text('Условные обозначения', fontproperties=self._get_font_props(size=26))
         l.spacing(cm(.4))
         l.legend(handles=[
-            lines.Line2D([], [], linewidth=2, color='#666666', label='Границы районов'),
-            lines.Line2D([], [], linewidth=4, color='k', label='Границы субъектов'),
-            lines.Line2D([], [], marker='o', markersize=20, markerfacecolor='white', color='none',
+            lines.Line2D([], [], linewidth=2, color=REGIONS_BORDER_COLOR, label='Границы районов'),
+            lines.Line2D([], [], linewidth=4, color=STATES_BORDER_COLOR, label='Границы субъектов РФ'),
+            lines.Line2D([], [], marker='o', markersize=13.3, markerfacecolor='white', color='none',
                          markeredgecolor='k', linewidth=2, label='Населенные пункты'),
             patches.Patch(color='blue', label='Водоёмы'),
         ], edgecolor='none', prop=self._get_font_props(size=20))
         l.text('Состояние посевов', fontproperties=self._get_font_props(size=22))
         l.legend(handles=self.get_legend_handles(file), edgecolor='none', prop=self._get_font_props(size=20))
 
-    def _get_pixels_per_km(self, file: DatasetReader):
-        pixels_per_km_x = 1000 / file.transform.a
+    def _get_inches_per_km(self, file: DatasetReader):
+        plot_width = self._get_raster_size_inches(file)[0]
         xlim = self._get_lims(file)[0]
+        km_count = file.width * file.transform.a / 1000
         zoom = abs(xlim[0] - xlim[1]) / (file.transform.a * file.width)
-        pixels_per_km_x /= zoom
-        return pixels_per_km_x
+        km_count *= zoom
+        inches_per_km = plot_width / km_count
+        return inches_per_km
 
     def _draw_scale_line(self, file: DatasetReader, ax):
         fontprops = self._get_font_props(size=16)
         # расчитываем, сколько дюймов должно приходится на один сегмент
-        inches_per_unit_x = self._get_pixels_per_km(file) / ax.figure.dpi
+        inches_per_unit_x = self._get_inches_per_km(file)
         units_per_segment = self.map_mark_min_length / inches_per_unit_x
         unit = 'км'
 
@@ -205,155 +209,3 @@ class RCPODMapBuilder(MapBuilder):
         _drawings.draw_rect_with_outside_border(ax, (left_offset, y),
                                                 sum(self.map_mark_dist) * inches_per_segment,
                                                 self.map_mark_thickness)
-
-    def _draw_map_marks(self, ax0, file: DatasetReader):
-        """
-        Рисует пометки на карте, это включает в себя:
-            * отметка, обозначающая масштаб в виде "линейки"
-            * отметки о градусах широты/долготы на карте
-        Использование данной функции предпологает, что масштабы по осям X и Y одинаковы
-        :param ax0:  объект типа Axes, используемы для рисования и покрывающий весь рисунок
-        :param file: открытый файл rasterio
-        :return:
-        """
-
-        # отметки в грудусах
-        transform = file.transform
-        fontprops = self._get_font_props(size=16)
-        src_crs = file.crs.to_proj4()
-        xlim, ylim = self._get_lims(file)
-        bl_xy, br_xy, tl_xy, tr_xy = (
-            (xlim[0], ylim[0]),
-            (xlim[1], ylim[0]),
-            (xlim[0], ylim[1]),
-            (xlim[1], ylim[1])
-        )
-        pts = utility.transform_points(src_crs, 'EPSG:4326', (bl_xy, br_xy, tl_xy, tr_xy))
-        bl, br, tl, tr = pts
-        del pts
-
-        plot_w, plot_h = ax0.figure.get_size_inches()
-        raster_w = plot_w - self.outer_size[1] - self.outer_size[3]
-        raster_h = plot_h - self.outer_size[2] - self.outer_size[0]
-        xy_per_inch = abs(xlim[0] - xlim[1]) / raster_w
-
-        # для каждой линии мы вычисляем точку откуда нужно начинать рисовать отметки после чего вычисляем
-        # координаты этой точкий в проекции, далее к X или Y данной точки начинаем прибовалять значение, высчитанное
-        # заранее, таким образом вычисляются координаты каждой точки для каждой линии
-        # количество точек в линии вычисляется на основании минимальной длинны между точками и длинне/высоте растра
-
-        # верхняя линия
-        inches_per_lon_deg_top = raster_w / (tr[0] - tl[0])
-        degrees_per_segment_top = math.ceil(self.map_mark_degree_seg_len / inches_per_lon_deg_top * 3600) / 3600
-        segment_top_size = min(degrees_per_segment_top * inches_per_lon_deg_top, raster_w / 2)
-        segments_count_top = int(raster_w // segment_top_size)
-
-        # начинаем рисовать верхнюю линию
-        top = self.outer_size[0]
-        offset_x = (raster_w - (segments_count_top - 1) * segment_top_size) / 2
-        left = self.outer_size[3] + offset_x
-        left_xy = tl_xy[0] + xy_per_inch * offset_x
-        del offset_x
-
-        for i in range(segments_count_top):
-            w, h = self.map_latlong_mark_thickness, self.map_latlon_mark_len
-            long, lat = utility.transform_point(src_crs, 'EPSG:4326', (left_xy, transform.f))
-            degree, minutes, seconds = _split_degree(long)
-            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'', (left + cm(.05), plot_h - top + h + cm(.05)), ax0,
-                                va='bottom', ha='center', fontsize=14, fontproperties=fontprops)
-
-            xy = _drawings.inches2axes(ax0, (left - w / 2, plot_h - top))
-            w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h)
-            ax0.add_artist(rect)
-
-            left += segment_top_size
-            left_xy += segment_top_size * xy_per_inch
-
-        # нижняя линия
-        inches_per_lon_deg_bottom = raster_w / (br[0] - bl[0])
-        degrees_per_segment_bottom = math.ceil(self.map_mark_degree_seg_len / inches_per_lon_deg_bottom * 3600) / 3600
-        segment_bottom_size = min(degrees_per_segment_bottom * inches_per_lon_deg_bottom, raster_w / 2)
-        segments_count_bottom = int(raster_w // segment_bottom_size)
-
-        # начинаем рисовать нижнюю линию
-        top = self.outer_size[0] + raster_h
-        offset_x = (raster_w - (segments_count_bottom - 1) * segment_top_size) / 2
-        left = self.outer_size[3] + offset_x
-        left_xy = tl_xy[0] + xy_per_inch * offset_x
-        del offset_x
-
-        for i in range(segments_count_bottom):
-            w, h = self.map_latlong_mark_thickness, self.map_latlon_mark_len
-            xy = _drawings.inches2axes(ax0, (left - w / 2, plot_h - top - h - cm(.1)))
-            long = utility.transform_point(src_crs, 'EPSG:4326', (left_xy, transform.f + transform.e * file.height))[0]
-            degree, minutes, seconds = _split_degree(long)
-            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
-                                (left + cm(.05), plot_h - h - top - cm(.15)), ax0, va='top', ha='center', fontsize=14,
-                                fontproperties=fontprops)
-
-            w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h)
-            ax0.add_artist(rect)
-
-            left += segment_top_size
-            left_xy += segment_top_size * xy_per_inch
-
-        # левая линия
-        inches_per_lat_deg_left = raster_h / (tl[0] - bl[0])
-        degrees_per_segment_left = math.ceil(self.map_mark_degree_seg_len / inches_per_lat_deg_left * 3600) / 3600
-        segment_left_size = min(degrees_per_segment_left * inches_per_lat_deg_left, raster_h / 2)
-        segments_count_left = int(raster_h // segment_left_size)
-
-        # начинаем рисовать левую линию
-        left = self.outer_size[3] - self.map_latlon_mark_len
-        offset_y = (raster_h - (segments_count_left - 1) * segment_left_size) / 2
-        top = self.outer_size[0] + offset_y
-        top_xy = tl_xy[1] + xy_per_inch * offset_y
-        del offset_y
-
-        for i in range(segments_count_left):
-            h, w = self.map_latlong_mark_thickness, self.map_latlon_mark_len
-            xy = _drawings.inches2axes(ax0, (left - h, plot_h - top - h / 2))
-            long = utility.transform_point(src_crs, 'EPSG:4326', (transform.c, transform.f + top_xy))[1]
-            degree, minutes, seconds = _split_degree(long)
-            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
-                                (left - cm(.1), plot_h - top), ax0, va='center', ha='right',
-                                rotation=90, fontsize=14, fontproperties=fontprops)
-
-            w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h)
-            ax0.add_artist(rect)
-
-            top += segment_left_size
-            top_xy += segment_left_size * xy_per_inch
-
-        # правая линия
-        inches_per_lat_deg_right = raster_h / (tr[0] - br[0])
-        degrees_per_segment_right = math.ceil(self.map_mark_degree_seg_len / inches_per_lat_deg_right * 3600) / 3600
-        segment_right_size = min(degrees_per_segment_right * inches_per_lat_deg_right, raster_h / 2)
-        segments_count_right = int(raster_h // segment_right_size)
-
-        # начинаем рисовать правую линию
-        left = self.outer_size[3] + raster_w
-        offset_y = (raster_h - (segments_count_right - 1) * segment_right_size) / 2
-        top = self.outer_size[0] + offset_y
-        top_xy = tl_xy[1] + xy_per_inch * offset_y
-        del offset_y
-
-        for i in range(segments_count_right):
-            h, w = self.map_latlong_mark_thickness, self.map_latlon_mark_len
-            xy = _drawings.inches2axes(ax0, (left, plot_h - top - h / 2))
-            long = utility.transform_point(src_crs, 'EPSG:4326', (transform.c, transform.f + top_xy))[1]
-            degree, minutes, seconds = _split_degree(long)
-            _drawings.draw_text(f'{degree}°{minutes}\'{seconds}\'\'',
-                                (left + h + cm(.4), plot_h - top), ax0, va='center', ha='left',
-                                rotation=90, fontsize=14, fontproperties=fontprops)
-
-            w, h = _drawings.inches2axes(ax0, (w, h))
-            rect = patches.Rectangle(xy, color='k', width=w, height=h)
-            ax0.add_artist(rect)
-
-            top += segment_right_size
-            top_xy += segment_right_size * xy_per_inch
-
