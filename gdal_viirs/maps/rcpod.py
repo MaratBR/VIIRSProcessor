@@ -39,7 +39,7 @@ class RCPODMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(10), self.margin * 2, cm(10), self.margin + cm(16)
+        self.outer_size = cm(8), self.margin * 2, cm(10), self.margin + cm(16)
         self.min_height = cm(26)
         self.min_width = cm(22)
         self.max_width = cm(50)
@@ -65,6 +65,17 @@ class RCPODMapBuilder(MapBuilder):
 
     def get_legend_handles(self, file: DatasetReader):
         return []
+
+    def get_secondary_legend_handles(self):
+        handles = [
+            lines.Line2D([], [], linewidth=2, color=REGIONS_BORDER_COLOR, label='Границы районов'),
+            lines.Line2D([], [], linewidth=4, color=STATES_BORDER_COLOR, label='Границы субъектов РФ'),
+            lines.Line2D([], [], marker='o', markersize=13.3, markerfacecolor='white', color='none',
+                         markeredgecolor='k', linewidth=2, label='Населенные пункты'),
+        ]
+        if self.water_shp_file is not None:
+            handles.append(patches.Patch(color='#004da8', label='Водоёмы'))
+        return handles
 
     def plot(self, file: DatasetReader, band=1):
         fig, (ax0, ax1), size = super(RCPODMapBuilder, self).plot(file, band)
@@ -135,13 +146,7 @@ class RCPODMapBuilder(MapBuilder):
         l.spacing(cm(.9))
         l.text('Условные обозначения', fontproperties=self._get_font_props(size=26))
         l.spacing(cm(.4))
-        l.legend(handles=[
-            lines.Line2D([], [], linewidth=2, color=REGIONS_BORDER_COLOR, label='Границы районов'),
-            lines.Line2D([], [], linewidth=4, color=STATES_BORDER_COLOR, label='Границы субъектов РФ'),
-            lines.Line2D([], [], marker='o', markersize=13.3, markerfacecolor='white', color='none',
-                         markeredgecolor='k', linewidth=2, label='Населенные пункты'),
-            patches.Patch(color='blue', label='Водоёмы'),
-        ], edgecolor='none', prop=self._get_font_props(size=20))
+        l.legend(handles=self.get_secondary_legend_handles(), edgecolor='none', prop=self._get_font_props(size=20))
         l.text('Состояние посевов', fontproperties=self._get_font_props(size=22))
         l.legend(handles=self.get_legend_handles(file), edgecolor='none', prop=self._get_font_props(size=20))
 

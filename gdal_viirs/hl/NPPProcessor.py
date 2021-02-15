@@ -213,7 +213,7 @@ class NPPProcessor:
 
         ndvi_dynamics = self._process_ndvi_dynamics_for_today()
         if ndvi_dynamics is None:
-            logger.warning('не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
+            logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
             return
         ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
         _mkpath(ndvi_dynamics_dir)
@@ -396,8 +396,12 @@ class NPPProcessor:
             name = png_entry['name']
             filename = f'{name}.png'
             filepath = os.path.join(output_directory, filename)
-            if os.path.isfile(filepath):
+            logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
+            force_regeneration = self._config.get('FORCE_MAPS_REGENERATION', True)
+            if os.path.isfile(filepath) and not force_regeneration:
                 continue
+            if force_regeneration and os.path.isfile(filepath):
+                logger.debug(f'перезаписываю {filepath}')
             display_name = png_entry.get('display_name')
             xlim = png_entry.get('xlim')
             ylim = png_entry.get('ylim')
@@ -418,7 +422,6 @@ class NPPProcessor:
             if shapefile is None:
                 logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
 
-            logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
             produce_image(input_file, filepath,
                           builder=builder,
                           logo_path=self._config['LOGO_PATH'],

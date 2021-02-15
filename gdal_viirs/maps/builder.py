@@ -7,7 +7,6 @@ import numpy as np
 from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
 
-from gdal_viirs.config import CONFIG
 from gdal_viirs.hl import points
 from gdal_viirs.maps import utils, cartopy_utils
 from gdal_viirs.types import Number
@@ -200,12 +199,7 @@ def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: T
     ], crs=crs)
 
     pyplot.yticks(rotation='vertical')
-    gridlines = _gridlines_with_labels(axes)
-    #gridlines = axes.gridlines(draw_labels=True, xformatter=DegreeFormatter(False), yformatter=DegreeFormatter(True),
-    #                           y_inline=False, x_inline=False)
-    #gridlines.ylabel_style = dict(fontproperties=gridlines_font_props)
-    #gridlines.xlabel_style = dict(fontproperties=gridlines_font_props)
-
+    _gridlines_with_labels(axes)
     return axes
 
 

@@ -25,10 +25,9 @@ NDVI_MERGE_PERIOD_IN_DAYS = 40
 # даже если она уже сгенерирована
 # FORCE_CLOUD_MASK_PROCESSING = False
 
-# TODO описание FORCE_NDVI_DYNAMICS_PROCESSING
 # FORCE_NDVI_DYNAMICS_PROCESSING = True
-
 # FORCE_NDVI_COMPOSITE_PROCESSING = True
+# FORCE_MAPS_REGENERATION = True
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
