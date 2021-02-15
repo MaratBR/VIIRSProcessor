@@ -103,6 +103,13 @@ class NPPProcessor:
         return directories
 
     def process_recent(self):
+        self.produce_products()
+        self._produce_maps()
+
+    def produce_maps(self):
+        self._produce_maps()
+
+    def produce_products(self):
         for d in self._find_viirs_directories():
             try:
                 logger.debug(f'проверка папки {d} ...')
@@ -111,7 +118,6 @@ class NPPProcessor:
                 logger.exception(e)
 
         self._produce_daily_products()
-        self._produce_maps()
 
     # region вспомогательные функции
 
@@ -359,10 +365,10 @@ class NPPProcessor:
         b1: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.starts_at == past_days)
 
         if b1 is None:
-            logger.warning(f'не удалось найти композит начинающийся с {past_days} (b1)')
+            logger.warning(f'не удалось найти композит начинающийся с starts_at={past_days} (b1)')
             return None
         if b2 is None:
-            logger.error(f'не удалось найти композит, сделанный сегодня (b2, now={now})')
+            logger.error(f'не удалось найти композит, сделанный сегодня (b2, ends_at={now})')
             return None
 
         filename = ''.join((

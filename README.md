@@ -16,6 +16,17 @@ pip3 install -r ./requirements.txt
 
 ### Использование
 
+Обработка карт и продуктов одновременно:
 ```
 python3 processor.py
+```
+
+Обработка только карт:
+```
+python3 maps_processor.py
+```
+
+Обработка продуктов:
+```
+python3 products_processor.py
 ```

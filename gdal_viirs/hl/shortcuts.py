@@ -12,7 +12,7 @@ def _set_debug_off():
     loguru.logger.add(sys.stdout, colorize=True, level='INFO')
 
 
-def create_npp_processor(config):
+def create_npp_processor(config) -> NPPProcessor:
     if isinstance(config, str):
         config = importlib.import_module(config)
     config = ConfigWrapper(config)
@@ -26,3 +26,11 @@ def create_npp_processor(config):
 
 def process_recent(config):
     create_npp_processor(config).process_recent()
+
+
+def produce_products(config):
+    create_npp_processor(config).produce_products()
+
+
+def produce_maps(config):
+    create_npp_processor(config).produce_maps()
