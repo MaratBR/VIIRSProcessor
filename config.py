@@ -64,7 +64,7 @@ PNG_CONFIG = [
         'name': 'region',
         'display_name': 'Юг Западной Сибири',
         'xlim': (-613316.28569515, 602479.25968115),
-        'ylim': (-545676.98683915, 338037.04381214996),
+        'ylim': (-545676.98683915, 416000),
         'mask_shapefile': __resource('maps/Region/region_agro.shp'),
         'water_shapefile': __resource('maps/Region/region_vodoem.shp'),
         'points': (
@@ -77,8 +77,8 @@ PNG_CONFIG = [
     {
         'name': 'altkrai',
         'display_name': 'Алтайский край',
-        'xlim': (-148619.26369895, 461101.19085894997),
-        'ylim': (-531246.62753395, -98926.14745804999),
+        'xlim': (-149377.89400075, 492205.03323275),
+        'ylim': (-536293.76858875, -85966.64381524999),
         'mask_shapefile': __resource('maps/Altai/altkrai_agro.shp'),
         'water_shapefile': __resource('maps/Altai/altkrai_vodoem.shp'),
         'points': (
@@ -93,8 +93,8 @@ PNG_CONFIG = [
     {
         'name': 'novosib',
         'display_name': 'Новосибирская область',
-        'xlim': (-315421.487193475, 338408.64897447504),
-        'ylim': (-245575.837519475, 186922.999586475),
+        'xlim': (-316567.241833225, 343436.059154225),
+        'ylim': (-253848.664476225, 211203.086691225),
         'mask_shapefile': __resource('maps/Novosibirsk/novosib_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/novosib_vodoem.shp'),
         'points': (
@@ -110,8 +110,8 @@ PNG_CONFIG = [
     {
         'name': 'severn_nso',
         'display_name': 'Северный район',
-        'xlim': (-142388.486583275, -67742.125503725),
-        'ylim': (26443.561230725, 135232.91901027499),
+        'xlim': (-165870.98043732502, 41442.032910325),
+        'ylim': (20749.377785675002, 181982.751752325),
         'mask_shapefile': __resource('maps/Novosibirsk/severn/severn_nso_agro.shp'),
         'points': (
             (56.348242, 78.363070, 'Северное'),
@@ -120,8 +120,8 @@ PNG_CONFIG = [
     {
         'name': 'cherep_nso',
         'display_name': 'Черепановский район',
-        'xlim': (169342.053579275, 261207.358497725),
-        'ylim': (-167035.567082725, -102386.361113275),
+        'xlim': (169212.532337925, 261630.003207075),
+        'ylim': (-167048.713891075, -102373.214304925),
         'mask_shapefile': __resource('maps/Novosibirsk/cherep/cherep_nso_agro.shp'),
         'points': (
             (54.220642, 83.372516, 'Черепаново'),
@@ -130,8 +130,8 @@ PNG_CONFIG = [
     {
         'name': 'ust_tar_nso',
         'display_name': 'Усть-Таркский район',
-        'xlim': (-300329.386616275, -214297.617074725),
-        'ylim': (-2919.571588274999, 77558.583716275),
+        'xlim': (-300796.969113425, -213728.704623575),
+        'ylim': (-4009.4215864250004, 81463.362073425),
         'mask_shapefile': __resource('maps/Novosibirsk/ust_tar/ust_tar_nso_agro.shp'),
         'points': (
             (55.565784, 75.708207, 'Усть-Тарка'),
@@ -140,8 +140,8 @@ PNG_CONFIG = [
     {
         'name': 'kupino_nso',
         'display_name': 'Купинский район',
-        'xlim': (-227871.13404605, -105808.21311995),
-        'ylim': (-179274.74384905, -78573.23439895),
+        'xlim': (-228024.6804622, -105513.1297638),
+        'ylim': (-189762.4321762, -61250.5617718),
         'mask_shapefile': __resource('maps/Novosibirsk/kupino/kupino_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/kupino/kupino_nso_vodoem.shp'),
         'points': (
@@ -151,8 +151,8 @@ PNG_CONFIG = [
     {
         'name': 'tatarsk_nso',
         'display_name': 'Татарский район',
-        'xlim': (-302222.12275589997, -215015.36134909999),
-        'ylim': (-81519.0159639, 17937.8138259),
+        'xlim': (-303334.657773325, -214901.60085667498),
+        'ylim': (-84293.370283325, 19941.400188325002),
         'mask_shapefile': __resource('maps/Novosibirsk/tatarsk/tatarsk_nso_agro.shp'),
         'points': (
             (55.214532, 75.974090, 'Татарск'),
@@ -161,8 +161,8 @@ PNG_CONFIG = [
     {
         'name': 'karasuk_nso',
         'display_name': 'Карасукский район',
-        'xlim': (-180500.226963425, -79496.848935575),
-        'ylim': (-232439.425342425, -130338.600610575),
+        'xlim': (-182886.80055355, -79069.92339445),
+        'ylim': (-240859.65378555, -126394.80180645),
         'mask_shapefile': __resource('maps/Novosibirsk/karasuk/karasuk_nso_agro.shp'),
         'points': (
             (53.734326, 78.042362, 'Карасук'),
@@ -171,8 +171,8 @@ PNG_CONFIG = [
     {
         'name': 'kolivan_nso',
         'display_name': 'Колыванский район ',
-        'xlim': (139343.20705549998, 221942.46203650002),
-        'ylim': (-34333.9072325, 50356.8942145),
+        'xlim': (94886.615990825, 229870.737833175),
+        'ylim': (-36396.492768175, 122493.272413175),
         'mask_shapefile': __resource('maps/Novosibirsk/kolivan/kolivan_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/kolivan/kolivan_nso_vodoem.shp'),
         'points': (
@@ -182,8 +182,8 @@ PNG_CONFIG = [
     {
         'name': 'kuibichev_nso',
         'display_name': 'Куйбышевский район',
-        'xlim': (-160430.8642916, -16563.8160884),
-        'ylim': (-19520.5197196, 77468.7255126),
+        'xlim': (-161002.857039125, -8908.278327875001),
+        'ylim': (-24102.947505125, 80793.133523125),
         'mask_shapefile': __resource('maps/Novosibirsk/kuibichev/kuibichev_nso_agro.shp'),
         'points': (
             (55.4475300, 78.3218100, 'Куйбышев'),
@@ -192,8 +192,8 @@ PNG_CONFIG = [
     {
         'name': 'iskitim_nso',
         'display_name': 'Искитимский район',
-        'xlim': (153804.150501775, 259496.814343225),
-        'ylim': (-134363.812038225, -63220.25337977501),
+        'xlim': (151315.23419695, 263273.74619305),
+        'ylim': (-134512.99889905, -46621.15050795),
         'mask_shapefile': __resource('maps/Novosibirsk/iskitim/iskitim_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/iskitim/iskitim_nso_vodoem.shp'),
         'points': (
@@ -203,8 +203,8 @@ PNG_CONFIG = [
     {
         'name': 'susun_nso',
         'display_name': 'Сузунский район',
-        'xlim': (111914.13985544999, 182112.93181054998),
-        'ylim': (-205176.84894455, -113271.40337345),
+        'xlim': (110810.56911910001, 201616.3944279),
+        'ylim': (-217893.04922490002, -112954.4985891),
         'mask_shapefile': __resource('maps/Novosibirsk/susun/susun_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/susun/susun_nso_vodoem.shp'),
         'points': (
@@ -214,8 +214,8 @@ PNG_CONFIG = [
     {
         'name': 'mochkov_nso',
         'display_name': 'Мошковский район',
-        'xlim': (192718.909915575, 262214.723845425),
-        'ylim': (-38068.140889425, 15935.356401425),
+        'xlim': (184901.8786716, 262852.0669344),
+        'ylim': (-40496.937208400006, 21095.425694399997),
         'mask_shapefile': __resource('maps/Novosibirsk/mochkov/mochkov_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/mochkov/mochkov_nso_vodoem.shp'),
         'points': (
@@ -225,8 +225,8 @@ PNG_CONFIG = [
     {
         'name': 'chistoz_nso',
         'display_name': 'Чистоозёрный район',
-        'xlim': (-269013.0771825, -174998.5591095),
-        'ylim': (-133242.4208975, -45731.5375205),
+        'xlim': (-275062.752540875, -169322.98050612502),
+        'ylim': (-143702.895532875, -39415.461283125),
         'mask_shapefile': __resource('maps/Novosibirsk/chistoz/chistoz_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/chistoz/chistoz_nso_vodoem.shp'),
         'points': (
@@ -236,8 +236,8 @@ PNG_CONFIG = [
     {
         'name': 'kichtov_nso',
         'display_name': 'Кыштовский район',
-        'xlim': (-247432.44608750002, -137889.1897265),
-        'ylim': (101280.8427855, 173963.78816250002),
+        'xlim': (-251865.297145175, -83828.806571825),
+        'ylim': (79057.944320825, 199489.591205175),
         'mask_shapefile': __resource('maps/Novosibirsk/kichtov/kichtov_nso_agro.shp'),
         'points': (
             (56.563467, 76.626626, 'Кыштовка'),
@@ -246,8 +246,8 @@ PNG_CONFIG = [
     {
         'name': 'zdvinsk_nso',
         'display_name': 'Здвинский район',
-        'xlim': (-123707.1699682, -36297.959417800004),
-        'ylim': (-135972.6483912, -47527.2078588),
+        'xlim': (-128673.912968175, -20622.098418825),
+        'ylim': (-137434.978554175, -46701.036308824994),
         'mask_shapefile': __resource('maps/Novosibirsk/zdvinsk/zdvinsk_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/zdvinsk/zdvinsk_nso_vodoem.shp'),
         'points': (
@@ -257,8 +257,8 @@ PNG_CONFIG = [
     {
         'name': 'kochki',
         'display_name': 'Кочковский район',
-        'xlim': (-9143.639867325, 70410.06336832499),
-        'ylim': (-174321.977886325, -98892.250330675),
+        'xlim': (-9154.60709825, 70859.71983624999),
+        'ylim': (-174332.94511725, -98389.99774975001),
         'mask_shapefile': __resource('maps/Novosibirsk/kochki/kochki_agro.shp'),
         'points': (
             (54.3358300, 80.4805600, 'Кочки'),
@@ -267,8 +267,8 @@ PNG_CONFIG = [
     {
         'name': 'kargat_nso',
         'display_name': 'Каргатский район',
-        'xlim': (-26587.309799950002, 59970.20547495),
-        'ylim': (-116592.87336294999, -6864.12877105),
+        'xlim': (-28074.928551725, 77726.494692725),
+        'ylim': (-117498.456205725, 19979.735206725),
         'mask_shapefile': __resource('maps/Novosibirsk/kargat/kargat_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/kargat/kargat_nso_vodoem.shp'),
         'points': (
@@ -278,8 +278,8 @@ PNG_CONFIG = [
     {
         'name': 'bolotno_nso',
         'display_name': 'Болотнинский район',
-        'xlim': (227382.403931225, 300036.50380377495),
-        'ylim': (-5087.8931237749985, 51914.128559774996),
+        'xlim': (223041.62064502502, 300321.00832597504),
+        'ylim': (-5217.242184975001, 70754.170131975),
         'mask_shapefile': __resource('maps/Novosibirsk/bolotno/bolotno_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/bolotno/bolotno_nso_vodoem.shp'),
         'points': (
@@ -289,8 +289,8 @@ PNG_CONFIG = [
     {
         'name': 'barabin_nso',
         'display_name': 'Барабинский район',
-        'xlim': (-160030.79427925, -57899.99365075),
-        'ylim': (-89781.02445525001, -4718.37967975),
+        'xlim': (-162017.3781791, -57851.5403849),
+        'ylim': (-91934.8670441, -4017.2766579),
         'mask_shapefile': __resource('maps/Novosibirsk/barabin/barabin_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/barabin/barabin_nso_vodoem.shp'),
         'points': (
@@ -300,8 +300,8 @@ PNG_CONFIG = [
     {
         'name': 'maslyan_nso',
         'display_name': 'Маслянинский район',
-        'xlim': (240972.69409422498, 309887.679286775),
-        'ylim': (-138571.07083877502, -87998.663091225),
+        'xlim': (239819.0050041, 329865.6628899),
+        'ylim': (-145613.40960389999, -70184.9529101),
         'mask_shapefile': __resource('maps/Novosibirsk/maslyan/maslyan_nso_agro.shp'),
         'points': (
             (54.346444, 84.182266, 'Маслянино'),
@@ -310,8 +310,8 @@ PNG_CONFIG = [
     {
         'name': 'toguchi_nso',
         'display_name': 'Тогучинский район',
-        'xlim': (215816.5289577, 325451.6241903),
-        'ylim': (-70021.48981530001, 12270.4760623),
+        'xlim': (212672.662816725, 325528.303852275),
+        'ylim': (-96873.919128275, 12347.155724275002),
         'mask_shapefile': __resource('maps/Novosibirsk/toguchi/toguchi_nso_agro.shp'),
         'points': (
             (55.238039, 84.402856, 'Тогучин'),
@@ -320,8 +320,8 @@ PNG_CONFIG = [
     {
         'name': 'chani_nso',
         'display_name': 'Чановский район',
-        'xlim': (-227997.860929875, -145915.306213125),
-        'ylim': (-59924.096172875, 16864.090235875),
+        'xlim': (-235010.750734925, -127849.090790075),
+        'ylim': (-83508.187980925, 18449.927417925),
         'mask_shapefile': __resource('maps/Novosibirsk/chani/chani_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/chani/chani_nso_vodoem.shp'),
         'points': (
@@ -331,8 +331,8 @@ PNG_CONFIG = [
     {
         'name': 'chulim_nso',
         'display_name': 'Чулымский район',
-        'xlim': (33297.327732925, 105921.135543075),
-        'ylim': (-117493.665358075, -20873.592336924998),
+        'xlim': (27251.655499825, 139549.789971175),
+        'ylim': (-119463.712203175, 57852.263662175),
         'mask_shapefile': __resource('maps/Novosibirsk/chulim/chulim_nso_agro.shp'),
         'points': (
             (55.091258, 80.963288, 'Чулым'),
@@ -341,8 +341,8 @@ PNG_CONFIG = [
     {
         'name': 'ordinsk_nso',
         'display_name': 'Ордынский район',
-        'xlim': (61607.715436750004, 156811.13627724999),
-        'ylim': (-149458.67565025, -78815.95017975),
+        'xlim': (61154.6513246, 164189.90070740003),
+        'ylim': (-174940.9038554, -78629.4780716),
         'mask_shapefile': __resource('maps/Novosibirsk/ordinsk/ordinsk_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/ordinsk/ordinsk_nso_vodoem.shp'),
         'points': (
@@ -352,8 +352,8 @@ PNG_CONFIG = [
     {
         'name': 'krasnoz_nso',
         'display_name': 'Краснозёрский район',
-        'xlim': (-93422.831541975, 1203.4488489750001),
-        'ylim': (-204762.969680975, -122437.352197025),
+        'xlim': (-97794.9177679, 1760.0604779),
+        'ylim': (-204880.3196299, -120887.0480601),
         'mask_shapefile': __resource('maps/Novosibirsk/krasnoz/krasnoz_nso_agro.shp'),
         'points': (
             (53.983815, 79.238604, 'Краснозёрское'),
@@ -362,8 +362,8 @@ PNG_CONFIG = [
     {
         'name': 'ubinsk_nso',
         'display_name': 'Убинский район',
-        'xlim': (-64049.365536925, 3588.552981925),
-        'ylim': (-77745.075373925, 26556.311532925003),
+        'xlim': (-69735.6433484, 117123.4020454),
+        'ylim': (-81663.9118714, 118903.50012740001),
         'mask_shapefile': __resource('maps/Novosibirsk/ubinsk/ubinsk_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/ubinsk/ubinsk_nso_vodoem.shp'),
         'points': (
@@ -373,8 +373,8 @@ PNG_CONFIG = [
     {
         'name': 'vengero_nso',
         'display_name': 'Венгеровский район',
-        'xlim': (-236152.86333494997, -138478.91317305),
-        'ylim': (2509.74160205, 83782.28330095),
+        'xlim': (-237834.94982735, -122704.04081465),
+        'ylim': (413.38085164999984, 104231.43515835001),
         'mask_shapefile': __resource('maps/Novosibirsk/vengerovo/vengero_nso_agro.shp'),
         'points': (
             (55.684193, 76.747827, 'Венгерово'),
@@ -383,8 +383,8 @@ PNG_CONFIG = [
     {
         'name': 'dovolno_nso',
         'display_name': 'Доволенский район',
-        'xlim': (-67677.7743274, 30598.4172554),
-        'ylim': (-150009.2762874, -63959.347716599994),
+        'xlim': (-70489.7536817, 30667.0021177),
+        'ylim': (-150077.86114969998, -63890.762854299996),
         'mask_shapefile': __resource('maps/Novosibirsk/dovolno/dovolno_nso_agro.shp'),
         'points': (
             (54.496233, 79.664648, 'Довольное'),
@@ -393,8 +393,8 @@ PNG_CONFIG = [
     {
         'name': 'kochene_nso',
         'display_name': 'Коченёвский район',
-        'xlim': (91399.885542875, 167386.703994125),
-        'ylim': (-84823.047196125, -11673.928863875),
+        'xlim': (83018.067547825, 181159.487381175),
+        'ylim': (-93186.525050175, 6417.943781175),
         'mask_shapefile': __resource('maps/Novosibirsk/kochenev/kochene_nso_agro.shp'),
         'points': (
             (55.0218000, 82.2020000, 'Коченёво'),
@@ -403,8 +403,8 @@ PNG_CONFIG = [
     {
         'name': 'bagan_nso',
         'display_name': 'Баганский район',
-        'xlim': (-186734.159553725, -100769.013291275),
-        'ylim': (-194976.59276972502, -124293.76550527499),
+        'xlim': (-190470.044692725, -100098.473512275),
+        'ylim': (-196259.17270172498, -124188.85062627499),
         'mask_shapefile': __resource('maps/Novosibirsk/bagan/bagan_nso_agro.shp'),
         'points': (
             (54.097380, 77.665573, 'Баган'),
@@ -413,8 +413,8 @@ PNG_CONFIG = [
     {
         'name': 'novosib_nso',
         'display_name': 'Новосибирский район Новосбирской области',
-        'xlim': (139276.92929285, 220959.36215914998),
-        'ylim': (-92706.11865915, -23580.896478849998),
+        'xlim': (138851.080401375, 224516.346140625),
+        'ylim': (-100137.867436625, -569.7811283749998),
         'mask_shapefile': __resource('maps/Novosibirsk/novosib/novosib_nso_agro.shp'),
         'water_shapefile': __resource('maps/Novosibirsk/novosib/novosib_nso_vodoem.shp'),
         'points': (
@@ -424,8 +424,8 @@ PNG_CONFIG = [
     {
         'name': 'kem',
         'display_name': 'Кемеровская область',
-        'xlim': (268976.86160635, 582786.40240165),
-        'ylim': (-238911.40286565, 149784.13677165),
+        'xlim': (262005.925617675, 624824.167033325),
+        'ylim': (-341203.729077325, 189546.408784325),
         'mask_shapefile': __resource('maps/Kemerovo/kem_agro.shp'),
         'water_shapefile': __resource('maps/Kemerovo/kem_vodoem.shp'),
         'points': (
@@ -440,8 +440,8 @@ PNG_CONFIG = [
     {
         'name': 'krasn',
         'display_name': 'Красноярский край',
-        'xlim': (-168000, 1460000),
-        'ylim': (-366000, 3020000),
+        'xlim': (489112.0617009, 1091895.9732661),
+        'ylim': (-351189.4183711, 365774.4729971),
         'mask_shapefile': __resource('maps/Krasnoyarsk/krasn_agro.shp'),
         'water_shapefile': __resource('maps/Krasnoyarsk/krasn_vodoem.shp'),
         'points': (
@@ -456,8 +456,8 @@ PNG_CONFIG = [
     {
         'name': 'Kansk',
         'display_name': 'Канская группа районов Красноярского края',
-        'xlim': (841592.3278167, 1019796.6924013),
-        'ylim': (51904.5589087, 303791.3615713),
+        'xlim': (796749.38408605, 1080482.03001695),
+        'ylim': (-36760.36386395, 352867.94135394995),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Kansk/Kansk_agro.shp'),
         'water_shapefile': __resource('maps/Krasnoyarsk/Kansk/Kansk_vodoem.shp'),
         'points': (
@@ -466,9 +466,9 @@ PNG_CONFIG = [
     },
     {
         'name': 'Krasn_Gr',
-        'display_name': 'Красноярская группа районов Красноярского краяe ',
-        'xlim': (648850.163683375, 873551.559537625),
-        'ylim': (-39402.565349625, 313952.306378625),
+        'display_name': 'Красноярская группа районов Красноярского края',
+        'xlim': (646535.490693525, 890239.042102475),
+        'ylim': (-48776.367270475, 358398.544921475),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Krasn_Gr/Krasn_Gr_agro.shp'),
         'water_shapefile': __resource('maps/Krasnoyarsk/Krasn_Gr/Krasn_Gr_vodoem.shp'),
         'points': (
@@ -478,8 +478,8 @@ PNG_CONFIG = [
     {
         'name': 'Achinsk',
         'display_name': 'Ачинская группа районов Красноярского края',
-        'xlim': (537325.0007644, 680040.9534535999),
-        'ylim': (-14119.8061776, 166744.9025856),
+        'xlim': (498434.2118042, 691928.8637658),
+        'ylim': (-19775.0070318, 305658.5799978),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Achinsk/Achinsk_agro.shp'),
         'water_shapefile': __resource('maps/Krasnoyarsk/Achinsk/Achinsk_vodoem.shp'),
         'points': (
@@ -489,8 +489,8 @@ PNG_CONFIG = [
     {
         'name': 'Minusinsk',
         'display_name': 'Минусинская группа районов Красноярского края',
-        'xlim': (712096.60938435, 864493.62974565),
-        'ylim': (-205207.68312265002, -14122.19472535),
+        'xlim': (684541.3474266, 1084344.5277654),
+        'ylim': (-343637.9728704, 22131.7323654),
         'mask_shapefile': __resource('maps/Krasnoyarsk/Minusinsk/Minusinsk_agro.shp'),
         'water_shapefile': __resource('maps/Krasnoyarsk/Minusinsk/Minusinsk_vodoem.shp'),
         'points': (
@@ -500,8 +500,8 @@ PNG_CONFIG = [
     {
         'name': 'omsk',
         'display_name': 'Омская область',
-        'xlim': (-597277.6522497501, -206999.67271325),
-        'ylim': (-220174.53030275, 321998.41036675),
+        'xlim': (-602432.28927165, -204825.23171335002),
+        'ylim': (-221580.57819765, 379646.37405765004),
         'mask_shapefile': __resource('maps/Omsk/omsk_agro.shp'),
         'water_shapefile': __resource('maps/Omsk/omsk_vodoem.shp'),
         'points': (
