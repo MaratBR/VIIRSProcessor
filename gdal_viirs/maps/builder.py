@@ -7,8 +7,9 @@ import numpy as np
 from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
 
+from gdal_viirs.config import req_resource_path
 from gdal_viirs.hl import points
-from gdal_viirs.maps import utils, cartopy_utils
+from gdal_viirs.maps.cartopy_utils import CARTOPY_LCC, get_lonlat_lim_range
 from gdal_viirs.types import Number
 from typing import Tuple, Optional
 from rasterio import DatasetReader
@@ -104,7 +105,7 @@ def _gridlines_with_labels(ax, top=True, bottom=True, left=True,
         gridline_coords[side] = cartopy.crs.PlateCarree().transform_points(
             ax.projection, values[0], values[1])
 
-    lon_lim, lat_lim = cartopy_utils.get_lonlat_lim_range((xmin, xmax, ymin, ymax), ax.projection)
+    lon_lim, lat_lim = get_lonlat_lim_range((xmin, xmax, ymin, ymax), ax.projection)
     ticklocs = {
         'x': gridliner.xlocator.tick_values(lon_lim[0], lon_lim[1]),
         'y': gridliner.ylocator.tick_values(lat_lim[0], lat_lim[1])
@@ -163,16 +164,16 @@ def _gridlines_with_labels(ax, top=True, bottom=True, left=True,
 
 def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None, cmap=None,
                  norm=None, transform=None, states_border_color=None, region_border_color=None,
-                 water_shp_file=None, gridlines_font_props=None, water_color='#004da8'):
+                 water_shp_file=None, water_color='#004da8'):
     level_6_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader(utils.get_russia_admin_shp(6)).geometries(),
-        cartopy.crs.PlateCarree(),
+        cartopy.io.shapereader.Reader(str(req_resource_path('russia_adm/admpol.shp'))).geometries(),
+        CARTOPY_LCC,
         fc='none', ec=region_border_color or '#666666', linewidth=1
     )
 
     level_4_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader(utils.get_russia_admin_shp(4)).geometries(),
-        cartopy.crs.PlateCarree(),
+        cartopy.io.shapereader.Reader(str(req_resource_path('russia_adm/border.shp'))).geometries(),
+        CARTOPY_LCC,
         fc='none', ec=states_border_color or 'k', lw=2
     )
 
@@ -210,7 +211,7 @@ def plot_marks(points: dict, crs, ax, ec='k', fc='white', props=None):
         point = crs.transform_point(coord[0], coord[1], plate_carree)
         ax.plot(*point, color='none', markersize=10, marker='o', markeredgewidth=2, markeredgecolor=to_rgb(ec),
                 markerfacecolor=to_rgb(fc))
-        text = ax.annotate(text, point, fontsize=25, fontproperties=props)
+        text = ax.annotate(text, point, fontsize=23, fontproperties=props)
         text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='w')])
         text.set_clip_on(True)
         annotations.append(text)
@@ -304,8 +305,7 @@ class MapBuilder:
                      transform=file.transform,
                      states_border_color=self.styles.get('states_border'),
                      region_border_color=self.styles.get('regions_border'),
-                     water_shp_file=self.water_shp_file,
-                     gridlines_font_props=self._get_font_props(size=16))
+                     water_shp_file=self.water_shp_file)
 
     def _get_point_fontprops(self):
         return self._get_font_props(size=16)
@@ -316,7 +316,7 @@ class MapBuilder:
         pyplot.close(figure)
 
     def get_projection(self, file):
-        return cartopy.crs.PlateCarree()
+        return CARTOPY_LCC
 
     def _get_lims(self, file: DatasetReader):
         xlim = self.xlim or (file.transform.c, file.transform.a * file.width + file.transform.c)

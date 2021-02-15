@@ -1,5 +1,7 @@
+import cartopy
 from cartopy.crs import PlateCarree
 import numpy as np
+
 
 def get_lonlat_lim_range(extent, crs):
     pc = PlateCarree()
@@ -20,3 +22,10 @@ def get_lonlat_lim_range(extent, crs):
     lon = points[:, 0]
     lat = points[:, 1]
     return (lon.min(), lon.max()), (lat.min(), lat.max())
+
+
+CARTOPY_LCC = cartopy.crs.LambertConformal(
+    standard_parallels=(43.58046825, 67.41206675),
+    central_longitude=79.950619,
+    central_latitude=55.4962675
+)

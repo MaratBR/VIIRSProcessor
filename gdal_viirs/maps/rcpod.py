@@ -126,13 +126,6 @@ class RCPODMapBuilder(MapBuilder):
 
         return fig, (ax0, ax1), size
 
-    def get_projection(self, file):
-        return cartopy.crs.LambertConformal(
-            standard_parallels=(43.58046825, 67.41206675),
-            central_longitude=79.950619,
-            central_latitude=55.4962675
-        )
-
     def _draw_legend(self, ax0, file):
         """
         Рисуем легенду для изображенния и некоторый текст
