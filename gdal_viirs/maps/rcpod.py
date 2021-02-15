@@ -128,7 +128,7 @@ class RCPODMapBuilder(MapBuilder):
         """
         top = self.outer_size[0] + self.margin  # отступ сверху
 
-        l = _drawings.LinearLayout(ax0, (self.outer_size[3] / 2 - cm(1.2), top), origin=_drawings.TOP_LEFT)
+        l = _drawings.LinearLayout(ax0, (self.outer_size[3] / 2, top), origin=_drawings.TOP_LEFT)
         l.set_spacing(cm(.6))
         l.text('КА Suomi NPP/VIIRS', fontproperties=self._get_font_props(size=28))
         l.text('Разрешение 375 м', fontproperties=self._get_font_props(size=22))

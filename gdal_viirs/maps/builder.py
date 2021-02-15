@@ -153,11 +153,11 @@ def _gridlines_with_labels(ax, top=True, bottom=True, left=True,
         if side in ('bottom', 'top'):
             _ax.set_xticks(ticks[valid])
             _ax.set_xticklabels([LONGITUDE_FORMATTER.format_data(t)
-                                 for t in np.array(ticklocs[axis])[valid]])
+                                 for t in np.array(ticklocs[axis])[valid]], rotation=0)
         else:
             _ax.set_yticks(ticks[valid])
             _ax.set_yticklabels([LATITUDE_FORMATTER.format_data(t)
-                                 for t in np.array(ticklocs[axis])[valid]])
+                                 for t in np.array(ticklocs[axis])[valid]], rotation=90)
 
     return gridliner
 
@@ -203,9 +203,8 @@ def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: T
     gridlines = _gridlines_with_labels(axes)
     #gridlines = axes.gridlines(draw_labels=True, xformatter=DegreeFormatter(False), yformatter=DegreeFormatter(True),
     #                           y_inline=False, x_inline=False)
-    gridlines.ylabel_style = dict(fontproperties=gridlines_font_props)
-    gridlines.xlabel_style = dict(fontproperties=gridlines_font_props)
-    gridlines.rotate_labels = False
+    #gridlines.ylabel_style = dict(fontproperties=gridlines_font_props)
+    #gridlines.xlabel_style = dict(fontproperties=gridlines_font_props)
 
     return axes
 
