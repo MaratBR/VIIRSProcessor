@@ -83,7 +83,7 @@ class GeofileInfo:
         parts = self.name.split('_', 7)
         if len(parts) != 8:
             raise InvalidFilename(self.name)
-        self.file_type = parts[0]
+        self.file_type = parts[0].upper()
         self.sat_id = parts[1]
         self.date = datetime.strptime(parts[2][1:], '%Y%m%d')
         self.t_start = self._parse_time(parts[3][1:])

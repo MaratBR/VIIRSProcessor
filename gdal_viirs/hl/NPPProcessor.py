@@ -154,17 +154,18 @@ class NPPProcessor:
 
         for fs in filesets:
             # обработка данных с level1
+            typ = fs.geoloc_file.file_type.upper()
             l1_output_file = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id) \
-                             / f'{fs.root_dir.parts[-1]}'
+                             / f'{fs.root_dir.parts[-1]}.{typ}.tiff'
             if not l1_output_file.is_file():
-                self._on_before_processing(str(l1_output_file), fs.geoloc_file.file_type)
+                self._on_before_processing(str(l1_output_file), typ)
                 try:
                     _process.process_fileset(fs, str(l1_output_file), self._get_scale(fs.geoloc_file.band))
                 except Exception as exc:
                     self._on_exception(exc)
                     raise
 
-                self._on_after_processing(str(l1_output_file), fs.geoloc_file.file_type)
+                self._on_after_processing(str(l1_output_file), typ)
 
             processed: ProcessedViirsL1 = ProcessedViirsL1.get_or_none(ProcessedViirsL1.output_file == l1_output_file)
             if processed is None:
@@ -174,6 +175,14 @@ class NPPProcessor:
                                              type=fs.geoloc_file.file_type,
                                              input_directory=input_directory)
                 processed.save(True)
+            elif processed.type != typ:
+                # тип файла в БД не соответствует тому, что есть на самом деле
+                # будем считать, что тип в БД неверен
+                logger.warning(f'обноружил, что тип файла {processed.output_file} (id={processed.id}) в БД '
+                               f'({processed.type}) не соответствует реальному ({typ}) тип будет заменен')
+                processed.update({
+                    ProcessedViirsL1.type: typ
+                })
 
             handler_name = f'_process__{fs.geoloc_file.file_type.lower()}'
             if hasattr(self, handler_name):
@@ -209,7 +218,7 @@ class NPPProcessor:
         if self._config.get('UPDATE_DYNAMICS_WHEN_MAKING_MAPS', False):
             day = day or datetime.now().date()
             ndvi_dynamics = NDVIDynamicsTiff.select() \
-                .join(NDVIComposite, on=(NDVIComposite.id == NDVIDynamicsTiff.b2_composite))\
+                .join(NDVIComposite, on=(NDVIComposite.id == NDVIDynamicsTiff.b2_composite)) \
                 .where(NDVIComposite.ends_at == day)
             ndvi_dynamics = list(ndvi_dynamics)
             if len(ndvi_dynamics) == 0:
@@ -236,7 +245,8 @@ class NPPProcessor:
     def _process_cloud_mask(self, processed: ProcessedViirsL1) -> Path:
         level2_folder = os.path.join(processed.input_directory, 'viirs/level2')
         l2_input_file = glob(os.path.join(level2_folder, '*CLOUDMASK.tif'))
-        clouds_file = _mkpath(self._processed_output / _todaystr()) / f'{processed.directory_name}.PROJECTED_CLOUDMASK.tiff'
+        clouds_file = _mkpath(
+            self._processed_output / _todaystr()) / f'{processed.directory_name}.PROJECTED_CLOUDMASK.tiff'
 
         if not os.path.isfile(clouds_file) or self._config.get('FORCE_CLOUD_MASK_PROCESSING', False):
             if len(l2_input_file) == 0:
@@ -257,7 +267,8 @@ class NPPProcessor:
         return clouds_file
 
     def _process_ndvi_files(self, based_on: ProcessedViirsL1, clouds_file) -> NDVITiff:
-        assert based_on.type == 'GIMGO'
+        if not based_on.is_of_type('GIMGO'):
+            raise ProcessingException('невозможно обработать NDVI')
         ndvi_file = _mkpath(
             self._processed_output / based_on.dataset_date.strftime('%Y%m%d') / based_on.swath_id
         ) / f'{based_on.directory_name}.NDVI.tiff'
@@ -305,8 +316,8 @@ class NPPProcessor:
         output_file = _mkpath(self._processed_output / _todaystr() / 'daily') / merged_ndvi_filename
 
         if not os.path.isfile(merged_ndvi_filename) or self._config.get('FORCE_NDVI_COMPOSITE_PROCESSING', True):
-            ndvi_records = NDVITiff.select()\
-                .join(ProcessedViirsL1)\
+            ndvi_records = NDVITiff.select() \
+                .join(ProcessedViirsL1) \
                 .where((ProcessedViirsL1.dataset_date <= now) & (ProcessedViirsL1.dataset_date >= past_day))
             ndvi_records: List[NDVITiff] = list(ndvi_records)
 
@@ -317,7 +328,8 @@ class NPPProcessor:
                     logger.warning(f'найдено {no_ndvi_count} обработанных GIMGO снимков, '
                                    f'которые не имеют соответствующих NDVI')
                 logger.warning('не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
-                raise ProcessingException('не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
+                raise ProcessingException(
+                    'не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
 
             for raster in ndvi_records:
                 if not os.path.isfile(raster.output_file):
@@ -384,7 +396,8 @@ class NPPProcessor:
             _process.process_ndvi_dynamics(b1.output_file, b2.output_file, str(dynamics_tiff_output))
             self._on_after_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
 
-        record: NDVIDynamicsTiff = NDVIDynamicsTiff.get_or_none((NDVIDynamicsTiff.b1_composite == b1) & (NDVIDynamicsTiff.b2_composite == b2))
+        record: NDVIDynamicsTiff = NDVIDynamicsTiff.get_or_none(
+            (NDVIDynamicsTiff.b1_composite == b1) & (NDVIDynamicsTiff.b2_composite == b2))
         if record is None:
             record = NDVIDynamicsTiff(dynamics_tiff_output)
             record.b1_composite = b1

@@ -60,6 +60,9 @@ class ProcessedViirsL1(DatasetRelatedFile):
     def directory_name(self):
         return Path(self.input_directory).parts[-1]
 
+    def is_of_type(self, typ: str):
+        return self.type.strip().upper() == typ.upper()
+
     @property
     def swath_id(self):
         if not hasattr(self, '_swath_id'):
