@@ -302,7 +302,7 @@ def calc_ndvi_dynamics(b1, b2):
     return 100 * (b2 - b1) / b1
 
 
-def process_ndvi_dynamics(composite_b1_input, composite_b2_input, output_file):
+def process_ndvi_dynamics(composite_b1_input: str, composite_b2_input: str, output_file: str):
     with rasterio.open(composite_b1_input) as b1_f:
         with rasterio.open(composite_b2_input) as b2_f:
             b1_data = b1_f.read(1)

@@ -371,10 +371,11 @@ class NPPProcessor:
             logger.error(f'не удалось найти композит, сделанный сегодня (b2, ends_at={now})')
             return None
 
-        filename = ''.join((
-            f'ndvi_dynamics_',
-            f'b1{b1.from_date.strftime("%Y%m%d")}-{b1.to_date.strftime("%Y%m%d")}',
-            f'b2{b2.from_date.strftime("%Y%m%d")}-{b2.to_date.strftime("%Y%m%d")}',
+        filename = '.'.join((
+            f'ndvi_dynamics',
+            f'{b1.starts_at.strftime("%Y%m%d")}-{b1.ends_at.strftime("%Y%m%d")}',
+            f'{b2.starts_at.strftime("%Y%m%d")}-{b2.ends_at.strftime("%Y%m%d")}',
+            'tiff'
         ))
         dynamics_tiff_output = _mkpath(self._processed_output / 'daily') / filename
 
