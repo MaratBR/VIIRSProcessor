@@ -81,8 +81,6 @@ class NPPProcessor:
         logger.debug(f'config={config}')
         config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
         config_dir.mkdir(parents=True, exist_ok=True)
-        self.persistence = GDALViirsDB(str(config_dir / 'store.db'))
-
         self._processed_output = _mkpath(config.get_output('processed_data'))
         self._ndvi_output = _mkpath(config.get_output('ndvi'))
         self._ndvi_dynamics_output = _mkpath(config.get_output('ndvi_dynamics'))
@@ -92,7 +90,7 @@ class NPPProcessor:
         self._config = config
 
         # db
-        self._db = peewee.SqliteDatabase('/home/marat/Downloads/vmc/viirs_processor.db')
+        self._db = peewee.SqliteDatabase(str(config_dir / 'viirs_processor.db'))
         db_proxy.initialize(self._db)
         self._db.create_tables(PEEWEE_MODELS)
 
