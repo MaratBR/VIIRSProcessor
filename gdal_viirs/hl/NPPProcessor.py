@@ -205,11 +205,14 @@ class NPPProcessor:
 
     def _produce_daily_products(self):
         logger.info('обработка ежедневных продуктов...')
-        #self._produce_merged_ndvi_file_for_today()
-        self._process_ndvi_dynamics_for_today()
+        try:
+            self._produce_merged_ndvi_file_for_today()
+            self._process_ndvi_dynamics_for_today()
+        except Exception as e:
+            self._on_exception(e)
 
     def _produce_maps(self):
-        self._produce_ndvi_maps()
+        #self._produce_ndvi_maps()
         self._produce_ndvi_dynamics_maps()
 
     def _produce_ndvi_dynamics_maps(self, day=None):
@@ -379,7 +382,7 @@ class NPPProcessor:
             'NDVI_DYNAMICS_PERIOD',
             self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5) * 2
         )
-        past_days = now - timedelta(days=days)
+        past_days = now - timedelta(days=days - 1)
         b2: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.ends_at == now)
         b1: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.starts_at == past_days)
 
