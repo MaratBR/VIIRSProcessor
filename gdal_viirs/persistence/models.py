@@ -118,6 +118,10 @@ class NDVIDynamicsTiff(ProcessedFile):
     b1_composite: Union[int, NDVIComposite] = ForeignKeyField(NDVIComposite)
     b2_composite: Union[int, NDVIComposite] = ForeignKeyField(NDVIComposite)
 
+    @property
+    def date_text(self):
+        return self.b1_composite.starts_at.strftime('%d.%m') + ' - ' + self.b2_composite.ends_at.strftime('%d.%m.%Y')
+
 
 PEEWEE_MODELS = [
     NDVITiff,

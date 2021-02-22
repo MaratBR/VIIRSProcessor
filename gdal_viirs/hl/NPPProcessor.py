@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 from glob import glob
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import peewee
 from loguru import logger
@@ -207,7 +207,7 @@ class NPPProcessor:
         logger.info('обработка ежедневных продуктов...')
         try:
             self._produce_merged_ndvi_file_for_today()
-            self._process_ndvi_dynamics_for_today()
+            self._process_ndvi_dynamics_for_today
         except Exception as e:
             self._on_exception(e)
 
@@ -216,7 +216,7 @@ class NPPProcessor:
         self._produce_ndvi_dynamics_maps()
 
     def _produce_ndvi_dynamics_maps(self, day=None):
-        ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+        ndvi_dynamics = self._process_ndvi_dynamics_for_today
         if ndvi_dynamics is None:
             logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
             return
@@ -224,7 +224,7 @@ class NPPProcessor:
         _mkpath(ndvi_dynamics_dir)
         # создание карт динамики
         self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-        date_text = ndvi_dynamics.b1_composite.date_text
+        date_text = ndvi_dynamics.date_text
         self._produce_images(ndvi_dynamics.output_file, str(ndvi_dynamics_dir),
                              date_text=date_text, builder=NDVIDynamicsMapBuilder)
 
@@ -376,7 +376,8 @@ class NPPProcessor:
         date_text = merged_ndvi.date_text
         self._produce_images(merged_ndvi.output_file, png_dir, date_text)
 
-    def _process_ndvi_dynamics_for_today(self):
+    @property
+    def _process_ndvi_dynamics_for_today(self) -> Optional[NDVIDynamicsTiff]:
         now = datetime.now().date()
         days = self._config.get(
             'NDVI_DYNAMICS_PERIOD',
