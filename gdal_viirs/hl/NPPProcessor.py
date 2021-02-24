@@ -92,7 +92,7 @@ class NPPProcessor:
         self._config = config
 
         # db
-        self._db = peewee.SqliteDatabase(str(config_dir / 'viirs_processor.db'))
+        self._db = peewee.SqliteDatabase('/home/marat/Downloads/vmc/viirs_processor.db')
         db_proxy.initialize(self._db)
         self._db.create_tables(PEEWEE_MODELS)
 
@@ -132,11 +132,6 @@ class NPPProcessor:
             scale *= max(1, self._config['SCALE_MULTIPLIER'])
         scale = round(scale)
         return scale
-
-    def _fname(self, fs: _hlutil.NPPViirsFileset, kind, ext='tiff'):
-        dir_path = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id)
-        base_name = fs.root_dir.parts[-1]
-        return str(dir_path / (base_name + '.' + kind + '.' + ext))
 
     def _on_before_processing(self, name, src_type):
         logger.debug(f'обработка {src_type} @ {name}')
@@ -212,7 +207,7 @@ class NPPProcessor:
 
     def _produce_daily_products(self):
         logger.info('обработка ежедневных продуктов...')
-        self._produce_merged_ndvi_file_for_today()
+        #self._produce_merged_ndvi_file_for_today()
         self._process_ndvi_dynamics_for_today()
 
     def _produce_maps(self):
@@ -220,17 +215,6 @@ class NPPProcessor:
         self._produce_ndvi_dynamics_maps()
 
     def _produce_ndvi_dynamics_maps(self, day=None):
-        if self._config.get('UPDATE_DYNAMICS_WHEN_MAKING_MAPS', False):
-            day = day or datetime.now().date()
-            ndvi_dynamics = NDVIDynamicsTiff.select() \
-                .join(NDVIComposite, on=(NDVIComposite.id == NDVIDynamicsTiff.b2_composite)) \
-                .where(NDVIComposite.ends_at == day)
-            ndvi_dynamics = list(ndvi_dynamics)
-            if len(ndvi_dynamics) == 0:
-                logger.warning('не удалось найти ни одной записи о NDVI динамики, которая бы заканчивалась'
-                               f' {day}, не могу создать карты динамики NDVI')
-                return
-
         ndvi_dynamics = self._process_ndvi_dynamics_for_today()
         if ndvi_dynamics is None:
             logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
@@ -397,7 +381,7 @@ class NPPProcessor:
             'NDVI_DYNAMICS_PERIOD',
             self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5) * 2
         )
-        past_days = now - timedelta(days=days - 1)
+        past_days = now - timedelta(days=days)
         b2: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.ends_at == now)
         b1: NDVIComposite = NDVIComposite.get_or_none(NDVIComposite.starts_at == past_days)
 

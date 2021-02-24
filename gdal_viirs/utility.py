@@ -238,8 +238,8 @@ def crop_intersection(data1: np.ndarray,
                       data2: np.ndarray,
                       data2_transform: Affine):
     intersect1, intersect2 = get_data_intersection(data1, data1_transform, data2, data2_transform)
-    data1 = data1[intersect1[0]:intersect1[2], intersect1[1]:intersect1[3]]
-    data2 = data2[intersect2[0]:intersect2[2], intersect2[1]:intersect2[3]]
+    data1 = data1[intersect1[0]:data1.shape[0] - intersect1[2], intersect1[1]:data1.shape[1] - intersect1[3]]
+    data2 = data2[intersect2[0]:data2.shape[0] - intersect2[2], intersect2[1]:data2.shape[1] - intersect2[3]]
     if data1.shape != data2.shape:
         if data1.shape[0] > data2.shape[0]:
             data2 = np.pad(data2, ((0, data1.shape[0] - data2.shape[0]), (0, 0)))

@@ -315,6 +315,6 @@ def process_ndvi_dynamics(composite_b1_input: str, composite_b2_input: str, outp
 
             with rasterio.open(output_file, 'w', driver='GTiff', count=1, crs=b1_f.crs, transform=b1_transform,
                                nodata=np.nan, width=b3.shape[1], height=b3.shape[0], dtype='float32') as out:
-                out.write(1, b3)
+                out.write(b3, 1)
 
 
