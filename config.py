@@ -11,6 +11,7 @@ def __resource(res):
     """
     return str(__resource_path(res))
 
+
 # сколько дней приходит на один композит NDVI
 # например, если поставить 3 дня то прога будет каждый день
 # делать композит за последние 3 дня
@@ -22,16 +23,26 @@ NDVI_MERGE_PERIOD_IN_DAYS = 40
 # NDVI_DYNAMICS_PERIOD = NDVI_MERGE_PERIOD_IN_DAYS * 2
 
 # Если True будет генерировать проекцию с облачностью,
-# даже если она уже сгенерирована
-# FORCE_CLOUD_MASK_PROCESSING = False
+# даже если она уже сгенерирована (по-умолчанию False)
+FORCE_CLOUD_MASK_PROCESSING = False
 
-# FORCE_NDVI_DYNAMICS_PROCESSING = True
-# FORCE_NDVI_COMPOSITE_PROCESSING = True
-# FORCE_MAPS_REGENERATION = True
+# Если True динамика NDVI будет пересчитана, каждый раз когда программа запускается
+FORCE_NDVI_DYNAMICS_PROCESSING = True
+
+# Если True композит NDVI будет пересоздаваться, каждый раз, когда
+# программа запускается
+FORCE_NDVI_COMPOSITE_PROCESSING = True
+
+# Если True карты будут пересоздаваться, даже если уни уже были созданы
+FORCE_MAPS_REGENERATION = True
+
+# Если установить значение в True (по-умолчанию False) маска облачности будет сохраняться в /tmp
+# в один и тот же файл, то есть каждый раз будет перезаписываться
+SINGLE_CLOUD_MASK_FILE = False
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
-SCALE_MULTIPLIER = 9
+SCALE_MULTIPLIER = 1
 
 
 LOGO_PATH = __resource('logo.png')

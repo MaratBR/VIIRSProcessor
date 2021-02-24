@@ -2,16 +2,18 @@ import inspect
 import os
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).parent.parent
+
 CONFIG = {
     'SCALE_BAND_I': 375,
     'SCALE_BAND_M': 750,
     'SCALE_BAND_DN': 750,
-    'CONFIG_DIR': os.path.expanduser('./viirs_processor_cfg')
+    'CONFIG_DIR': str(_REPO_ROOT / 'viirs_processor_cfg')
 }
 
 
 def req_resource_path(res):
-    return Path(__file__).parent.parent / 'required_resources' / res
+    return _REPO_ROOT / 'required_resources' / res
 
 
 class ConfigWrapper(dict):

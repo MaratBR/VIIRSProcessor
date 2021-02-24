@@ -11,7 +11,8 @@ __all__ = (
     'NDVIDynamicsTiff',
     'NDVIComposite',
     'NDVICompositeComponents',
-    'PEEWEE_MODELS'
+    'MetaData',
+    'PEEWEE_MODELS',
 )
 
 from peewee import ModelSelect
@@ -31,6 +32,23 @@ class BaseModel(Model):
 class MetaData(BaseModel):
     key = CharField(primary_key=True)
     value = TextField()
+
+    @classmethod
+    def set_meta(cls, key: str, value: str):
+        record = cls.get_or_none(cls.key == key)
+        if record is None:
+            record = cls(key=key, value=value)
+            record.save(True)
+        else:
+            record.update({cls.value: value})
+
+    @classmethod
+    def get_meta(cls, key: str, default: str):
+        record = cls.get_or_none(cls.key == key)
+        if record is None:
+            return default
+        return record.value
+
 
 
 class ProcessedFile(BaseModel):
@@ -91,6 +109,9 @@ class NDVIComposite(ProcessedFile):
 class NDVICompositeComponents(BaseModel):
     composite = ForeignKeyField(NDVIComposite)
     component = ForeignKeyField(NDVITiff)
+
+    class Meta:
+        primary_key = CompositeKey('composite', 'component')
 
 
 class NDVIDynamicsTiff(ProcessedFile):
