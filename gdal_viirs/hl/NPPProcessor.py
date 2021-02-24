@@ -402,7 +402,7 @@ class NPPProcessor:
             f'{b2.starts_at.strftime("%Y%m%d")}-{b2.ends_at.strftime("%Y%m%d")}',
             'tiff'
         ))
-        dynamics_tiff_output = _mkpath(self._processed_output / 'daily') / filename
+        dynamics_tiff_output = _mkpath(self._processed_output / _todaystr() / 'daily') / filename
 
         if not dynamics_tiff_output.is_file() or self._config.get('FORCE_NDVI_DYNAMICS_PROCESSING', True):
             self._on_before_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
