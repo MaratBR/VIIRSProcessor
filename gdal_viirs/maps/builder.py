@@ -163,20 +163,8 @@ def _gridlines_with_labels(ax, top=True, bottom=True, left=True,
 
 
 def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: Tuple[Number, Number] = None, cmap=None,
-                 norm=None, transform=None, states_border_color=None, region_border_color=None,
-                 water_shp_file=None, water_color='#004da8'):
-    level_6_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader(str(req_resource_path('russia_adm/admpol.shp'))).geometries(),
-        CARTOPY_LCC,
-        fc='none', ec=region_border_color or '#666666', linewidth=1
-    )
-
-    level_4_russia_admin = cartopy.feature.ShapelyFeature(
-        cartopy.io.shapereader.Reader(str(req_resource_path('russia_adm/border.shp'))).geometries(),
-        CARTOPY_LCC,
-        fc='none', ec=states_border_color or 'k', lw=2
-    )
-
+                 norm=None, transform=None,
+                 water_shp_file=None, water_color='#004da8', layers=None):
     rasterio.plot.show(data, cmap=cmap, norm=norm, ax=axes, interpolation='none', transform=transform)
 
     if water_shp_file:
@@ -187,8 +175,25 @@ def build_figure(data, axes, crs, *, xlim: Tuple[Number, Number] = None, ylim: T
         )
         axes.add_feature(water_feature)
 
-    axes.add_feature(level_6_russia_admin)
-    axes.add_feature(level_4_russia_admin)
+    if layers:
+        for layer in layers:
+            if isinstance(layer, cartopy.feature.Feature):
+                axes.add_feature(layer)
+            else:
+                layer = layer.copy()
+                if 'crs' in layer:
+                    crs = layer['crs']
+                    del layer['crs']
+                else:
+                    crs = CARTOPY_LCC
+                file = layer['file']
+                del layer['file']
+                layer['fc'] = layer.get('fc', 'none')
+                feature = cartopy.feature.ShapelyFeature(
+                    cartopy.io.shapereader.Reader(file).geometries(),
+                    crs=crs, **layer
+                )
+                axes.add_feature(feature)
 
     if xlim:
         axes.set_xlim(xlim)
@@ -246,6 +251,7 @@ class MapBuilder:
     font_family = None
     agro_mask_shp_file = None
     water_shp_file = None
+    layers = None
 
     styles = {
         'regions_border': None,
@@ -303,9 +309,8 @@ class MapBuilder:
     def _build_figure(self, data, crs, ax1, xlim, ylim, file):
         build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim,
                      transform=file.transform,
-                     states_border_color=self.styles.get('states_border'),
-                     region_border_color=self.styles.get('regions_border'),
-                     water_shp_file=self.water_shp_file)
+                     water_shp_file=self.water_shp_file,
+                     layers=self.layers)
 
     def _get_point_fontprops(self):
         return self._get_font_props(size=16)

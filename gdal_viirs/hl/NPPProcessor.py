@@ -453,6 +453,7 @@ class NPPProcessor:
                 props['ylim'] = ylim
             props['water_shp_file'] = png_entry.get('water_shapefile')
             props['points'] = png_entry.get('points')
+            props['layers'] = png_entry.get('layers')
             shapefile = png_entry.get('mask_shapefile')
             if shapefile is None:
                 logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')

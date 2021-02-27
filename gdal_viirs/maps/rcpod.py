@@ -39,7 +39,7 @@ class RCPODMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(8), self.margin * 2, cm(10), self.margin + cm(16)
+        self.outer_size = cm(8), self.margin * 2, cm(10), self.margin + cm(17)
         self.min_height = cm(26)
         self.min_width = cm(22)
         self.max_width = cm(50)

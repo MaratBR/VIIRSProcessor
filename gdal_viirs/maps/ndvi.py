@@ -28,8 +28,6 @@ def _split_degree(deg):
 NDVI_BAD = '#c0504d'
 NDVI_OK = '#ffff00'
 NDVI_GOOD = '#70a800'
-STATES_BORDER_COLOR = '#a80000'
-REGIONS_BORDER_COLOR = '#9c9c9c'
 NDVI_CLOUD = '#8c8c8c'
 
 
