@@ -84,28 +84,37 @@ class NPPProcessor:
         self._processed_output = _mkpath(config.get_output('processed_data'))
         self._ndvi_output = _mkpath(config.get_output('ndvi'))
         self._ndvi_dynamics_output = _mkpath(config.get_output('ndvi_dynamics'))
-        self._data_dir = _mkpath(config.get_input('data'))
-
+        self._data_dir = config.get_input('data')
         self.png_config = config['PNG_CONFIG']
         self._config = config
 
-        # db
         self._db = peewee.SqliteDatabase(str(config_dir / 'viirs_processor.db'))
         db_proxy.initialize(self._db)
         self._db.create_tables(PEEWEE_MODELS)
 
     def _find_viirs_directories(self):
+        """
+        Находит все папки, в которых есть VIIRS датасеты
+        """
         directories = glob(os.path.join(self._data_dir, '*'))
         directories = list(filter(os.path.isdir, directories))
         logger.debug(f'Найдено {len(directories)} папок с данными')
         return directories
 
     def process_recent(self):
+        """
+        Обрабатывает датасеты и создает карты
+        :return:
+        """
         self._on_start()
         self.produce_products()
         self._produce_maps()
 
     def produce_maps(self):
+        """
+        Создает карты, не обрабатывая датасеты и TIFF файлы
+        :return:
+        """
         self._on_start()
         self._produce_maps()
 
@@ -207,39 +216,31 @@ class NPPProcessor:
         logger.info('обработка ежедневных продуктов...')
         try:
             self._produce_merged_ndvi_file_for_today()
-            self._process_ndvi_dynamics_for_today
+            self._process_ndvi_dynamics_for_today()
         except Exception as e:
             self._on_exception(e)
 
     def _produce_maps(self):
-        #self._produce_ndvi_maps()
+        self._produce_ndvi_maps()
         self._produce_ndvi_dynamics_maps()
-
-    def _produce_ndvi_dynamics_maps(self, day=None):
-        ndvi_dynamics = self._process_ndvi_dynamics_for_today
-        if ndvi_dynamics is None:
-            logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
-            return
-        ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
-        _mkpath(ndvi_dynamics_dir)
-        # создание карт динамики
-        self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-        date_text = ndvi_dynamics.date_text
-        self._produce_images(ndvi_dynamics.output_file, str(ndvi_dynamics_dir),
-                             date_text=date_text, builder=NDVIDynamicsMapBuilder)
-
-        self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
     # region ndvi / ndvi dynamics
 
     def _process_cloud_mask(self, processed: ProcessedViirsL1) -> Path:
+        """
+        Обрабатывает маску облачности для данного обработанного датасета.
+        :param processed: запись обработанного датасета
+        :return: путь к файл или None, если не удалось найти исходник для маски облачности
+        """
         level2_folder = os.path.join(processed.input_directory, 'viirs/level2')
         l2_input_file = glob(os.path.join(level2_folder, '*CLOUDMASK.tif'))
 
         is_single_file_mode = self._config.get('SINGLE_CLOUD_MASK_FILE', False)
 
+        # если SINGLE_CLOUD_MASK_FILE = True сохраняем маску облачности в /tmp
+        # если False - сохраняем в папку с данными по умолчанию
         if is_single_file_mode:
-            clouds_file = _mkpath(Path(f'/tmp/viirs_processor_{os.getpid()}'))
+            clouds_file = _mkpath(Path('/tmp/viirs_processor'))
             clouds_file /= 'cloud_mask.tiff'
         else:
             try:
@@ -269,6 +270,11 @@ class NPPProcessor:
         return clouds_file
 
     def _process_ndvi_files(self, based_on: ProcessedViirsL1) -> NDVITiff:
+        """
+        Создать NDVI файлы для указанного датасета
+        :param based_on: запись обработанного датасета для которого следует создать NDVI файлы
+        :return: экземпляр NDVITiff, сохранённый в БД
+        """
         if not based_on.is_of_type('GIMGO'):
             raise ProcessingException('невозможно обработать NDVI')
 
@@ -278,9 +284,11 @@ class NPPProcessor:
 
         ndvi_record: NDVITiff = NDVITiff.get_or_none(NDVITiff.based_on == based_on)
 
+        # создаем NDVI файл, но только если его еще нет, не перезаписываем
         if not ndvi_file.is_file():
             clouds_file = self._process_cloud_mask(based_on)
 
+            # проверяем, что исходный файл (VIMGO/GIMGO) существует, если нет - ошибка
             if os.path.isfile(based_on.output_file):
                 self._on_before_processing(ndvi_file, 'ndvi')
                 _process.process_ndvi(based_on.output_file, ndvi_file, str(clouds_file))
@@ -297,6 +305,7 @@ class NPPProcessor:
         else:
             logger.debug('пропускаем ndvi @ ' + str(ndvi_file))
 
+        # создаем запись в БД
         if ndvi_record is None:
             ndvi_record = NDVITiff(ndvi_file, based_on=based_on)
             ndvi_record.save(True)
@@ -358,25 +367,6 @@ class NPPProcessor:
 
         return composite
 
-    # endregion
-
-    # region maps
-
-    def _produce_ndvi_maps(self):
-        force_merged_ndvi = self._config.get('FORCE_MERGED_NDVI_PRODUCING', True)
-        if force_merged_ndvi:
-            merged_ndvi = self._produce_merged_ndvi_file_for_today()
-        else:
-            merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == datetime.now().date())
-            if merged_ndvi is None:
-                logger.warning('не удалось сгенерировать NDVI карты, так как композит NDVI не найден, а '
-                               'FORCE_MERGED_NDVI_PRODUCING = False, поэтому нельзя сгенерировать NDVI карты')
-                return
-        png_dir = str(_mkpath(self._ndvi_output / _todaystr()))
-        date_text = merged_ndvi.date_text
-        self._produce_images(merged_ndvi.output_file, png_dir, date_text)
-
-    @property
     def _process_ndvi_dynamics_for_today(self) -> Optional[NDVIDynamicsTiff]:
         now = datetime.now().date()
         days = self._config.get(
@@ -424,6 +414,36 @@ class NPPProcessor:
             })
 
         return record
+
+    # endregion
+
+    # region maps
+
+    def _produce_ndvi_maps(self):
+        """"""
+        merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == datetime.now().date())
+        if merged_ndvi is None:
+            logger.debug('не удалось найти композит на сегодня в БД, композит будет сгенерирован')
+            merged_ndvi = self._produce_merged_ndvi_file_for_today()
+
+        png_dir = str(_mkpath(self._ndvi_output / _todaystr()))
+        date_text = merged_ndvi.date_text
+        self._produce_images(merged_ndvi.output_file, png_dir, date_text)
+
+    def _produce_ndvi_dynamics_maps(self):
+        ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+        if ndvi_dynamics is None:
+            logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
+            return
+        ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
+        _mkpath(ndvi_dynamics_dir)
+        # создание карт динамики
+        self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
+        date_text = ndvi_dynamics.date_text
+        self._produce_images(ndvi_dynamics.output_file, str(ndvi_dynamics_dir),
+                             date_text=date_text, builder=NDVIDynamicsMapBuilder)
+
+        self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
     def _produce_images(self, input_file, output_directory, date_text=None, builder=None):
         png_config = self._config.get("PNG_CONFIG")

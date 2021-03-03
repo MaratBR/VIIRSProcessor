@@ -50,7 +50,6 @@ class MetaData(BaseModel):
         return record.value
 
 
-
 class ProcessedFile(BaseModel):
     def __init__(self, output_file: Union[str, Path] = None, **kwargs):
         if output_file:
@@ -76,6 +75,11 @@ class ProcessedViirsL1(DatasetRelatedFile):
 
     @property
     def directory_name(self):
+        """
+        Возвращает имя корневой папки, где находятся данные со снимка.
+        Под корневой папкой тут подразумевается папка, содержащая подпапку viirs/level1
+        :return:
+        """
         return Path(self.input_directory).parts[-1]
 
     def is_of_type(self, typ: str):
@@ -83,6 +87,11 @@ class ProcessedViirsL1(DatasetRelatedFile):
 
     @property
     def swath_id(self):
+        """
+        Использует `utility.extract_swath_id` для получения ID витка и помещает его
+        в поле модели.
+        :return: ID витка (строка)
+        """
         if not hasattr(self, '_swath_id'):
             setattr(self, '_swath_id', utility.extract_swath_id(self.directory_name))
         return self._swath_id
@@ -103,7 +112,11 @@ class NDVIComposite(ProcessedFile):
 
     @property
     def date_text(self):
-        return self.ends_at.strftime('%d.%m') + ' - ' + self.ends_at.strftime('%d.%m.%Y')
+        """
+        Форматирует строку периода в виде ДД.ММ - ДД.ММ.ГГГГ
+        :return: отформатированная строка периода (даты) композита
+        """
+        return self.ends_at.strftime('%d.%m') + ' - ' + self.starts_at.strftime('%d.%m.%Y')
 
 
 class NDVICompositeComponents(BaseModel):
@@ -120,6 +133,10 @@ class NDVIDynamicsTiff(ProcessedFile):
 
     @property
     def date_text(self):
+        """
+        Форматирует строку периода в виде ДД.ММ - ДД.ММ.ГГГГ
+        :return: отформатированная строка периода (даты) динамики
+        """
         return self.b1_composite.starts_at.strftime('%d.%m') + ' - ' + self.b2_composite.ends_at.strftime('%d.%m.%Y')
 
 

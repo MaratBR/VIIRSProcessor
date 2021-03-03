@@ -13,6 +13,11 @@ def _set_debug_off():
 
 
 def create_npp_processor(config) -> NPPProcessor:
+    """
+    Создает процессор с указанной конфигурацией.
+    :param config: модуль конфигурации (полученный через import), строка для импорта или словарь
+    :return: NPPProcessor или экземпляр класса указанного как BUILDER_CLASS в конфиге
+    """
     if isinstance(config, str):
         config = importlib.import_module(config)
     config = ConfigWrapper(config)

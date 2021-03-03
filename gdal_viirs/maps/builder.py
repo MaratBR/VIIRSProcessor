@@ -253,11 +253,6 @@ class MapBuilder:
     water_shp_file = None
     layers = None
 
-    styles = {
-        'regions_border': None,
-        'states_border': None
-    }
-
     def __init__(self, **kwargs):
         self.points = {}
         self.cartopy_scale = '10m'

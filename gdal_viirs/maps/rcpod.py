@@ -28,14 +28,6 @@ class RCPODMapBuilder(MapBuilder):
 
     def __init__(self, logo_path='./logo.png', iso_sign_path=None, **kwargs):
         super(RCPODMapBuilder, self).__init__(**kwargs)
-        self.styles.update({
-            'regions_border': REGIONS_BORDER_COLOR,
-            'states_border': STATES_BORDER_COLOR,
-            'ndvi_ok': NDVI_OK,
-            'ndvi_good': NDVI_GOOD,
-            'ndvi_bad': NDVI_BAD,
-            'ndvi_cloud': NDVI_CLOUD
-        })
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
