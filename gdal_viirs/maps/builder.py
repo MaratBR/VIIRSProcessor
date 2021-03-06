@@ -1,24 +1,22 @@
 import os
+from typing import Tuple, Optional
 
+import cartopy
+import cartopy.io.shapereader
+import cartopy.mpl.gridliner
 import matplotlib.font_manager as _fm
+import numpy as np
 import rasterio.plot
 from adjustText import adjust_text
-import numpy as np
+from matplotlib import pyplot, patches, offsetbox, patheffects
 from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
+from rasterio import DatasetReader
 
-from gdal_viirs.config import req_resource_path
-from gdal_viirs.hl import points
 from gdal_viirs.maps.cartopy_utils import CARTOPY_LCC, get_lonlat_lim_range
 from gdal_viirs.types import Number
-from typing import Tuple, Optional
-from rasterio import DatasetReader
-from matplotlib import pyplot, patches, offsetbox, patheffects
-import cartopy
-import cartopy.mpl.gridliner
-import cartopy.io.shapereader
 
-_CM = 1/2.54
+_CM = 1 / 2.54
 
 __all__ = (
     'build_figure',
@@ -90,7 +88,7 @@ def _gridlines_with_labels(ax, top=True, bottom=True, left=True,
                                     np.ones(N) * ymin])
     if top:
         sides['top'] = np.stack([np.linspace(xmin, xmax, N),
-                                np.ones(N) * ymax])
+                                 np.ones(N) * ymax])
     if left:
         sides['left'] = np.stack([np.ones(N) * xmin,
                                   np.linspace(ymin, ymax, N)])
@@ -261,7 +259,8 @@ class MapBuilder:
         self.ylim = None
 
         if 'points' in kwargs:
-            points.add_points(self, kwargs['points'])
+            for p in kwargs['points']:
+                self.add_point(*p)
             del kwargs['points']
 
         for k, v in kwargs.items():
@@ -284,12 +283,14 @@ class MapBuilder:
         plot_size = self._get_raster_size_inches(file)
         data = file.read(band)
         crs = self.get_projection(file)
-        figsize = plot_size[0] + self.outer_size[1] + self.outer_size[3], plot_size[1] + self.outer_size[0] + self.outer_size[2]
+        figsize = plot_size[0] + self.outer_size[1] + self.outer_size[3], plot_size[1] + self.outer_size[0] + \
+                  self.outer_size[2]
         fig = pyplot.figure(figsize=figsize, dpi=self.dpi)
 
         # сконвертировать координаты изображения в пиксели (можно просто помножить на dpi)
         image_pos = self.outer_size[3], self.outer_size[0]  # позиция изображения в дюймах (от верхнего левого угла)
-        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], figsize[1]-image_pos[1]-plot_size[1]))  # позиция изображеня в пикселях, от вернего левого угла
+        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], figsize[1] - image_pos[1] - plot_size[
+            1]))  # позиция изображеня в пикселях, от вернего левого угла
         image_pos_ax = fig.transFigure.inverted().transform(image_pos_px)  # в долях(?) (от 0 до 1)
         plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(plot_size))
         ax0 = fig.add_axes([0, 0, 1, 1])
@@ -340,8 +341,3 @@ class MapBuilder:
         plot_width *= zoom
         plot_height *= zoom
         return plot_width, plot_height
-
-
-
-
-

@@ -1,12 +1,11 @@
 import io
-from functools import partial
-import enum
+from typing import Tuple
+
 import numpy as np
 from PIL import Image
 from matplotlib import offsetbox, image, patches, pyplot
 from matplotlib.artist import Artist
 from matplotlib.figure import Figure
-from matplotlib.legend import Legend
 from matplotlib.transforms import Bbox
 
 from .types import *

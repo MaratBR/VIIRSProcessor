@@ -7,7 +7,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, time
 from pathlib import Path
-from typing import NamedTuple, List, TypeVar, Union, Tuple, Optional
+from typing import NamedTuple, List, TypeVar, Union, Tuple
 
 import numpy as np
 import pyproj

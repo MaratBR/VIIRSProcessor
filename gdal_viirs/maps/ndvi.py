@@ -1,16 +1,8 @@
-import math
-import cartopy
 import numpy as np
-
+from matplotlib import patches
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from rasterio import DatasetReader
-from matplotlib import patches, lines
 
-from gdal_viirs import utility
-from gdal_viirs.hl import points
-
-from gdal_viirs.maps import _drawings
-from gdal_viirs.maps.builder import MapBuilder, cm
 from gdal_viirs.maps.rcpod import RCPODMapBuilder
 
 
@@ -52,5 +44,6 @@ class NDVIMapBuilder(RCPODMapBuilder):
             patches.Patch(color=NDVI_BAD, label=f'Плохое ({round(1000 * bad_count / all_count) / 10}%)'),
             patches.Patch(color=NDVI_OK, label=f'Удовлетворительное ({round(1000 * ok_count / all_count) / 10}%)'),
             patches.Patch(color=NDVI_GOOD, label=f'Хорошее ({round(1000 * good_count / all_count) / 10}%)'),
-            patches.Patch(color=NDVI_CLOUD, label=f'Закрытые облачностью посевы ({round(1000 * clouds_count / all_count) / 10}%)'),
+            patches.Patch(color=NDVI_CLOUD,
+                          label=f'Закрытые облачностью посевы ({round(1000 * clouds_count / all_count) / 10}%)'),
         ]

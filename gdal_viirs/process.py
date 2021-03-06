@@ -1,25 +1,22 @@
-import os
 from datetime import datetime
-from typing import List, Optional, Tuple, Iterable
+import time
+from datetime import datetime
+from typing import List, Iterable
 
 import numpy as np
 import pyproj
-import time
-
 import rasterio
-import rasterio.fill
 import rasterio.crs
-import rasterio.warp
 import rasterio.features
-import shapely as shapely
+import rasterio.fill
+import rasterio.warp
 from loguru import logger
 
 from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
 from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData
-from gdal_viirs.types import GeofileInfo, ProcessedFileSet, Number, \
-    ProcessedGeolocFile, ProcessedBandFile, ViirsFileset, GDALGeotransformT
-
+from gdal_viirs.types import GeofileInfo, Number, \
+    ProcessedGeolocFile, ViirsFileset
 
 _RASTERIO_DEFAULT_META = {
     'driver': 'GTiff',
@@ -40,6 +37,7 @@ def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=Tr
     создает файл вида out_ИМЯ_ФАЙЛА_ГЕОЛОКАЦИИ.tiff в папке, указанной в параметре out_dir (если указан filename,
     использует его).
 
+    :param output_file: путь к файлу, который должен получится в итоге
     :param fileset: ViirsFileSet, получаенный через функцию utility.find_sdr_viirs_filesets
     :param scale: масштаб, метров на пиксель (рекомендовано значение 2000, чтобы минимизировать nodata)
     :param proj: проекция в формате WKT, значение по умолчанию - gdal_viirs.const.PROJ_LCC
@@ -231,7 +229,7 @@ def process_ndvi(input_file: str, output_file: str, cloud_mask_file: str = None)
     """
     with rasterio.open(input_file) as f:
         svi01, svi02 = f.read(1), f.read(2)
-        ndvi = (svi02 - svi01)/(svi01 + svi02)
+        ndvi = (svi02 - svi01) / (svi01 + svi02)
         if cloud_mask_file:
             with rasterio.open(cloud_mask_file) as cmf:
                 try:
@@ -265,7 +263,6 @@ def process_cloud_mask(input_file: str,
                        output_file: str,
                        proj: str = PROJ_LCC,
                        scale: int = None):
-
     # открываем файл и читаем данные
     with rasterio.open(input_file) as f:
         crs = rasterio.crs.CRS.from_wkt(proj)
@@ -316,5 +313,3 @@ def process_ndvi_dynamics(composite_b1_input: str, composite_b2_input: str, outp
             with rasterio.open(output_file, 'w', driver='GTiff', count=1, crs=b1_f.crs, transform=b1_transform,
                                nodata=np.nan, width=b3.shape[1], height=b3.shape[0], dtype='float32') as out:
                 out.write(b3, 1)
-
-

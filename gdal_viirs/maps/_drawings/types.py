@@ -1,5 +1,5 @@
 import enum
-from typing import Tuple, NamedTuple
+from typing import NamedTuple
 
 
 class Origin(enum.Enum):

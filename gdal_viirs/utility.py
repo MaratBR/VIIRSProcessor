@@ -1,9 +1,10 @@
 import inspect
 import re
-import fiona.transform
 from typing import Dict, Optional
 
+import fiona.transform
 import h5py
+
 from gdal_viirs.types import *
 
 
@@ -98,13 +99,12 @@ def make_rasterio_meta(height, width, bands_count, omit=None):
 def trim_nodata(data: np.ndarray,
                 transform: Affine,
                 nodata=None) -> Tuple[Optional[Affine], np.ndarray]:
-
     if len(data.shape) not in (2, 3):
         raise ValueError('неверная размерность массива, допускаются только 2-х и 3-х мерные массивы')
     if len(data.shape) == 2:
         # двух-мерный массив, просто обрезать и вернуть назад
         t, r, b, l = get_trimming_offsets(data, nodata)
-        data = data[t:data.shape[0]-b, l:data.shape[1]-r]
+        data = data[t:data.shape[0] - b, l:data.shape[1] - r]
         transform = transform * Affine.translation(l, t)
         return transform, data
     else:
@@ -116,7 +116,7 @@ def trim_nodata(data: np.ndarray,
         for processed_band in data:
             t2, r2, b2, l2 = get_trimming_offsets(processed_band, nodata)
             t, r, b, l = min(t, t2), min(r, r2), min(b, b2), min(l, l2)
-        data = data[:, t:data.shape[1]-b, l:data.shape[2]-r]
+        data = data[:, t:data.shape[1] - b, l:data.shape[2] - r]
         transform = transform * Affine.translation(l, t)
         return transform, data
 
@@ -154,7 +154,8 @@ def get_intersection(x1: float, y1: float, w1: int, h1: int,
     bottom1 = max(0.0, y2 // abs(scalex) - y1 // abs(scalex))
     bottom2 = max(0.0, y1 // abs(scalex) - y2 // abs(scalex))
 
-    return (round(top1), round(right1), round(bottom1), round(left1)), (round(top2), round(right2), round(bottom2), round(left2))
+    return (round(top1), round(right1), round(bottom1), round(left1)), (
+    round(top2), round(right2), round(bottom2), round(left2))
 
 
 def get_data_intersection(data1: np.ndarray,
@@ -215,19 +216,19 @@ def apply_mask(data: np.ndarray,
 
     data_intr, mask_intr = get_data_intersection(data, data_transform, mask, mask_transform)
     mask = mask[
-        mask_intr[0]:mask.shape[0] - mask_intr[2],
-        mask_intr[3]:mask.shape[1] - mask_intr[1]
-    ]
+           mask_intr[0]:mask.shape[0] - mask_intr[2],
+           mask_intr[3]:mask.shape[1] - mask_intr[1]
+           ]
     if len(data.shape) == 2:
         data[
-            data_intr[0]:shape[0] - data_intr[2],
-            data_intr[3]:shape[1] - data_intr[1]
+        data_intr[0]:shape[0] - data_intr[2],
+        data_intr[3]:shape[1] - data_intr[1]
         ][mask] = nd_value
     else:
         data[
-            :,
-            data_intr[0]:shape[0] - data_intr[2],
-            data_intr[3]:shape[1] - data_intr[1]
+        :,
+        data_intr[0]:shape[0] - data_intr[2],
+        data_intr[3]:shape[1] - data_intr[1]
         ][mask] = nd_value
 
     return data
@@ -281,4 +282,3 @@ def transform_points(src_crs, dst_crs, points):
     ys = points[:, 1]
     xs, ys = fiona.transform.transform(src_crs, dst_crs, xs, ys)
     return np.array(list(zip(xs, ys)))
-

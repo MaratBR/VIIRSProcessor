@@ -1,17 +1,11 @@
 import math
-import cartopy
-import numpy as np
 
+from matplotlib import patches, lines
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from rasterio import DatasetReader
-from matplotlib import patches, lines
-
-from gdal_viirs import utility
-from gdal_viirs.hl import points
 
 from gdal_viirs.maps import _drawings
 from gdal_viirs.maps.builder import MapBuilder, cm
-
 
 NDVI_BAD = '#c0504d'
 NDVI_OK = '#ffff00'
@@ -103,7 +97,8 @@ class RCPODMapBuilder(MapBuilder):
         ]), (self.margin, self.margin), ax0, fontproperties=self._get_font_props(size=18), va='bottom', ha='left')
 
         _drawings.draw_text(self.bottom_title + '\n' + (self.bottom_subtitle or ''),
-                            (self.outer_size[3] + size[0] / 2, self.margin + cm(2)), ax0, max_size=(size[0] - cm(2), cm(6)),
+                            (self.outer_size[3] + size[0] / 2, self.margin + cm(2)), ax0,
+                            max_size=(size[0] - cm(2), cm(6)),
                             ha='center', va='center', wrap=True, fontproperties=self._get_font_props(size=36))
 
         if self.date_text:

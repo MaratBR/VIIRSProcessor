@@ -1,0 +1,5 @@
+2021-03-06 15:45:36.074 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:444 - не удалось найти композит на сегодня в БД, композит будет сгенерирован
+2021-03-06 15:45:36.077 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_merged_ndvi_file_for_today:363 - не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла
+2021-03-06 15:45:36.078 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:448 - не удалось сгенерировать композит на сегодня, карты не будут созданы
+2021-03-06 15:45:36.081 | WARNING  | gdal_viirs.hl.NPPProcessor:_process_ndvi_dynamics_for_today:399 - не удалось найти композит начинающийся с starts_at=2021-03-05 (b1)
+2021-03-06 15:45:36.081 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_dynamics_maps:458 - не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня

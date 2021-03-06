@@ -1,6 +1,6 @@
 import cartopy
-from cartopy.crs import PlateCarree
 import numpy as np
+from cartopy.crs import PlateCarree
 
 
 def get_lonlat_lim_range(extent, crs):

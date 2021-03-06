@@ -1,7 +1,7 @@
-from .drawings import *
-from .types import Origin, Alignment, VerticalAlignment, HorizontalAlignment
 from typing import *
 
+from .drawings import *
+from .types import Origin, Alignment, VerticalAlignment, HorizontalAlignment
 
 T = TypeVar('T')
 

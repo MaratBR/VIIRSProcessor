@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime, timedelta
 from glob import glob
 from pathlib import Path
@@ -7,15 +8,14 @@ from typing import List, Optional
 import peewee
 from loguru import logger
 
+import gdal_viirs.hl.utility as _hlutil
+from gdal_viirs import process as _process
 from gdal_viirs.config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException
 from gdal_viirs.maps import produce_image
 from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
 from gdal_viirs.merge import merge_files2tiff
-from gdal_viirs.persistence.db import GDALViirsDB
 from gdal_viirs.persistence.models import *
-from gdal_viirs import process as _process
-import gdal_viirs.hl.utility as _hlutil
 
 
 def _validate_png_config(png_config):
@@ -78,25 +78,39 @@ class NPPProcessor:
     def __init__(self, config):
         config = ConfigWrapper(CONFIG, config)
         _validate_config(config)
-        logger.debug(f'config={config}')
         config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
         config_dir.mkdir(parents=True, exist_ok=True)
+
+        self._viirs_data_input = config.get_input('data')
+
+        # путь к папке с готовыми тифами, которые программа сгенерирует
         self._processed_output = _mkpath(config.get_output('processed_data'))
+        # выходная папка для карт ndvi, будет создана, если её еще нет
         self._ndvi_output = _mkpath(config.get_output('ndvi'))
+        # папка для карт динамики, будет создана, если её еще нет
         self._ndvi_dynamics_output = _mkpath(config.get_output('ndvi_dynamics'))
-        self._data_dir = config.get_input('data')
-        self.png_config = config['PNG_CONFIG']
         self._config = config
 
         self._db = peewee.SqliteDatabase(str(config_dir / 'viirs_processor.db'))
         db_proxy.initialize(self._db)
         self._db.create_tables(PEEWEE_MODELS)
 
+        self._init_logger()
+
+    def _init_logger(self):
+        logger_dir = self._config.get('LOG_PATH', 'viirs_logs')
+        logger_file = os.path.join(logger_dir, 'viirs.log')
+        logger.add(logger_file, rotation="100 MB", compression='tar.gz')
+
+    @property
+    def png_config(self):
+        return self._config['PNG_CONFIG']
+
     def _find_viirs_directories(self):
         """
         Находит все папки, в которых есть VIIRS датасеты
         """
-        directories = glob(os.path.join(self._data_dir, '*'))
+        directories = glob(os.path.join(self._viirs_data_input, '*'))
         directories = list(filter(os.path.isdir, directories))
         logger.debug(f'Найдено {len(directories)} папок с данными')
         return directories
@@ -107,9 +121,10 @@ class NPPProcessor:
         :return:
         """
         self._on_start()
-        self.produce_products()
+        self._produce_products()
         self._produce_maps()
 
+    @logger.catch
     def produce_maps(self):
         """
         Создает карты, не обрабатывая датасеты и TIFF файлы
@@ -118,7 +133,12 @@ class NPPProcessor:
         self._on_start()
         self._produce_maps()
 
+    @logger.catch
     def produce_products(self):
+        self._on_start()
+        self._produce_products()
+
+    def _produce_products(self):
         self._on_start()
         for d in self._find_viirs_directories():
             try:
@@ -154,6 +174,7 @@ class NPPProcessor:
             return
         setattr(self, '_on_start_fired', True)
         MetaData.set_meta('last_start', str(datetime.now()))
+        MetaData.set_meta('last_start_pyversion', sys.version)
 
     # endregion
 
@@ -342,8 +363,7 @@ class NPPProcessor:
                     logger.warning(f'найдено {no_ndvi_count} обработанных GIMGO снимков, '
                                    f'которые не имеют соответствующих NDVI')
                 logger.warning('не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
-                raise ProcessingException(
-                    'не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
+                return
 
             for raster in ndvi_records:
                 if not os.path.isfile(raster.output_file):
@@ -425,6 +445,10 @@ class NPPProcessor:
         if merged_ndvi is None:
             logger.debug('не удалось найти композит на сегодня в БД, композит будет сгенерирован')
             merged_ndvi = self._produce_merged_ndvi_file_for_today()
+
+            if merged_ndvi is None:
+                logger.warning('не удалось сгенерировать композит на сегодня, карты не будут созданы')
+                return
 
         png_dir = str(_mkpath(self._ndvi_output / _todaystr()))
         date_text = merged_ndvi.date_text

@@ -27,6 +27,12 @@ def extract_swath_id(dirname):
 
 
 def find_npp_viirs_filesets(root_dir, **kwargs) -> List[NPPViirsFileset]:
+    """
+    Функция находит VIIRS датасеты во  папки, при этом она ищет датасет в подпапке viirs/level1.
+    :param root_dir: путь к папке, где находятся viirs датасеты
+    :param kwargs: любые параметры, передаваемые в функцию gdal_viirs.utility.find_sdr_viirs_filesets
+    :return:
+    """
     filesets = []
     for fs in find_sdr_viirs_filesets(os.path.join(root_dir, 'viirs/level1'), **kwargs).values():
         dirname = fs.geoloc_file.path_obj.parts[-4]

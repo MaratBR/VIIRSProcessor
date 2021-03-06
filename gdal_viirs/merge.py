@@ -1,10 +1,8 @@
-import os
-from datetime import datetime
 from typing import List, Union, Tuple
+
 import numpy as np
 import rasterio
 import rasterio.crs
-from affine import Affine
 from rasterio.merge import merge as _merge
 
 import gdal_viirs.utility as _utility
