@@ -49,6 +49,9 @@ LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
 
+DATE_OFFSET = 0
+DATE = '22022021'
+
 # входые данные и папка с выходными
 OUTPUTS = {
     'ndvi': '~/Documents/viirs/processed/products/ndvi',

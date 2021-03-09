@@ -3,3 +3,138 @@
 2021-03-06 15:45:36.078 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:448 - не удалось сгенерировать композит на сегодня, карты не будут созданы
 2021-03-06 15:45:36.081 | WARNING  | gdal_viirs.hl.NPPProcessor:_process_ndvi_dynamics_for_today:399 - не удалось найти композит начинающийся с starts_at=2021-03-05 (b1)
 2021-03-06 15:45:36.081 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_dynamics_maps:458 - не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня
+2021-03-09 15:54:28.730 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:446 - не удалось найти композит на сегодня в БД, композит будет сгенерирован
+2021-03-09 15:54:28.735 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_merged_ndvi_file_for_today:365 - не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла
+2021-03-09 15:54:28.736 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:450 - не удалось сгенерировать композит на сегодня, карты не будут созданы
+2021-03-09 15:54:28.740 | WARNING  | gdal_viirs.hl.NPPProcessor:_process_ndvi_dynamics_for_today:401 - не удалось найти композит начинающийся с starts_at=2021-03-08 (b1)
+2021-03-09 15:54:28.741 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_dynamics_maps:460 - не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня
+2021-02-22 15:54:52.601 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:478 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/region.png
+2021-03-09 16:02:50.167 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:454 - не удалось найти композит на сегодня в БД, композит будет сгенерирован
+2021-03-09 16:02:50.173 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_merged_ndvi_file_for_today:373 - не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла
+2021-03-09 16:02:50.173 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:458 - не удалось сгенерировать композит на сегодня, карты не будут созданы
+2021-03-09 16:02:50.177 | WARNING  | gdal_viirs.hl.NPPProcessor:_process_ndvi_dynamics_for_today:409 - не удалось найти композит начинающийся с starts_at=2021-03-08 (b1)
+2021-03-09 16:02:50.178 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_dynamics_maps:468 - не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня
+2021-03-09 16:03:37.450 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:457 - не удалось найти композит на сегодня в БД, композит будет сгенерирован
+2021-03-09 16:03:37.455 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_merged_ndvi_file_for_today:376 - не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла
+2021-03-09 16:03:37.457 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:461 - не удалось сгенерировать композит на сегодня, карты не будут созданы
+2021-03-09 16:03:37.463 | WARNING  | gdal_viirs.hl.NPPProcessor:_process_ndvi_dynamics_for_today:412 - не удалось найти композит начинающийся с starts_at=2021-03-08 (b1)
+2021-03-09 16:03:37.465 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_dynamics_maps:471 - не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня
+2021-03-09 16:04:30.943 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:97 - DATE = 22022021
+2021-03-09 16:04:30.948 | WARNING  | gdal_viirs.hl.NPPProcessor:now:115 - значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ГГГГММДД
+2021-03-09 16:04:30.952 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:457 - не удалось найти композит на сегодня в БД, композит будет сгенерирован
+2021-03-09 16:04:30.953 | WARNING  | gdal_viirs.hl.NPPProcessor:now:115 - значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ГГГГММДД
+2021-03-09 16:04:30.953 | WARNING  | gdal_viirs.hl.NPPProcessor:now:115 - значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ГГГГММДД
+2021-03-09 16:04:30.957 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_merged_ndvi_file_for_today:376 - не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла
+2021-03-09 16:04:30.958 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_maps:461 - не удалось сгенерировать композит на сегодня, карты не будут созданы
+2021-03-09 16:04:30.960 | WARNING  | gdal_viirs.hl.NPPProcessor:now:115 - значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ГГГГММДД
+2021-03-09 16:04:30.963 | WARNING  | gdal_viirs.hl.NPPProcessor:_process_ndvi_dynamics_for_today:412 - не удалось найти композит начинающийся с starts_at=2021-03-08 (b1)
+2021-03-09 16:04:30.964 | WARNING  | gdal_viirs.hl.NPPProcessor:_produce_ndvi_dynamics_maps:471 - не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня
+2021-03-09 16:05:14.120 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:97 - DATE = 22022021
+2021-03-09 16:05:14.122 | ERROR    | gdal_viirs.hl.shortcuts:produce_maps:41 - An error has been caught in function 'produce_maps', process 'MainProcess' (4436), thread 'MainThread' (140463011665728):
+Traceback (most recent call last):
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/pydevconsole.py", line 483, in <module>
+    pydevconsole.start_client(host, port)
+    │            │            │     └ 43951
+    │            │            └ '127.0.0.1'
+    │            └ <function start_client at 0x7fc00f6e30d0>
+    └ <module 'pydevconsole' from '/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helper...
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/pydevconsole.py", line 411, in start_client
+    process_exec_queue(interpreter)
+    │                  └ <pydevconsole.InterpreterInterface object at 0x7fc00f6dd850>
+    └ <function process_exec_queue at 0x7fc00f6c6dc0>
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/pydevconsole.py", line 258, in process_exec_queue
+    more = interpreter.add_exec(code_fragment)
+           │           │        └ <_pydev_bundle.pydev_console_types.CodeFragment object at 0x7fc00f654cd0>
+           │           └ <function BaseCodeExecutor.add_exec at 0x7fc00f7743a0>
+           └ <pydevconsole.InterpreterInterface object at 0x7fc00f6dd850>
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/_pydev_bundle/pydev_code_executor.py", line 106, in add_exec
+    more = self.do_add_exec(code_fragment)
+           │    │           └ <_pydev_bundle.pydev_console_types.CodeFragment object at 0x7fc00f654cd0>
+           │    └ <function InterpreterInterface.do_add_exec at 0x7fc00f6c69d0>
+           └ <pydevconsole.InterpreterInterface object at 0x7fc00f6dd850>
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/pydevconsole.py", line 84, in do_add_exec
+    command.run()
+    │       └ <function Command.run at 0x7fc00f774af0>
+    └ <_pydev_bundle.pydev_console_types.Command object at 0x7fc00f654d00>
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/_pydev_bundle/pydev_console_types.py", line 35, in run
+    self.more = self.interpreter.runsource(text, '<input>', symbol)
+    │    │      │    │           │         │                └ 'single'
+    │    │      │    │           │         └ "runfile('/home/marat/PycharmProjects/GDAL/maps_processor.py', wdir='/home/marat/PycharmProjects/GDAL')\n"
+    │    │      │    │           └ <function InteractiveInterpreter.runsource at 0x7fc013b361f0>
+    │    │      │    └ <code.InteractiveConsole object at 0x7fc00f6dd880>
+    │    │      └ <_pydev_bundle.pydev_console_types.Command object at 0x7fc00f654d00>
+    │    └ None
+    └ <_pydev_bundle.pydev_console_types.Command object at 0x7fc00f654d00>
+
+  File "/usr/lib/python3.8/code.py", line 74, in runsource
+    self.runcode(code)
+    │    │       └ <code object <module> at 0x7fc00f672240, file "<input>", line 1>
+    │    └ <function InteractiveInterpreter.runcode at 0x7fc013b364c0>
+    └ <code.InteractiveConsole object at 0x7fc00f6dd880>
+  File "/usr/lib/python3.8/code.py", line 90, in runcode
+    exec(code, self.locals)
+         │     │    └ {'__name__': 'pydev_umd', '__doc__': None, '__package__': None, '__loader__': <_frozen_importlib_external.SourceFileLoader ob...
+         │     └ <code.InteractiveConsole object at 0x7fc00f6dd880>
+         └ <code object <module> at 0x7fc00f672240, file "<input>", line 1>
+  File "<input>", line 1, in <module>
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/_pydev_bundle/pydev_umd.py", line 197, in runfile
+    pydev_imports.execfile(filename, global_vars, local_vars)  # execute the script
+    │             │        │         │            └ {'__name__': '__main__', '__doc__': None, '__package__': None, '__loader__': <_frozen_importlib_external.SourceFileLoader obj...
+    │             │        │         └ {'__name__': '__main__', '__doc__': None, '__package__': None, '__loader__': <_frozen_importlib_external.SourceFileLoader obj...
+    │             │        └ '/home/marat/PycharmProjects/GDAL/maps_processor.py'
+    │             └ <function execfile at 0x7fc013ada670>
+    └ <module '_pydev_bundle.pydev_imports' from '/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugin...
+
+  File "/home/marat/.local/share/JetBrains/Toolbox/apps/PyCharm-P/ch-0/202.7660.27/plugins/python/helpers/pydev/_pydev_imps/_pydev_execfile.py", line 18, in execfile
+    exec(compile(contents+"\n", file, 'exec'), glob, loc)
+                 │              │              │     └ {'__name__': '__main__', '__doc__': None, '__package__': None, '__loader__': <_frozen_importlib_external.SourceFileLoader obj...
+                 │              │              └ {'__name__': '__main__', '__doc__': None, '__package__': None, '__loader__': <_frozen_importlib_external.SourceFileLoader obj...
+                 │              └ '/home/marat/PycharmProjects/GDAL/maps_processor.py'
+                 └ "from gdal_viirs.hl.shortcuts import produce_maps\n\nif __name__ == '__main__':\n    produce_maps('config')\n"
+
+  File "/home/marat/PycharmProjects/GDAL/maps_processor.py", line 4, in <module>
+    produce_maps('config')
+    └ <function produce_maps at 0x7fbfc583d5e0>
+
+> File "/home/marat/PycharmProjects/GDAL/gdal_viirs/hl/shortcuts.py", line 41, in produce_maps
+    create_npp_processor(config).produce_maps()
+    │                    └ 'config'
+    └ <function create_npp_processor at 0x7fbfc583c040>
+
+  File "/home/marat/PycharmProjects/GDAL/gdal_viirs/hl/NPPProcessor.py", line 145, in produce_maps
+    self._produce_maps()
+    │    └ <function NPPProcessor._produce_maps at 0x7fbfc583d040>
+    └ <gdal_viirs.hl.NPPProcessor.NPPProcessor object at 0x7fc00f63fdc0>
+
+  File "/home/marat/PycharmProjects/GDAL/gdal_viirs/hl/NPPProcessor.py", line 256, in _produce_maps
+    self._produce_ndvi_maps()
+    │    └ <function NPPProcessor._produce_ndvi_maps at 0x7fbfc583d310>
+    └ <gdal_viirs.hl.NPPProcessor.NPPProcessor object at 0x7fc00f63fdc0>
+
+  File "/home/marat/PycharmProjects/GDAL/gdal_viirs/hl/NPPProcessor.py", line 455, in _produce_ndvi_maps
+    merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == self.now.date())
+                  │             │           │             │          │    └ <property object at 0x7fc00f1cfb80>
+                  │             │           │             │          └ <gdal_viirs.hl.NPPProcessor.NPPProcessor object at 0x7fc00f63fdc0>
+                  │             │           │             └ <peewee.FieldAccessor object at 0x7fbfc5830940>
+                  │             │           └ <Model: NDVIComposite>
+                  │             └ <classmethod object at 0x7fc00f322520>
+                  └ <Model: NDVIComposite>
+
+  File "/home/marat/PycharmProjects/GDAL/gdal_viirs/hl/NPPProcessor.py", line 113, in now
+    date_val = datetime.strptime(date, '%d%m%Y')
+               │        │        └ <class 'datetime.date'>
+               │        └ <method 'strptime' of 'datetime.datetime' objects>
+               └ <class 'datetime.datetime'>
+
+TypeError: strptime() argument 1 must be str, not type
+2021-03-09 16:05:29.017 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:97 - DATE = 22022021
+2021-03-09 16:05:29.032 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:489 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/region.png
+2021-03-09 16:06:54.625 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:97 - DATE = 22022021
+2021-03-09 16:06:54.633 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:491 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/region.png

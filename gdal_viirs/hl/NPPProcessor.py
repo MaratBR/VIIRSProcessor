@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from glob import glob
 from pathlib import Path
 from typing import List, Optional
@@ -70,10 +70,6 @@ def _mkpath(p):
     return p
 
 
-def _todaystr():
-    return datetime.now().strftime('%Y%m%d')
-
-
 class NPPProcessor:
     def __init__(self, config):
         config = ConfigWrapper(CONFIG, config)
@@ -97,6 +93,9 @@ class NPPProcessor:
 
         self._init_logger()
 
+        if 'DATE' in self._config and self._config['DATE'] is not None:
+            logger.info('DATE = {}', self._config['DATE'])
+
     def _init_logger(self):
         logger_dir = self._config.get('LOG_PATH', 'viirs_logs')
         logger_file = os.path.join(logger_dir, 'viirs.log')
@@ -105,6 +104,20 @@ class NPPProcessor:
     @property
     def png_config(self):
         return self._config['PNG_CONFIG']
+
+    @property
+    def now(self):
+        if 'DATE' in self._config and self._config['DATE'] is not None:
+            date_val = self._config['DATE']
+            if isinstance(date_val, str):
+                date_val = datetime.strptime(date_val, '%d%m%Y')
+            elif not isinstance(date_val, date):
+                logger.warning('значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ДДММГГГГ')
+                return datetime.now()
+            return datetime.combine(date_val.date(), datetime.now().time())
+        elif 'DATE_OFFSET' in self._config and isinstance(self._config['DATE_OFFSET'], int):
+            return datetime.now() - timedelta(days=self._config['DATE_OFFSET'])
+        return datetime.now()
 
     def _find_viirs_directories(self):
         """
@@ -344,12 +357,12 @@ class NPPProcessor:
         :return: NDVIComposite
         """
         days = self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5)
-        now = datetime.combine(datetime.now().date(), datetime.max.time())
+        now = datetime.combine(self.now.date(), datetime.max.time())
         past_day = now - timedelta(days=days - 1)
         past_day = datetime.combine(past_day.date(), datetime.min.time())
 
         merged_ndvi_filename = 'merged_ndvi_' + now.strftime('%Y%m%d') + '_' + past_day.strftime('%Y%m%d') + '.tiff'
-        output_file = _mkpath(self._processed_output / _todaystr() / 'daily') / merged_ndvi_filename
+        output_file = _mkpath(self._processed_output / self.now.strftime('%Y%m%d') / 'daily') / merged_ndvi_filename
         ndvi_records = NDVITiff.select() \
             .join(ProcessedViirsL1) \
             .where((ProcessedViirsL1.dataset_date <= now) & (ProcessedViirsL1.dataset_date >= past_day))
@@ -388,7 +401,7 @@ class NPPProcessor:
         return composite
 
     def _process_ndvi_dynamics_for_today(self) -> Optional[NDVIDynamicsTiff]:
-        now = datetime.now().date()
+        now = self.now.date()
         days = self._config.get(
             'NDVI_DYNAMICS_PERIOD',
             self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5) * 2
@@ -414,7 +427,7 @@ class NPPProcessor:
             f'{b2.starts_at.strftime("%Y%m%d")}-{b2.ends_at.strftime("%Y%m%d")}',
             'tiff'
         ))
-        dynamics_tiff_output = _mkpath(self._processed_output / _todaystr() / 'daily') / filename
+        dynamics_tiff_output = _mkpath(self._processed_output / self.now.strftime('%Y%m%d') / 'daily') / filename
 
         if not dynamics_tiff_output.is_file() or self._config.get('FORCE_NDVI_DYNAMICS_PROCESSING', True):
             self._on_before_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
@@ -441,7 +454,7 @@ class NPPProcessor:
 
     def _produce_ndvi_maps(self):
         """"""
-        merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == datetime.now().date())
+        merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == self.now.date())
         if merged_ndvi is None:
             logger.debug('не удалось найти композит на сегодня в БД, композит будет сгенерирован')
             merged_ndvi = self._produce_merged_ndvi_file_for_today()
@@ -450,7 +463,7 @@ class NPPProcessor:
                 logger.warning('не удалось сгенерировать композит на сегодня, карты не будут созданы')
                 return
 
-        png_dir = str(_mkpath(self._ndvi_output / _todaystr()))
+        png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
         date_text = merged_ndvi.date_text
         self._produce_images(merged_ndvi.output_file, png_dir, date_text)
 
@@ -459,7 +472,7 @@ class NPPProcessor:
         if ndvi_dynamics is None:
             logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
             return
-        ndvi_dynamics_dir = self._ndvi_dynamics_output / _todaystr()
+        ndvi_dynamics_dir = self._ndvi_dynamics_output / self.now.strftime('%Y%m%d')
         _mkpath(ndvi_dynamics_dir)
         # создание карт динамики
         self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
