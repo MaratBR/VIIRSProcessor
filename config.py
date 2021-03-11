@@ -49,8 +49,16 @@ LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
 
+# дата обработки
 DATE_OFFSET = 0
 DATE = '22022021'
+
+# кол-во процессов для создания карт
+MULTIPROCESSING_PROCESSES = 1
+
+# ширина и высота (по-умолчанию, вертикальный макет)
+WIDTH = 3500
+HEIGHT = 2695
 
 # входые данные и папка с выходными
 OUTPUTS = {
@@ -293,7 +301,8 @@ PNG_CONFIG = [
         'points': (
             (55.308859, 82.738647, 'Колывань'),
         ),
-        'layers': __NSK_LAYERS
+        'layers': __NSK_LAYERS,
+        'invert_ratio': True
     },
     {
         'name': 'kuibichev_nso',
@@ -397,7 +406,8 @@ PNG_CONFIG = [
         'water_shapefile': __resource('maps/Novosibirsk/kargat/kargat_nso_vodoem.shp'),
         'points': (
             (55.194476, 80.283039, 'Каргат'),
-        )
+        ),
+        'invert_ratio': True
     },
     {
         'name': 'bolotno_nso',
@@ -465,7 +475,8 @@ PNG_CONFIG = [
         'points': (
             (55.091258, 80.963288, 'Чулым'),
         ),
-        'layers': __NSK_LAYERS
+        'layers': __NSK_LAYERS,
+        'invert_ratio': True
     },
     {
         'name': 'ordinsk_nso',
@@ -573,7 +584,8 @@ PNG_CONFIG = [
             (54.663609, 86.162243, 'Ленинск-Кузнецкий'),
             (56.078684, 86.020129, 'Анжеро-Судженск'),
         ),
-        'layers': __KEM_LAYERS
+        'layers': __KEM_LAYERS,
+        'invert_ratio': True
     },
     {
         'name': 'krasn',
@@ -594,7 +606,8 @@ PNG_CONFIG = [
             __KRASN_REGIONS_LAYER,
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
-        ]
+        ],
+        'invert_ratio': True
     },
     {
         'name': 'Kansk',
@@ -610,7 +623,8 @@ PNG_CONFIG = [
             __KRASN_REGIONS_LAYER,
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
-        ]
+        ],
+        'invert_ratio': True
     },
     {
         'name': 'Krasn_Gr',
@@ -626,7 +640,8 @@ PNG_CONFIG = [
             __KRASN_REGIONS_LAYER,
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
-        ]
+        ],
+        'invert_ratio': True
     },
     {
         'name': 'Achinsk',
@@ -642,7 +657,8 @@ PNG_CONFIG = [
             __KRASN_REGIONS_LAYER,
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
-        ]
+        ],
+        'invert_ratio': True
     },
     {
         'name': 'Minusinsk',
@@ -658,7 +674,8 @@ PNG_CONFIG = [
             __KRASN_REGIONS_LAYER,
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
-        ]
+        ],
+        'invert_ratio': True
     },
     {
         'name': 'omsk',
@@ -677,6 +694,7 @@ PNG_CONFIG = [
         'layers': [
             __OMSK_REGIONS_LAYER,
             __OMSK_BORDER_LAYER
-        ]
+        ],
+        'invert_ratio': True
     },
 ]

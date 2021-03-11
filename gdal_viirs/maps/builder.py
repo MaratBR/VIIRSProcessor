@@ -8,6 +8,7 @@ import matplotlib.font_manager as _fm
 import numpy as np
 import rasterio.plot
 from adjustText import adjust_text
+from loguru import logger
 from matplotlib import pyplot, patches, offsetbox, patheffects
 from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
@@ -242,10 +243,9 @@ class MapBuilder:
     font_size = 25
     outer_size: Tuple[Number, Number, Number, Number] = (cm(.5), cm(.5), cm(.5), cm(.5))
     dpi = 100
-    max_width = None
-    max_height = None
-    min_width = None
-    min_height = None
+    expected_width = None
+    expected_height = None
+    min_raster_area_size = cm(10), cm(10)
     font_family = None
     agro_mask_shp_file = None
     water_shp_file = None
@@ -279,20 +279,36 @@ class MapBuilder:
         self.points[(lon, lat)] = text
 
     def plot(self, file: DatasetReader, band=1):
-        xlim, ylim = self._get_lims(file)
-        plot_size = self._get_raster_size_inches(file)
+        xlim, ylim = self._get_lims(file)  # границы растра в координатах проекции
+        size = self._get_width_height(file)
+        fig = pyplot.figure(figsize=size, dpi=self.dpi)
+
         data = file.read(band)
         crs = self.get_projection(file)
-        figsize = plot_size[0] + self.outer_size[1] + self.outer_size[3], plot_size[1] + self.outer_size[0] + \
-                  self.outer_size[2]
-        fig = pyplot.figure(figsize=figsize, dpi=self.dpi)
+
+        # получаем реальный размер
+        plot_size = self._get_raster_size_inches(file)
+        plot_ratio = plot_size[0] / plot_size[1]
+        area_size = self._get_plot_area(size)
+        area_ratio = area_size[0] / area_size[1]
+
+        if area_ratio > plot_ratio:
+            # зона, где должна находится карта шире, чем сама карта,
+            # следовательно, нужно растянуть карту по высоте и отцентровать по ширине
+            image_size = area_size[1] * plot_ratio, area_size[1]
+            image_pos = self.outer_size[3] + (area_size[0] - image_size[0]) / 2, self.outer_size[0]
+        elif area_ratio < plot_ratio:
+            # отцентровать по высоте, растянуть по ширине
+            image_size = area_size[0], area_size[0] / plot_ratio
+            image_pos = self.outer_size[3], self.outer_size[0] + (area_size[1] - image_size[1]) / 2
+        else:
+            image_pos = self.outer_size[3], self.outer_size[0]
+            image_size = area_size
 
         # сконвертировать координаты изображения в пиксели (можно просто помножить на dpi)
-        image_pos = self.outer_size[3], self.outer_size[0]  # позиция изображения в дюймах (от верхнего левого угла)
-        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], figsize[1] - image_pos[1] - plot_size[
-            1]))  # позиция изображеня в пикселях, от вернего левого угла
+        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], size[1] - image_pos[1] - image_size[1]))  # позиция изображеня в пикселях, от вернего левого угла
         image_pos_ax = fig.transFigure.inverted().transform(image_pos_px)  # в долях(?) (от 0 до 1)
-        plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(plot_size))
+        plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(image_size))
         ax0 = fig.add_axes([0, 0, 1, 1])
         ax0.set_axis_off()
         # _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
@@ -300,13 +316,59 @@ class MapBuilder:
         self._build_figure(data, crs, ax1, xlim, ylim, file)
         plot_marks(self.points, crs, ax1)
 
-        return fig, (ax0, ax1), plot_size
+        return fig, (ax0, ax1), area_size
 
     def _build_figure(self, data, crs, ax1, xlim, ylim, file):
         build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim,
                      transform=file.transform,
                      water_shp_file=self.water_shp_file,
                      layers=self.layers)
+
+    def _get_width_height(self, file) -> Tuple[Number, Number]:
+        if self.expected_height is None or self.expected_width is None:
+            return self._guess_size(file)
+        w, h = self.expected_width, self.expected_height
+        if w <= 0:
+            logger.error('ширина (expected_width) меньше или равна 0, размер изображения будет определен автоматически')
+            return self._guess_size(file)
+
+        if h <= 0:
+            logger.error('высота (expected_height) меньше или равна 0, размер изображения будет определен автоматически')
+            return self._guess_size(file)
+
+        if hasattr(self, '_cached_size'):
+            return self._cached_size
+
+        # подсчитывем размер зоны для растра на карте и если
+        # этот размер меньше, чем минимальный увеличиваем размер всей карты и кидаем ворнинг в консоль
+        plot_size = self._get_plot_area((w, h))
+        if plot_size[0] < self.min_raster_area_size[0]:
+            logger.warning('ширина зоны для размещения растра на карте меньше минимальной ({} < {})',
+                           plot_size[0], self.min_raster_area_size[0])
+            zoom = (w + self.min_raster_area_size[0] - plot_size[0]) / w
+            w *= zoom
+            h *= zoom
+            plot_size = self._get_plot_area((w, h))
+
+        if plot_size[1] < self.min_raster_area_size[1]:
+            logger.warning('высота зоны для размещения растра на карте меньше минимальной ({} < {})',
+                         plot_size[1], self.min_raster_area_size[1])
+            zoom = (h + self.min_raster_area_size[1] - plot_size[1]) / h
+            w *= zoom
+            h *= zoom
+        setattr(self, '_cached_size', (w, h))
+        return w, h
+
+    def _guess_size(self, file) -> Tuple[Number, Number]:
+        plot_size = self._get_raster_size_inches(file)
+        size = plot_size[0] + self.outer_size[1] + self.outer_size[3], \
+               plot_size[1] + self.outer_size[0] + self.outer_size[2]
+
+        return size
+
+    def _get_plot_area(self, size):
+        return size[0] - self.outer_size[1] - self.outer_size[3],\
+               size[1] - self.outer_size[0] - self.outer_size[2]
 
     def _get_point_fontprops(self):
         return self._get_font_props(size=16)
@@ -328,16 +390,4 @@ class MapBuilder:
         xlim, ylim = self._get_lims(file)
         plot_width = abs(xlim[0] - xlim[1]) / file.transform.a / self.dpi
         plot_height = abs(ylim[0] - ylim[1]) / file.transform.a / self.dpi
-        zoom = 1
-
-        if self.max_width is not None:
-            zoom = min(zoom, self.max_width / plot_width)
-        if self.min_width is not None:
-            zoom = max(zoom, self.min_width / plot_width)
-        if self.max_height is not None:
-            zoom = min(zoom, self.max_height / plot_height)
-        if self.min_height is not None:
-            zoom = max(zoom, self.min_height / plot_height)
-        plot_width *= zoom
-        plot_height *= zoom
         return plot_width, plot_height

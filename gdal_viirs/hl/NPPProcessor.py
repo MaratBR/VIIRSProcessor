@@ -1,7 +1,9 @@
 import os
+import signal
 import sys
 from datetime import datetime, timedelta, date
 from glob import glob
+from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional
 
@@ -49,6 +51,12 @@ def _check_config_values(config):
         logger.warning(f'SCALE_BAND_M = {config["SCALE_BAND_M"]}')
     if config['SCALE_BAND_I'] != CONFIG['SCALE_BAND_I']:
         logger.warning(f'SCALE_BAND_DN = {config["SCALE_BAND_DN"]}')
+
+    if 'WIDTH' not in config or not isinstance(config['WIDTH'], int):
+        raise TypeError('значение WIDTH должно быть указано в конфигурации и должно быть целым числом')
+
+    if 'HEIGHT' not in config or not isinstance(config['HEIGHT'], int):
+        raise TypeError('значение HEIGHT должно быть указано в конфигурации и должно быть целым числом')
 
     if 'SCALE_MULTIPLIER' in config:
         if config['SCALE_MULTIPLIER'] < 1:
@@ -482,18 +490,27 @@ class NPPProcessor:
 
         self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
+
+    @staticmethod
+    def _mp_produce_images(v):
+        index, total, path, args, kwargs = v
+        try:
+            logger.debug(f'обработка изображения ({index + 1}/{total}) {path}')
+            produce_image(*args, **kwargs)
+        except Exception as e:
+            logger.exception(e)
+
     def _produce_images(self, input_file, output_directory, date_text=None, builder=None):
         png_config = self._config.get("PNG_CONFIG")
+        arguments = []
+
         for index, png_entry in enumerate(png_config):
             name = png_entry['name']
             filename = f'{name}.png'
             filepath = os.path.join(output_directory, filename)
-            logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
             force_regeneration = self._config.get('FORCE_MAPS_REGENERATION', True)
             if os.path.isfile(filepath) and not force_regeneration:
                 continue
-            if force_regeneration and os.path.isfile(filepath):
-                logger.debug(f'перезаписываю {filepath}')
             display_name = png_entry.get('display_name')
             xlim = png_entry.get('xlim')
             ylim = png_entry.get('ylim')
@@ -515,10 +532,51 @@ class NPPProcessor:
             if shapefile is None:
                 logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
 
-            produce_image(input_file, filepath,
-                          builder=builder,
-                          logo_path=self._config['LOGO_PATH'],
-                          iso_sign_path=self._config['ISO_QUALITY_SIGN'],
-                          shp_mask_file=shapefile, **props)
+            w, h = self._config['WIDTH'], self._config['HEIGHT']
+
+            if 'invert_ratio' in props:
+                rotate90 = props['invert_ratio']
+                del props['invert_ratio']
+                if rotate90:
+                    w, h = h, w
+
+            dpi = 100
+            w, h = w / dpi, h / dpi
+
+            value = index, len(png_config), filepath, (input_file, filepath), dict(
+                builder=builder,
+                expected_width=w,
+                expected_height=h,
+                dpi=dpi,
+                logo_path=self._config['LOGO_PATH'],
+                iso_sign_path=self._config['ISO_QUALITY_SIGN'],
+                shp_mask_file=shapefile,
+                **props
+            )
+            arguments.append(value)
+
+        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        processes = self._config.get('MULTIPROCESSING_PROCESSES', 2)
+        if processes == 1:
+            for v in arguments:
+                index, total, path, args, kwargs = v
+                logger.debug(f'обработка изображения ({index + 1}/{total}) {path}')
+                produce_image(*args, **kwargs)
+        else:
+            pool = Pool(processes)
+            signal.signal(signal.SIGINT, original_sigint_handler)
+
+            logger.debug('начинаю обработку карт с {} дочерними процессами', processes)
+            res = pool.map_async(self._mp_produce_images, arguments)
+
+            try:
+                res.get(3600000)
+            except KeyboardInterrupt:
+                print('\n* Ctrl-C: останавливаю пул процессов...')
+                pool.terminate()
+                exit(2)
+            else:
+                pool.close()
+            pool.join()
 
     # endregion

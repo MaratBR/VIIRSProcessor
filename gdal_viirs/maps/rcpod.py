@@ -25,7 +25,7 @@ class RCPODMapBuilder(MapBuilder):
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
-        self.outer_size = cm(8), self.margin * 2, cm(10), self.margin + cm(17)
+        self.outer_size = cm(6.5), self.margin * 2, cm(10), self.margin + cm(17)
         self.min_height = cm(26)
         self.min_width = cm(22)
         self.max_width = cm(50)
@@ -108,7 +108,6 @@ class RCPODMapBuilder(MapBuilder):
                                 fontproperties=self._get_font_props(size=26))
 
         self._draw_legend(ax0, file)
-        # self._draw_map_marks(ax0, file)
         self._draw_scale_line(file, ax0)
 
         return fig, (ax0, ax1), size
@@ -168,7 +167,7 @@ class RCPODMapBuilder(MapBuilder):
                                        origin=_drawings.BOTTOM_RIGHT, fontproperties=fontprops,
                                        align=_drawings.Alignment(hor=_drawings.RIGHT, ver=_drawings.VCENTER))[0]
 
-        left_offset = left = self.outer_size[3] + self._get_raster_size_inches(file)[0] - inches_per_segment * sum(
+        left_offset = left = self.outer_size[3] + self._get_plot_area(ax.figure.get_size_inches())[0] - inches_per_segment * sum(
             self.map_mark_dist) - km_width - cm(.2)
         odd = True
         km = 0
