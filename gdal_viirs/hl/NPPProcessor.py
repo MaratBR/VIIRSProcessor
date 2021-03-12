@@ -263,7 +263,7 @@ class NPPProcessor:
             self._on_exception(e)
 
     def _produce_maps(self):
-        self._produce_ndvi_maps()
+        #self._produce_ndvi_maps()
         self._produce_ndvi_dynamics_maps()
 
     # region ndvi / ndvi dynamics

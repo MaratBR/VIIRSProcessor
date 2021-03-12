@@ -51,7 +51,7 @@ IS_DEBUG = True
 
 # дата обработки
 # DATE_OFFSET = 0
-# DATE = '22022021'
+DATE = '22022021'
 
 # кол-во процессов для создания карт
 MULTIPROCESSING_PROCESSES = 1

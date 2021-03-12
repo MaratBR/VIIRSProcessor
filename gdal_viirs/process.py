@@ -306,9 +306,9 @@ def process_ndvi_dynamics(composite_b1_input: str, composite_b2_input: str, outp
             b2_data = b2_f.read(1)
             b1_data, b1_transform, b2_data, b2_transform = utility.crop_intersection(
                 b1_data, b1_f.transform, b2_data, b2_f.transform)
-            mask = (b1_data > 0) * (b2_data > 0)
+            mask = (b1_data >= -1) * (b2_data >= -1)
             b3 = calc_ndvi_dynamics(b1_data, b2_data)
-            b3[~mask] = -np.inf
+            b3[~mask] = -999  # облака
 
             with rasterio.open(output_file, 'w', driver='GTiff', count=1, crs=b1_f.crs, transform=b1_transform,
                                nodata=np.nan, width=b3.shape[1], height=b3.shape[0], dtype='float32') as out:

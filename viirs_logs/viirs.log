@@ -1733,3 +1733,118 @@ AttributeError: Can't pickle local object 'NPPProcessor._produce_images.<locals>
 2021-03-09 18:25:18.556 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/altkrai.png
 2021-03-09 18:25:55.246 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/novosib.png
 2021-03-09 18:26:27.511 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/severn_nso.png
+2021-03-12 18:08:10.312 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:08:10.320 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/region.png
+2021-03-12 18:08:56.078 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:08:56.087 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:08:58.844 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:08:58.847 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:08:58.850 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:09:17.489 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 18:10:20.158 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:10:20.170 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/region.png
+2021-03-12 18:10:40.729 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/altkrai.png
+2021-03-12 18:10:54.933 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/novosib.png
+2021-03-12 18:11:10.357 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/severn_nso.png
+2021-03-12 18:11:23.639 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (5/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/cherep_nso.png
+2021-03-12 18:11:35.277 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (6/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/ust_tar_nso.png
+2021-03-12 18:11:46.969 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (7/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/kupino_nso.png
+2021-03-12 18:11:58.676 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (8/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/tatarsk_nso.png
+2021-03-12 18:13:40.656 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:13:40.666 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/region.png
+2021-03-12 18:14:02.578 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/altkrai.png
+2021-03-12 18:14:17.374 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/novosib.png
+2021-03-12 18:14:32.421 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi/20210222/severn_nso.png
+2021-03-12 18:14:59.479 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:14:59.494 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:15:02.429 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:15:02.432 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:15:02.435 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:15:20.947 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 18:15:34.088 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/novosib.png
+2021-03-12 18:15:47.862 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/severn_nso.png
+2021-03-12 18:15:58.694 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (5/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/cherep_nso.png
+2021-03-12 18:16:09.195 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (6/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/ust_tar_nso.png
+2021-03-12 18:16:19.069 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (7/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/kupino_nso.png
+2021-03-12 18:17:43.953 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:17:43.970 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:17:46.092 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:17:46.094 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:17:46.097 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:18:04.159 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 18:18:17.013 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/novosib.png
+2021-03-12 18:18:29.769 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/severn_nso.png
+2021-03-12 18:18:40.333 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (5/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/cherep_nso.png
+2021-03-12 18:18:51.403 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (6/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/ust_tar_nso.png
+2021-03-12 18:18:55.053 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:18:55.063 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:18:57.196 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:18:57.198 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:18:57.200 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:19:16.973 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 18:19:32.318 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/novosib.png
+2021-03-12 18:19:48.687 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/severn_nso.png
+2021-03-12 18:20:03.246 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (5/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/cherep_nso.png
+2021-03-12 18:20:17.304 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (6/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/ust_tar_nso.png
+2021-03-12 18:25:37.724 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:25:37.754 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:25:39.763 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:25:39.767 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:25:39.775 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:31:58.607 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:31:58.623 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:32:00.096 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:32:00.100 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:32:00.105 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:34:26.951 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:34:26.965 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:34:28.456 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:34:28.459 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:34:28.464 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:36:09.128 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 18:47:28.518 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:47:28.534 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:47:30.049 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:47:30.051 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:47:30.056 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:47:55.360 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:47:55.382 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:47:57.058 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:47:57.061 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:47:57.067 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:48:06.028 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:48:06.052 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:48:08.402 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:48:08.409 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:48:08.424 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:48:41.097 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 18:50:18.664 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:50:18.683 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:50:20.283 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:50:20.286 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:50:20.290 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:58:01.528 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:58:01.541 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:58:02.957 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:58:02.959 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:58:02.964 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:58:54.360 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 18:58:54.375 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:58:55.801 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 18:58:55.804 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 18:58:55.808 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 18:59:45.518 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 19:17:18.193 | INFO     | gdal_viirs.hl.NPPProcessor:__init__:105 - DATE = 22022021
+2021-03-12 19:17:18.211 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 19:18:32.945 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_after_processing:188 - обработка завершена ndvi_dynamics @ /home/marat/Documents/viirs/processed/data/20210222/daily/ndvi_dynamics.20210221-20210221.20210222-20210222.tiff
+2021-03-12 19:18:32.948 | DEBUG    | gdal_viirs.hl.NPPProcessor:_on_before_processing:185 - обработка maps_ndvi_dynamics @ /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222
+2021-03-12 19:18:32.953 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (1/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/region.png
+2021-03-12 19:18:49.300 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (2/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/altkrai.png
+2021-03-12 19:19:01.738 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (3/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/novosib.png
+2021-03-12 19:19:13.821 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (4/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/severn_nso.png
+2021-03-12 19:19:26.479 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (5/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/cherep_nso.png
+2021-03-12 19:19:38.285 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (6/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/ust_tar_nso.png
+2021-03-12 19:19:50.931 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (7/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/kupino_nso.png
+2021-03-12 19:20:02.167 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (8/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/tatarsk_nso.png
+2021-03-12 19:20:13.458 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (9/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/karasuk_nso.png
+2021-03-12 19:20:23.874 | DEBUG    | gdal_viirs.hl.NPPProcessor:_produce_images:563 - обработка изображения (10/40) /home/marat/Documents/viirs/processed/products/ndvi_dynamics/20210222/kolivan_nso.png
