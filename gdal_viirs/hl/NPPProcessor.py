@@ -1,3 +1,4 @@
+import json
 import os
 import signal
 import sys
@@ -7,11 +8,10 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional
 
-import peewee
 from loguru import logger
 
 import gdal_viirs.hl.utility as _hlutil
-from gdal_viirs import process as _process
+from gdal_viirs import process as _process, misc
 from gdal_viirs.config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException
 from gdal_viirs.maps import produce_image
@@ -95,10 +95,6 @@ class NPPProcessor:
         # папка для карт динамики, будет создана, если её еще нет
         self._ndvi_dynamics_output = _mkpath(config.get_output('ndvi_dynamics'))
         self._config = config
-
-        self._db = peewee.SqliteDatabase(str(config_dir / 'viirs_processor.db'))
-        db_proxy.initialize(self._db)
-        self._db.create_tables(PEEWEE_MODELS)
 
         self._init_logger()
 
@@ -197,6 +193,8 @@ class NPPProcessor:
         setattr(self, '_on_start_fired', True)
         MetaData.set_meta('last_start', str(datetime.now()))
         MetaData.set_meta('last_start_pyversion', sys.version)
+        MetaData.set_meta('packages_versions', misc.gather_packages())
+        MetaData.set_meta('proj_version', misc.get_proj_version())
 
     # endregion
 
@@ -234,9 +232,8 @@ class NPPProcessor:
                 # будем считать, что тип в БД неверен
                 logger.warning(f'обноружил, что тип файла {processed.output_file} (id={processed.id}) в БД '
                                f'({processed.type}) не соответствует реальному ({typ}) тип будет заменен')
-                processed.update({
-                    ProcessedViirsL1.type: typ
-                })
+                processed.type = typ
+                processed.save()
 
             handler_name = f'_process__{fs.geoloc_file.file_type.lower()}'
             if hasattr(self, handler_name):
@@ -343,7 +340,8 @@ class NPPProcessor:
                     tiff_record.based_on = based_on
                     tiff_record.save(True)
                 elif tiff_record.based_on != based_on:
-                    tiff_record.update({NDVITiff.based_on: based_on})
+                    tiff_record.based_on = based_on
+                    tiff_record.save()
                 self._on_after_processing(ndvi_file, 'ndvi')
                 return ndvi_file
             else:
@@ -357,9 +355,8 @@ class NPPProcessor:
             ndvi_record = NDVITiff(ndvi_file, based_on=based_on)
             ndvi_record.save(True)
         elif ndvi_record.output_file != ndvi_file:
-            ndvi_record.update({
-                NDVITiff.output_file: ndvi_file
-            })
+            ndvi_record.output_file = ndvi_file
+            ndvi_record.save()
         return ndvi_record
 
     def _produce_merged_ndvi_file_for_today(self) -> Optional[NDVIComposite]:
@@ -457,9 +454,7 @@ class NPPProcessor:
             record.b2_composite = b2
             record.save(True)
         elif record.output_file != dynamics_tiff_output:
-            record.update({
-                NDVIDynamicsTiff.output_file: dynamics_tiff_output
-            })
+            record.output_file = dynamics_tiff_output
 
         return record
 

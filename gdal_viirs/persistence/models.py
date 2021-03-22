@@ -35,12 +35,13 @@ class MetaData(BaseModel):
 
     @classmethod
     def set_meta(cls, key: str, value: str):
-        record = cls.get_or_none(cls.key == key)
+        record: MetaData = cls.get_or_none(cls.key == key)
         if record is None:
             record = cls(key=key, value=value)
             record.save(True)
         else:
-            record.update({cls.value: value})
+            record.value = value
+            record.save()
 
     @classmethod
     def get_meta(cls, key: str, default: str):
@@ -120,8 +121,8 @@ class NDVIComposite(ProcessedFile):
 
 
 class NDVICompositeComponents(BaseModel):
-    composite = ForeignKeyField(NDVIComposite)
-    component = ForeignKeyField(NDVITiff)
+    composite = ForeignKeyField(NDVIComposite, related_name='components')
+    component = ForeignKeyField(NDVITiff, related_name='composites')
 
     class Meta:
         primary_key = CompositeKey('composite', 'component')

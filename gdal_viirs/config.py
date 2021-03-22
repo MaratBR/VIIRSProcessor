@@ -69,5 +69,5 @@ class ConfigWrapper(dict):
 
 def load_config(config) -> ConfigWrapper:
     if isinstance(config, str):
-        return ConfigWrapper(importlib.import_module(config))
+        return ConfigWrapper(CONFIG, importlib.import_module(config))
     return ConfigWrapper(config)
