@@ -1,5 +1,7 @@
+import importlib
 import inspect
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).parent.parent
@@ -63,3 +65,9 @@ class ConfigWrapper(dict):
 
     def get_input(self, type_):
         return Path(os.path.expandvars(os.path.expanduser(self.getpath(f'INPUTS.{type_}'))))
+
+
+def load_config(config) -> ConfigWrapper:
+    if isinstance(config, str):
+        return ConfigWrapper(importlib.import_module(config))
+    return ConfigWrapper(config)

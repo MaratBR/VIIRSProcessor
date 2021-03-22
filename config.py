@@ -15,7 +15,7 @@ def __resource(res):
 # сколько дней приходит на один композит NDVI
 # например, если поставить 3 дня то прога будет каждый день
 # делать композит за последние 3 дня
-NDVI_MERGE_PERIOD_IN_DAYS = 1
+NDVI_MERGE_PERIOD_IN_DAYS = 3
 
 # сколько дней должно пройти между началом одного композита и концом другого
 # значение по умолчанию в 2 раза больше, чем NDVI_MERGE_PERIOD_IN_DAYS, поэтому
@@ -42,7 +42,7 @@ SINGLE_CLOUD_MASK_FILE = False
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
-SCALE_MULTIPLIER = 1
+SCALE_MULTIPLIER = 8
 
 
 LOGO_PATH = __resource('logo.png')
@@ -51,7 +51,7 @@ IS_DEBUG = True
 
 # дата обработки
 # DATE_OFFSET = 0
-# DATE = '22022021'
+DATE = '22-02-2021'
 
 # кол-во процессов для создания карт
 MULTIPROCESSING_PROCESSES = 1

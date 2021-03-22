@@ -3,7 +3,7 @@ import sys
 
 import loguru
 
-from gdal_viirs.config import ConfigWrapper
+from gdal_viirs.config import ConfigWrapper, load_config
 from gdal_viirs.hl import NPPProcessor
 
 
@@ -18,9 +18,7 @@ def create_npp_processor(config) -> NPPProcessor:
     :param config: модуль конфигурации (полученный через import), строка для импорта или словарь
     :return: NPPProcessor или экземпляр класса указанного как BUILDER_CLASS в конфиге
     """
-    if isinstance(config, str):
-        config = importlib.import_module(config)
-    config = ConfigWrapper(config)
+    config = load_config(config)
 
     if not config.get('IS_DEBUG'):
         _set_debug_off()

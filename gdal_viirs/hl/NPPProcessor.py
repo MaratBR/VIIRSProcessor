@@ -79,9 +79,10 @@ def _mkpath(p):
 
 
 class NPPProcessor:
-    def __init__(self, config):
+    def __init__(self, config=None):
         config = ConfigWrapper(CONFIG, config)
         _validate_config(config)
+
         config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
         config_dir.mkdir(parents=True, exist_ok=True)
 
@@ -118,9 +119,9 @@ class NPPProcessor:
         if 'DATE' in self._config and self._config['DATE'] is not None:
             date_val = self._config['DATE']
             if isinstance(date_val, str):
-                date_val = datetime.strptime(date_val, '%d%m%Y')
+                date_val = datetime.strptime(date_val, '%d-%m-%Y')
             elif not isinstance(date_val, date):
-                logger.warning('значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ДДММГГГГ')
+                logger.warning('значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ДД-ММ-ГГГГ')
                 return datetime.now()
             return datetime.combine(date_val.date(), datetime.now().time())
         elif 'DATE_OFFSET' in self._config and isinstance(self._config['DATE_OFFSET'], int):
@@ -336,9 +337,13 @@ class NPPProcessor:
                 _process.process_ndvi(based_on.output_file, ndvi_file, str(clouds_file))
 
                 # сохраняем запись с БД
-                tiff_record = NDVITiff(ndvi_file)
-                tiff_record.based_on = based_on
-                tiff_record.save(True)
+                tiff_record = NDVITiff.get_or_none(NDVITiff.output_file == ndvi_file)
+                if tiff_record is None:
+                    tiff_record = NDVITiff(ndvi_file)
+                    tiff_record.based_on = based_on
+                    tiff_record.save(True)
+                elif tiff_record.based_on != based_on:
+                    tiff_record.update({NDVITiff.based_on: based_on})
                 self._on_after_processing(ndvi_file, 'ndvi')
                 return ndvi_file
             else:
@@ -357,7 +362,7 @@ class NPPProcessor:
             })
         return ndvi_record
 
-    def _produce_merged_ndvi_file_for_today(self) -> NDVIComposite:
+    def _produce_merged_ndvi_file_for_today(self) -> Optional[NDVIComposite]:
         """
         Обрабатывает композит для сегодняшнего дня
 
@@ -378,19 +383,21 @@ class NPPProcessor:
 
         if not output_file.is_file() or self._config.get('FORCE_NDVI_COMPOSITE_PROCESSING', True):
             # если не одного NDVI tiff'а не найдено, выбросить исключение
-            if len(ndvi_records) == 0:
+            ndvi_rasters = list(filter(lambda r: os.path.isfile(r.output_file), ndvi_records))
+            ndvi_rasters = list(map(lambda r: r.output_file, ndvi_rasters))
+
+            if len(ndvi_rasters) == 0:
                 no_ndvi_count = ProcessedViirsL1.select_gimgo_without_ndvi().count()
                 if no_ndvi_count > 0:
                     logger.warning(f'найдено {no_ndvi_count} обработанных GIMGO снимков, '
                                    f'которые не имеют соответствующих NDVI')
                 logger.warning('не удалось создать объединение NDVI файлов, т. к. не найдено ни одного файла')
-                return
+                return None
 
             for raster in ndvi_records:
                 if not os.path.isfile(raster.output_file):
                     logger.error(f'файл {raster} не найден, обнаружено несоотсветсвие БД')
-            ndvi_rasters = list(filter(lambda r: os.path.isfile(r.output_file), ndvi_records))
-            ndvi_rasters = list(map(lambda r: r.output_file, ndvi_rasters))
+
             self._on_before_processing(str(output_file), 'merged_ndvi')
             merge_files2tiff(ndvi_rasters, str(output_file), method='max')
             self._on_after_processing(str(output_file), 'merged_ndvi')
@@ -462,7 +469,18 @@ class NPPProcessor:
 
     def _produce_ndvi_maps(self):
         """"""
-        merged_ndvi = NDVIComposite.get_or_none(NDVIComposite.ends_at == self.now.date())
+        merged_ndvi = list(NDVIComposite.select().where(NDVIComposite.ends_at == self.now.date()))
+
+        try:
+            merged_ndvi = next(m for m in merged_ndvi if os.path.isfile(m.output_file))
+        except StopIteration:
+            if len(merged_ndvi) == 1:
+                logger.error(f'Нашел композит за период {merged_ndvi.date_text}, но файл не найден: {merged_ndvi.output_file}')
+            else:
+                logger.error(f'Нашел {len(merged_ndvi)} композитов, но все композиты не были найдены в '
+                             f'файловой системе: ' + ', '.join(m.output_file for m in merged_ndvi))
+                return
+
         if merged_ndvi is None:
             logger.debug('не удалось найти композит на сегодня в БД, композит будет сгенерирован')
             merged_ndvi = self._produce_merged_ndvi_file_for_today()
@@ -470,6 +488,10 @@ class NPPProcessor:
             if merged_ndvi is None:
                 logger.warning('не удалось сгенерировать композит на сегодня, карты не будут созданы')
                 return
+
+        if not os.path.isfile(merged_ndvi.output_file):
+            logger.error(f'Не соответствие БД, файл не найден: {merged_ndvi.output_file}')
+            return
 
         png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
         date_text = merged_ndvi.date_text
