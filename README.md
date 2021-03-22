@@ -30,3 +30,11 @@ python3 maps_processor.py
 ```
 python3 products_processor.py
 ```
+
+## Дополнительно
+
+Установка cartopy:
+```
+sudo apt install python3-dev libproj-dev proj-data proj-bin libgeos-dev
+pip3 install wheel numpy cartopy
+```
