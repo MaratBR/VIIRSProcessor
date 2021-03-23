@@ -568,6 +568,7 @@ class NPPProcessor:
                 logo_path=self._config['LOGO_PATH'],
                 iso_sign_path=self._config['ISO_QUALITY_SIGN'],
                 shp_mask_file=shapefile,
+                spacecraft_name=self._config.get('SPACECRAFT_NAME', ''),
                 **props
             )
             arguments.append(value)

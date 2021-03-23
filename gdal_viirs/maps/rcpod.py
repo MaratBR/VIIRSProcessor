@@ -19,6 +19,7 @@ class RCPODMapBuilder(MapBuilder):
     bottom_title = ''
     bottom_subtitle = None
     date_text = None
+    spacecraft_name = ''
 
     def __init__(self, logo_path='./logo.png', iso_sign_path=None, **kwargs):
         super(RCPODMapBuilder, self).__init__(**kwargs)
@@ -120,7 +121,7 @@ class RCPODMapBuilder(MapBuilder):
 
         l = _drawings.LinearLayout(ax0, (self.outer_size[3] / 2, top), origin=_drawings.TOP_LEFT)
         l.set_spacing(cm(.6))
-        l.text('КА Suomi NPP/VIIRS', fontproperties=self._get_font_props(size=28))
+        l.text(self.spacecraft_name, fontproperties=self._get_font_props(size=28))
         l.text('Разрешение 375 м', fontproperties=self._get_font_props(size=22))
         l.spacing(cm(.9))
         l.text('Условные обозначения', fontproperties=self._get_font_props(size=26))

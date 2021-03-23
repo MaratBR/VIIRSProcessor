@@ -59,4 +59,5 @@ def produce_products(config):
 
 
 def produce_maps(config):
-    create_npp_processor(config).produce_maps()
+    with setup_env(config) as config:
+        create_npp_processor(config).produce_maps()

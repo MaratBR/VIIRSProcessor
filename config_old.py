@@ -42,7 +42,7 @@ SINGLE_CLOUD_MASK_FILE = False
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
-SCALE_MULTIPLIER = 1
+SCALE_MULTIPLIER = 8
 
 
 LOGO_PATH = __resource('logo.png')
@@ -51,30 +51,28 @@ IS_DEBUG = True
 
 # дата обработки
 # DATE_OFFSET = 0
-# DATE = '22-02-2021'
+DATE = '22-02-2021'
 
 # кол-во процессов для создания карт
 MULTIPROCESSING_PROCESSES = 1
 
-# ширина и высота (по-умолчанию, горизонтальный макет)
+# ширина и высота (по-умолчанию, вертикальный макет)
 WIDTH = 3500
 HEIGHT = 2695
 
 # входые данные и папка с выходными
 OUTPUTS = {
-    'ndvi': '/mnt/100Tb/Suomi_NPP/Products/NDVI_maps',
-    'ndvi_dynamics': '/mnt/100Tb/Suomi_NPP/Products/Dynamics_of_crops_ndvi_maps',
-    'processed_data': '/mnt/100Tb/Suomi_NPP/Products/Processed_files_series'
+    'ndvi': '~/Documents/viirs/processed/products/ndvi',
+    'ndvi_dynamics': '~/Documents/viirs/processed/products/ndvi_dynamics',
+    'processed_data': '~/Documents/viirs/processed/data'
 }
 
 INPUTS = {
-    'data': '/mnt/100Tb/Suomi_NPP/Sources/output'
+    'data': '/media/marat/Quack/Projects/GDAL_Data/NPP/'
 }
 
-# КА заголовок
-SPACECRAFT_NAME = 'KA Suomi NPP/VIIRS 3243'
-
 FONT_FAMILY = __resource('times.ttf')
+
 STATES_BORDER_COLOR = '#a80000'
 REGIONS_BORDER_COLOR = '#9c9c9c'
 
