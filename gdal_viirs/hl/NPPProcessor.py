@@ -288,8 +288,15 @@ class NPPProcessor:
             except KeyError:
                 clouds_root = self._processed_output
 
-            clouds_file = _mkpath(clouds_root) / processed.dataset_date.strftime(
-                '%Y%m%d') / f'{processed.directory_name}.PROJECTED_CLOUDMASK.tiff'
+            if processed.input_directory:
+                swath_id = _hlutil.extract_swath_id(os.path.basename(processed.input_directory))
+            else:
+                swath_id = None
+
+            clouds_root = _mkpath(clouds_root) / processed.dataset_date.strftime('%Y%m%d')
+            if swath_id:
+                clouds_root /= swath_id
+            clouds_file = clouds_root / f'{processed.directory_name}.PROJECTED_CLOUDMASK.tiff'
 
         if is_single_file_mode or not clouds_file.is_file() or self._config.get('FORCE_CLOUD_MASK_PROCESSING', False):
             if len(l2_input_file) == 0:
