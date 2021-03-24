@@ -242,6 +242,8 @@ class NPPProcessor:
                 if hasattr(fn, '__call__'):
                     try:
                         fn(processed)
+                    except ProcessingException as exc:
+                        logger.error(exc.message)
                     except Exception as exc:
                         self._on_exception(exc)
                         raise
@@ -266,7 +268,7 @@ class NPPProcessor:
 
     # region ndvi / ndvi dynamics
 
-    def _process_cloud_mask(self, processed: ProcessedViirsL1) -> Path:
+    def _process_cloud_mask(self, processed: ProcessedViirsL1) -> Optional[Path]:
         """
         Обрабатывает маску облачности для данного обработанного датасета.
         :param processed: запись обработанного датасета
