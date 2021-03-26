@@ -560,9 +560,8 @@ class NPPProcessor:
 
             w, h = self._config['WIDTH'], self._config['HEIGHT']
 
-            if 'invert_ratio' in props:
-                rotate90 = props['invert_ratio']
-                del props['invert_ratio']
+            if 'invert_ratio' in png_entry:
+                rotate90 = png_entry['invert_ratio']
                 if rotate90:
                     w, h = h, w
 
