@@ -72,7 +72,7 @@ INPUTS = {
 }
 
 # КА заголовок
-SPACECRAFT_NAME = 'KA Suomi NPP/VIIRS 3243'
+SPACECRAFT_NAME = 'KA Suomi NPP/VIIRS'
 
 FONT_FAMILY = __resource('times.ttf')
 STATES_BORDER_COLOR = '#a80000'
@@ -409,7 +409,8 @@ PNG_CONFIG = [
         'points': (
             (55.194476, 80.283039, 'Каргат'),
         ),
-        'invert_ratio': True
+        'invert_ratio': True,
+        'layers': __NSK_LAYERS
     },
     {
         'name': 'bolotno_nso',
@@ -443,7 +444,8 @@ PNG_CONFIG = [
         'mask_shapefile': __resource('maps/Novosibirsk/maslyan/maslyan_nso_agro.shp'),
         'points': (
             (54.346444, 84.182266, 'Маслянино'),
-        )
+        ),
+        'layers': __NSK_LAYERS
     },
     {
         'name': 'toguchi_nso',

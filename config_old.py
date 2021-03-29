@@ -42,7 +42,7 @@ SINGLE_CLOUD_MASK_FILE = False
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
-SCALE_MULTIPLIER = 8
+SCALE_MULTIPLIER = 10
 
 
 LOGO_PATH = __resource('logo.png')
@@ -51,12 +51,12 @@ IS_DEBUG = True
 
 # дата обработки
 # DATE_OFFSET = 0
-DATE = '22-02-2021'
+# DATE = '22-02-2021'
 
 # кол-во процессов для создания карт
 MULTIPROCESSING_PROCESSES = 1
 
-# ширина и высота (по-умолчанию, вертикальный макет)
+# ширина и высота (по-умолчанию, горизонтальный макет)
 WIDTH = 3500
 HEIGHT = 2695
 
@@ -71,8 +71,10 @@ INPUTS = {
     'data': '/media/marat/Quack/Projects/GDAL_Data/NPP/'
 }
 
-FONT_FAMILY = __resource('times.ttf')
+# КА заголовок
+SPACECRAFT_NAME = 'KA Suomi NPP/VIIRS'
 
+FONT_FAMILY = __resource('times.ttf')
 STATES_BORDER_COLOR = '#a80000'
 REGIONS_BORDER_COLOR = '#9c9c9c'
 
@@ -407,7 +409,8 @@ PNG_CONFIG = [
         'points': (
             (55.194476, 80.283039, 'Каргат'),
         ),
-        'invert_ratio': True
+        'invert_ratio': True,
+        'layers': __NSK_LAYERS
     },
     {
         'name': 'bolotno_nso',
@@ -441,7 +444,8 @@ PNG_CONFIG = [
         'mask_shapefile': __resource('maps/Novosibirsk/maslyan/maslyan_nso_agro.shp'),
         'points': (
             (54.346444, 84.182266, 'Маслянино'),
-        )
+        ),
+        'layers': __NSK_LAYERS
     },
     {
         'name': 'toguchi_nso',

@@ -13,8 +13,8 @@ class NDVIDynamicsMapBuilder(RCPODMapBuilder):
         self.cmap = ListedColormap(['#8c8c8c', "#a11f14", "#ffaa00", '#ffff00', '#98e600', '#3b7a17'])
         self.norm = BoundaryNorm([-999, -45, -15, 15, 45], 6)
 
-    def get_legend_handles(self, file: DatasetReader):
-        data = file.read()[0]
+    def get_legend_handles(self):
+        data = self.file.read()[0]
         data_mask = ~np.isnan(data)
         all_count = max(1, np.count_nonzero(data_mask))
         clouds_count = np.count_nonzero((data <= -999) * data_mask)

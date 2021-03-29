@@ -138,7 +138,7 @@ class NPPProcessor:
         Обрабатывает датасеты и создает карты
         :return:
         """
-        self._on_start()
+        self._on_start('all')
         self._produce_products()
         self._produce_maps()
 
@@ -148,12 +148,12 @@ class NPPProcessor:
         Создает карты, не обрабатывая датасеты и TIFF файлы
         :return:
         """
-        self._on_start()
+        self._on_start('maps')
         self._produce_maps()
 
     @logger.catch
     def produce_products(self):
-        self._on_start()
+        self._on_start('products')
         self._produce_products()
 
     def _produce_products(self):
@@ -187,14 +187,18 @@ class NPPProcessor:
     def _on_exception(self, exc):
         logger.exception(exc)
 
-    def _on_start(self):
+    def _on_start(self, start_tag=None):
         if hasattr(self, '_on_start_fired'):
             return
         setattr(self, '_on_start_fired', True)
+        now = str(datetime.now())
         MetaData.set_meta('last_start', str(datetime.now()))
         MetaData.set_meta('last_start_pyversion', sys.version)
         MetaData.set_meta('packages_versions', misc.gather_packages())
         MetaData.set_meta('proj_version', misc.get_proj_version())
+        start_tag = start_tag or 'None'
+        MetaData.set_meta('last_start_type', start_tag)
+        MetaData.set_meta(f'last_start__{start_tag}', now)
 
     # endregion
 
@@ -455,15 +459,16 @@ class NPPProcessor:
             _process.process_ndvi_dynamics(b1.output_file, b2.output_file, str(dynamics_tiff_output))
             self._on_after_processing(str(dynamics_tiff_output), 'ndvi_dynamics')
 
-        record: NDVIDynamicsTiff = NDVIDynamicsTiff.get_or_none(
-            (NDVIDynamicsTiff.b1_composite == b1) & (NDVIDynamicsTiff.b2_composite == b2))
+        record: NDVIDynamicsTiff = NDVIDynamicsTiff.get_or_none(NDVIDynamicsTiff.output_file == dynamics_tiff_output)
         if record is None:
             record = NDVIDynamicsTiff(dynamics_tiff_output)
             record.b1_composite = b1
             record.b2_composite = b2
             record.save(True)
-        elif record.output_file != dynamics_tiff_output:
-            record.output_file = dynamics_tiff_output
+        elif record.b1_composite != b1 or record.b2_composite != b2:
+            record.b2_composite = b2
+            record.b1_composite = b1
+            record.save()
 
         return record
 
@@ -483,7 +488,7 @@ class NPPProcessor:
             else:
                 logger.error(f'Нашел {len(merged_ndvi)} композитов, но все композиты не были найдены в '
                              f'файловой системе: ' + ', '.join(m.output_file for m in merged_ndvi))
-                return
+            merged_ndvi = None
 
         if merged_ndvi is None:
             logger.debug('не удалось найти композит на сегодня в БД, композит будет сгенерирован')

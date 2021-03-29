@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 from typing import Tuple, Optional
 
 import cartopy
@@ -152,11 +153,11 @@ def _gridlines_with_labels(ax, top=True, bottom=True, left=True,
         if side in ('bottom', 'top'):
             _ax.set_xticks(ticks[valid])
             _ax.set_xticklabels([LONGITUDE_FORMATTER.format_data(t)
-                                 for t in np.array(ticklocs[axis])[valid]], rotation=0)
+                                 for t in np.array(ticklocs[axis])[valid]], rotation=0, fontsize=17)
         else:
             _ax.set_yticks(ticks[valid])
             _ax.set_yticklabels([LATITUDE_FORMATTER.format_data(t)
-                                 for t in np.array(ticklocs[axis])[valid]], rotation=90)
+                                 for t in np.array(ticklocs[axis])[valid]], rotation=90, fontsize=17)
 
     return gridliner
 
@@ -251,9 +252,11 @@ class MapBuilder:
     water_shp_file = None
     layers = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, file: DatasetReader, band=1, **kwargs):
         self.points = {}
         self.cartopy_scale = '10m'
+        self.file = file
+        self.band = band
 
         self.xlim = None
         self.ylim = None
@@ -278,18 +281,138 @@ class MapBuilder:
     def add_point(self, lat: Number, lon: Number, text: str):
         self.points[(lon, lat)] = text
 
-    def plot(self, file: DatasetReader, band=1):
-        xlim, ylim = self._get_lims(file)  # границы растра в координатах проекции
-        size = self._get_width_height(file)
+    def plot(self):
+        xlim, ylim = self._lims  # границы растра в координатах проекции
+        size = self._full_plot_size
         fig = pyplot.figure(figsize=size, dpi=self.dpi)
 
-        data = file.read(band)
-        crs = self.get_projection(file)
+        data = self.file.read(1)
+        crs = self.get_projection()
 
         # получаем реальный размер
-        plot_size = self._get_raster_size_inches(file)
+        plot_size = self._raster_size_inches
         plot_ratio = plot_size[0] / plot_size[1]
-        area_size = self._get_plot_area(size)
+        del plot_size
+
+        image_size, image_pos = self._raster_size_rect
+
+        # сконвертировать координаты изображения в пиксели (можно просто помножить на dpi)
+        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], size[1] - image_pos[1] - image_size[
+            1]))  # позиция изображеня в пикселях, от вернего левого угла
+        image_pos_ax = fig.transFigure.inverted().transform(image_pos_px)  # в долях(?) (от 0 до 1)
+        plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(image_size))
+        ax0 = fig.add_axes([0, 0, 1, 1])
+        ax0.set_axis_off()
+        # _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
+        ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
+        self._build_figure(data, crs, ax1, xlim, ylim)
+        plot_marks(self.points, crs, ax1)
+
+        return fig, (ax0, ax1)
+
+    def _build_figure(self, data, crs, ax1, xlim, ylim):
+        build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim,
+                     transform=self.file.transform,
+                     water_shp_file=self.water_shp_file,
+                     layers=self.layers)
+
+    @property
+    @lru_cache()
+    def _full_plot_size(self) -> Tuple[Number, Number]:
+        if self.expected_height is None or self.expected_width is None:
+            return self._guess_size()
+        w, h = self.expected_width, self.expected_height
+        if w <= 0:
+            logger.error('ширина (expected_width) меньше или равна 0, размер изображения будет определен автоматически')
+            return self._guess_size()
+
+        if h <= 0:
+            logger.error(
+                'высота (expected_height) меньше или равна 0, размер изображения будет определен автоматически')
+            return self._guess_size()
+
+        if hasattr(self, '_cached_size'):
+            return self._cached_size
+
+        # подсчитывем размер зоны для растра на карте и если
+        # этот размер меньше, чем минимальный увеличиваем размер всей карты и кидаем варнинг в консоль
+        plot_size = self._get_plot_area((w, h))
+        if plot_size[0] < self.min_raster_area_size[0]:
+            logger.warning('ширина зоны для размещения растра на карте меньше минимальной ({} < {})',
+                           plot_size[0], self.min_raster_area_size[0])
+            zoom = (w + self.min_raster_area_size[0] - plot_size[0]) / w
+            w *= zoom
+            h *= zoom
+            plot_size = self._get_plot_area((w, h))
+
+        if plot_size[1] < self.min_raster_area_size[1]:
+            logger.warning('высота зоны для размещения растра на карте меньше минимальной ({} < {})',
+                           plot_size[1], self.min_raster_area_size[1])
+            zoom = (h + self.min_raster_area_size[1] - plot_size[1]) / h
+            w *= zoom
+            h *= zoom
+        setattr(self, '_cached_size', (w, h))
+        return w, h
+
+    def _guess_size(self) -> Tuple[Number, Number]:
+        plot_size = self._raster_size_inches
+        size = plot_size[0] + self.outer_size[1] + self.outer_size[3], \
+               plot_size[1] + self.outer_size[0] + self.outer_size[2]
+
+        return size
+
+    @property
+    def _raster_area(self):
+        return self._get_plot_area(self._full_plot_size)
+
+    def _get_plot_area(self, size):
+        return size[0] - self.outer_size[1] - self.outer_size[3], \
+               size[1] - self.outer_size[0] - self.outer_size[2]
+
+    def _get_point_fontprops(self):
+        return self._get_font_props(size=16)
+
+    def plot_to_file(self, output_file: str):
+        figure, _1 = self.plot()
+        figure.savefig(output_file, bbox_inches=None, pad_inches=0, transparent=False)
+        pyplot.close(figure)
+
+    def get_projection(self):
+        return CARTOPY_LCC
+
+    @property
+    @lru_cache()
+    def _lims(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        xlim = self.xlim or (self.file.transform.c, self.file.transform.a * self.file.width + self.file.transform.c)
+        ylim = self.ylim or (self.file.transform.e * self.file.height + self.file.transform.f, self.file.transform.f)
+        return xlim, ylim
+
+    @property
+    @lru_cache()
+    def _raster_size_inches(self):
+        """
+        Подсчитывает сколько будет занимать места растр без масштабирования.
+        :return: кортеж (ширина, высота)
+        """
+        xlim, ylim = self._lims
+        plot_width = abs(xlim[0] - xlim[1]) / self.file.transform.a / self.dpi
+        plot_height = abs(ylim[0] - ylim[1]) / self.file.transform.a / self.dpi
+        return plot_width, plot_height
+
+    @property
+    @lru_cache()
+    def _raster_size_rect(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        """
+        Подсчитывает, где находится изображение растра и какого оно должно быть размера.
+        :return: Два кортежа. Первый - размер изображения в соответсвии с масштабированием. Второй -
+        местоположение изображения на на конечной карте (все в дюймах).
+        """
+        # получаем реальный размер
+        plot_size = self._raster_size_inches
+        plot_ratio = plot_size[0] / plot_size[1]
+        del plot_size
+
+        area_size = self._raster_area
         area_ratio = area_size[0] / area_size[1]
 
         if area_ratio > plot_ratio:
@@ -304,90 +427,4 @@ class MapBuilder:
         else:
             image_pos = self.outer_size[3], self.outer_size[0]
             image_size = area_size
-
-        # сконвертировать координаты изображения в пиксели (можно просто помножить на dpi)
-        image_pos_px = fig.dpi_scale_trans.transform((image_pos[0], size[1] - image_pos[1] - image_size[1]))  # позиция изображеня в пикселях, от вернего левого угла
-        image_pos_ax = fig.transFigure.inverted().transform(image_pos_px)  # в долях(?) (от 0 до 1)
-        plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(image_size))
-        ax0 = fig.add_axes([0, 0, 1, 1])
-        ax0.set_axis_off()
-        # _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
-        ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
-        self._build_figure(data, crs, ax1, xlim, ylim, file)
-        plot_marks(self.points, crs, ax1)
-
-        return fig, (ax0, ax1), area_size
-
-    def _build_figure(self, data, crs, ax1, xlim, ylim, file):
-        build_figure(data, ax1, crs, cmap=self.cmap, norm=self.norm, xlim=xlim, ylim=ylim,
-                     transform=file.transform,
-                     water_shp_file=self.water_shp_file,
-                     layers=self.layers)
-
-    def _get_width_height(self, file) -> Tuple[Number, Number]:
-        if self.expected_height is None or self.expected_width is None:
-            return self._guess_size(file)
-        w, h = self.expected_width, self.expected_height
-        if w <= 0:
-            logger.error('ширина (expected_width) меньше или равна 0, размер изображения будет определен автоматически')
-            return self._guess_size(file)
-
-        if h <= 0:
-            logger.error('высота (expected_height) меньше или равна 0, размер изображения будет определен автоматически')
-            return self._guess_size(file)
-
-        if hasattr(self, '_cached_size'):
-            return self._cached_size
-
-        # подсчитывем размер зоны для растра на карте и если
-        # этот размер меньше, чем минимальный увеличиваем размер всей карты и кидаем ворнинг в консоль
-        plot_size = self._get_plot_area((w, h))
-        if plot_size[0] < self.min_raster_area_size[0]:
-            logger.warning('ширина зоны для размещения растра на карте меньше минимальной ({} < {})',
-                           plot_size[0], self.min_raster_area_size[0])
-            zoom = (w + self.min_raster_area_size[0] - plot_size[0]) / w
-            w *= zoom
-            h *= zoom
-            plot_size = self._get_plot_area((w, h))
-
-        if plot_size[1] < self.min_raster_area_size[1]:
-            logger.warning('высота зоны для размещения растра на карте меньше минимальной ({} < {})',
-                         plot_size[1], self.min_raster_area_size[1])
-            zoom = (h + self.min_raster_area_size[1] - plot_size[1]) / h
-            w *= zoom
-            h *= zoom
-        setattr(self, '_cached_size', (w, h))
-        return w, h
-
-    def _guess_size(self, file) -> Tuple[Number, Number]:
-        plot_size = self._get_raster_size_inches(file)
-        size = plot_size[0] + self.outer_size[1] + self.outer_size[3], \
-               plot_size[1] + self.outer_size[0] + self.outer_size[2]
-
-        return size
-
-    def _get_plot_area(self, size):
-        return size[0] - self.outer_size[1] - self.outer_size[3],\
-               size[1] - self.outer_size[0] - self.outer_size[2]
-
-    def _get_point_fontprops(self):
-        return self._get_font_props(size=16)
-
-    def plot_to_file(self, file: DatasetReader, output_file: str, band=1):
-        figure, _1, _2 = self.plot(file, band)
-        figure.savefig(output_file, bbox_inches=None, pad_inches=0, transparent=False)
-        pyplot.close(figure)
-
-    def get_projection(self, file):
-        return CARTOPY_LCC
-
-    def _get_lims(self, file: DatasetReader):
-        xlim = self.xlim or (file.transform.c, file.transform.a * file.width + file.transform.c)
-        ylim = self.ylim or (file.transform.e * file.height + file.transform.f, file.transform.f)
-        return xlim, ylim
-
-    def _get_raster_size_inches(self, file: DatasetReader):
-        xlim, ylim = self._get_lims(file)
-        plot_width = abs(xlim[0] - xlim[1]) / file.transform.a / self.dpi
-        plot_height = abs(ylim[0] - ylim[1]) / file.transform.a / self.dpi
-        return plot_width, plot_height
+        return image_size, image_pos

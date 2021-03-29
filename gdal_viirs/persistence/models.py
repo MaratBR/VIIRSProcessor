@@ -117,7 +117,7 @@ class NDVIComposite(ProcessedFile):
         Форматирует строку периода в виде ДД.ММ - ДД.ММ.ГГГГ
         :return: отформатированная строка периода (даты) композита
         """
-        return self.ends_at.strftime('%d.%m') + ' - ' + self.starts_at.strftime('%d.%m.%Y')
+        return self.starts_at.strftime('%d.%m') + ' - ' + self.ends_at.strftime('%d.%m.%Y')
 
 
 class NDVICompositeComponents(BaseModel):

@@ -6,7 +6,10 @@ from gdal_viirs.maps.ndvi import NDVIMapBuilder
 
 
 def produce_image(ndvi_file, output_file, shp_mask_file=None, builder=None, **kwargs):
-    builder_instance = (builder or NDVIMapBuilder)(**kwargs)
+    def _build(file):
+        builder_instance = (builder or NDVIMapBuilder)(file, **kwargs)
+        builder_instance.plot_to_file(output_file)
+
     if shp_mask_file:
         # прочитать данные маски и применить её
         with fiona.open(shp_mask_file) as shp_file:
@@ -24,7 +27,7 @@ def produce_image(ndvi_file, output_file, shp_mask_file=None, builder=None, **kw
             })
             with memf.open(**meta) as new_file:
                 new_file.write(out_image)
-                builder_instance.plot_to_file(new_file, output_file)
+                _build(new_file)
     else:
         with rasterio.open(ndvi_file) as f:
-            builder_instance.plot_to_file(f, output_file)
+            _build(f)

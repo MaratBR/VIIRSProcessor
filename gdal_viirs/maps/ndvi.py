@@ -30,8 +30,8 @@ class NDVIMapBuilder(RCPODMapBuilder):
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
 
-    def get_legend_handles(self, file: DatasetReader):
-        data = file.read(1)
+    def get_legend_handles(self):
+        data = self.file.read(1)
         data_mask = ~np.isnan(data)
         all_count = max(1, np.count_nonzero(data_mask))
         bad_count = np.count_nonzero(data_mask * (data < 0.3) * (data >= -1))

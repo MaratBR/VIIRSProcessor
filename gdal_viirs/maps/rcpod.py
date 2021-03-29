@@ -20,9 +20,11 @@ class RCPODMapBuilder(MapBuilder):
     bottom_subtitle = None
     date_text = None
     spacecraft_name = ''
+    iso_sign_path = None
+    logo_path = None
 
-    def __init__(self, logo_path='./logo.png', iso_sign_path=None, **kwargs):
-        super(RCPODMapBuilder, self).__init__(**kwargs)
+    def __init__(self, file, **kwargs):
+        super(RCPODMapBuilder, self).__init__(file, **kwargs)
         self.margin = cm(1)
         self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
         self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
@@ -31,8 +33,6 @@ class RCPODMapBuilder(MapBuilder):
         self.min_width = cm(22)
         self.max_width = cm(50)
         self.max_height = cm(50)
-        self.logo_path = logo_path
-        self.iso_sign_path = iso_sign_path
 
         # настройка параметров для меток на карте
         self.map_mark_min_length = cm(1)  # минимальная длина сегмента обозначения длинны
@@ -50,7 +50,7 @@ class RCPODMapBuilder(MapBuilder):
     def init(self):
         pass
 
-    def get_legend_handles(self, file: DatasetReader):
+    def get_legend_handles(self):
         return []
 
     def get_secondary_legend_handles(self):
@@ -64,15 +64,17 @@ class RCPODMapBuilder(MapBuilder):
             handles.append(patches.Patch(color='#004da8', label='Водоёмы'))
         return handles
 
-    def plot(self, file: DatasetReader, band=1):
-        fig, (ax0, ax1), size = super(RCPODMapBuilder, self).plot(file, band)
+    def plot(self):
+        fig, (ax0, ax1) = super(RCPODMapBuilder, self).plot()
         logo_size = cm(3)  # размер лого - 75% от толщины верхней зоны
         logo_padding = cm(.7)  #
+        size = self._raster_area
 
         # рисуем логотип в верхнем левом углу
-        _drawings.draw_image(self.logo_path, (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
-                             max_width=logo_size, max_height=logo_size,
-                             origin=_drawings.TOP_LEFT)
+        if self.logo_path:
+            _drawings.draw_image(self.logo_path, (self.margin + logo_padding, logo_padding + cm(.5)), ax0,
+                                 max_width=logo_size, max_height=logo_size,
+                                 origin=_drawings.TOP_LEFT)
         _drawings.draw_image(self.iso_sign_path, (self.margin, self.margin), ax0,
                              max_width=cm(2), max_height=cm(2),
                              origin=_drawings.BOTTOM_RIGHT)
@@ -108,12 +110,12 @@ class RCPODMapBuilder(MapBuilder):
                                 ax0, ha='right', va='bottom',
                                 fontproperties=self._get_font_props(size=26))
 
-        self._draw_legend(ax0, file)
-        self._draw_scale_line(file, ax0)
+        self._draw_legend(ax0)
+        self._draw_scale_line(ax0)
 
-        return fig, (ax0, ax1), size
+        return fig, (ax0, ax1)
 
-    def _draw_legend(self, ax0, file):
+    def _draw_legend(self, ax0):
         """
         Рисуем легенду для изображенния и некоторый текст
         """
@@ -128,21 +130,19 @@ class RCPODMapBuilder(MapBuilder):
         l.spacing(cm(.4))
         l.legend(handles=self.get_secondary_legend_handles(), edgecolor='none', prop=self._get_font_props(size=20))
         l.text('Состояние посевов', fontproperties=self._get_font_props(size=22))
-        l.legend(handles=self.get_legend_handles(file), edgecolor='none', prop=self._get_font_props(size=20))
+        l.legend(handles=self.get_legend_handles(), edgecolor='none', prop=self._get_font_props(size=20))
 
-    def _get_inches_per_km(self, file: DatasetReader):
-        plot_width = self._get_raster_size_inches(file)[0]
-        xlim = self._get_lims(file)[0]
-        km_count = file.width * file.transform.a / 1000
-        zoom = abs(xlim[0] - xlim[1]) / (file.transform.a * file.width)
-        km_count *= zoom
-        inches_per_km = plot_width / km_count
-        return inches_per_km
+    @property
+    def _inches_per_km(self):
+        plot_width = self._raster_size_rect[0][0]
+        xlim = self._lims[0]
+        km_width = abs(xlim[0] - xlim[1]) / 1000
+        return plot_width / km_width
 
-    def _draw_scale_line(self, file: DatasetReader, ax):
+    def _draw_scale_line(self, ax):
         fontprops = self._get_font_props(size=16)
         # расчитываем, сколько дюймов должно приходится на один сегмент
-        inches_per_unit_x = self._get_inches_per_km(file)
+        inches_per_unit_x = self._inches_per_km
         units_per_segment = self.map_mark_min_length / inches_per_unit_x
         unit = 'км'
 
