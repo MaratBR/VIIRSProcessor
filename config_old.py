@@ -679,7 +679,7 @@ PNG_CONFIG = [
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
         ],
-        'invert_ratio': True
+        'invert_ratio': False
     },
     {
         'name': 'omsk',

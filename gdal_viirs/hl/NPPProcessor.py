@@ -1,4 +1,3 @@
-import json
 import os
 import signal
 import sys
@@ -502,6 +501,9 @@ class NPPProcessor:
             logger.error(f'Не соответствие БД, файл не найден: {merged_ndvi.output_file}')
             return
 
+        if not os.path.isfile(merged_ndvi.output_file):
+            logger.error('Не удалось найти файл: ' + merged_ndvi.output_file)
+            return
         png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
         date_text = merged_ndvi.date_text
         self._produce_images(merged_ndvi.output_file, png_dir, date_text)
