@@ -2,8 +2,8 @@
 import json
 import os
 
-from gdal_viirs.persistence.models import *
 from gdal_viirs.hl.shortcuts import setup_env
+from gdal_viirs.persistence.models import *
 
 
 def print_help():

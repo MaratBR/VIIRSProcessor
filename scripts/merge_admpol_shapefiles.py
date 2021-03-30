@@ -29,16 +29,22 @@ def main():
     Path('/tmp/adm').mkdir(exist_ok=True)
     merge_shapefiles(glob(os.path.join(location, 'Krasnoyarsk/*/*_border.shp')), '/tmp/adm/krasn_groups_border.shp')
     merge_shapefiles(glob(os.path.join(location, 'Krasnoyarsk/krasn_border.shp')), '/tmp/adm/krasn_border.shp')
-    merge_shapefiles(glob(os.path.join(location, 'Krasnoyarsk/**/*_admpol.shp'), recursive=True), '/tmp/adm/krasn_admpol.shp')
-    merge_shapefiles(glob(os.path.join(location, 'Novosibirsk/**/*_admpol.shp'), recursive=True), '/tmp/adm/nsk_admpol.shp')
-    merge_shapefiles(glob(os.path.join(location, 'Novosibirsk/novosib_border.shp'), recursive=True), '/tmp/adm/nsk_border.shp')
+    merge_shapefiles(glob(os.path.join(location, 'Krasnoyarsk/**/*_admpol.shp'), recursive=True),
+                     '/tmp/adm/krasn_admpol.shp')
+    merge_shapefiles(glob(os.path.join(location, 'Novosibirsk/**/*_admpol.shp'), recursive=True),
+                     '/tmp/adm/nsk_admpol.shp')
+    merge_shapefiles(glob(os.path.join(location, 'Novosibirsk/novosib_border.shp'), recursive=True),
+                     '/tmp/adm/nsk_border.shp')
     merge_shapefiles(glob(os.path.join(location, 'Kemerovo/kem_border.shp'), recursive=True), '/tmp/adm/kem_border.shp')
     merge_shapefiles(glob(os.path.join(location, 'Kemerovo/*_admpol.shp'), recursive=True), '/tmp/adm/kem_admpol.shp')
     merge_shapefiles(glob(os.path.join(location, 'Omsk/*_admpol.shp'), recursive=True), '/tmp/adm/omsk_admpol.shp')
     merge_shapefiles(glob(os.path.join(location, 'Omsk/omsk_border.shp'), recursive=True), '/tmp/adm/omsk_border.shp')
-    merge_shapefiles(glob(os.path.join(location, 'Region/region_border.shp'), recursive=True), '/tmp/adm/region_border.shp')
-    merge_shapefiles(glob(os.path.join(location, 'Altai/altkrai_admpol.shp'), recursive=True), '/tmp/adm/altkrai_admpol.shp')
-    merge_shapefiles(glob(os.path.join(location, 'Altai/altkrai_border.shp'), recursive=True), '/tmp/adm/altkrai_border.shp')
+    merge_shapefiles(glob(os.path.join(location, 'Region/region_border.shp'), recursive=True),
+                     '/tmp/adm/region_border.shp')
+    merge_shapefiles(glob(os.path.join(location, 'Altai/altkrai_admpol.shp'), recursive=True),
+                     '/tmp/adm/altkrai_admpol.shp')
+    merge_shapefiles(glob(os.path.join(location, 'Altai/altkrai_border.shp'), recursive=True),
+                     '/tmp/adm/altkrai_border.shp')
 
 
 if __name__ == '__main__':

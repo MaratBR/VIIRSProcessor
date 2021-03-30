@@ -2,7 +2,6 @@ import math
 
 from matplotlib import patches, lines
 from matplotlib.colors import ListedColormap, BoundaryNorm
-from rasterio import DatasetReader
 
 from gdal_viirs.maps import _drawings
 from gdal_viirs.maps.builder import MapBuilder, cm
@@ -168,7 +167,8 @@ class RCPODMapBuilder(MapBuilder):
                                        origin=_drawings.BOTTOM_RIGHT, fontproperties=fontprops,
                                        align=_drawings.Alignment(hor=_drawings.RIGHT, ver=_drawings.VCENTER))[0]
 
-        left_offset = left = self.outer_size[3] + self._get_plot_area(ax.figure.get_size_inches())[0] - inches_per_segment * sum(
+        left_offset = left = self.outer_size[3] + self._get_plot_area(ax.figure.get_size_inches())[
+            0] - inches_per_segment * sum(
             self.map_mark_dist) - km_width - cm(.2)
         odd = True
         km = 0

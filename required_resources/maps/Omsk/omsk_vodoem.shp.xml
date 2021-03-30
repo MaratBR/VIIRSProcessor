@@ -1,2 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<metadata xml:lang="ru"><Esri><CreaDate>20200611</CreaDate><CreaTime>16445400</CreaTime><SyncOnce>TRUE</SyncOnce><DataProperties><itemProps><itemLocation><linkage Sync="TRUE">file://\\ELENA\F$\INFORM\2020\Денис 04022020\Вектора\Omsk\omsk_vodoem</linkage><protocol Sync="TRUE">Local Area Network</protocol></itemLocation></itemProps><copyHistory><copy source="F:\Схемы ArcGIS\Маска неиспользуемых земель\Маска_Омск\omsk_vodoem" dest="\\ELENA\F$\INFORM\2020\Денис 04022020\Вектора\Omsk\omsk_vodoem" date="20200205" time="09532800"></copy></copyHistory></DataProperties><ArcGISFormat>1.0</ArcGISFormat></Esri></metadata>
+<metadata xml:lang="ru">
+    <Esri>
+        <CreaDate>20200611</CreaDate>
+        <CreaTime>16445400</CreaTime>
+        <SyncOnce>TRUE</SyncOnce>
+        <DataProperties>
+            <itemProps>
+                <itemLocation>
+                    <linkage Sync="TRUE">file://\\ELENA\F$\INFORM\2020\Денис 04022020\Вектора\Omsk\omsk_vodoem</linkage>
+                    <protocol Sync="TRUE">Local Area Network</protocol>
+                </itemLocation>
+            </itemProps>
+            <copyHistory>
+                <copy source="F:\Схемы ArcGIS\Маска неиспользуемых земель\Маска_Омск\omsk_vodoem"
+                      dest="\\ELENA\F$\INFORM\2020\Денис 04022020\Вектора\Omsk\omsk_vodoem" date="20200205"
+                      time="09532800"></copy>
+            </copyHistory>
+        </DataProperties>
+        <ArcGISFormat>1.0</ArcGISFormat>
+    </Esri>
+</metadata>

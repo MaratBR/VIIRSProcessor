@@ -116,7 +116,8 @@ class NPPProcessor:
             if isinstance(date_val, str):
                 date_val = datetime.strptime(date_val, '%d-%m-%Y')
             elif not isinstance(date_val, date):
-                logger.warning('значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ДД-ММ-ГГГГ')
+                logger.warning(
+                    'значение DATE в конфигурации неверно, должен быть экземпляр datetime.date или строка вида ДД-ММ-ГГГГ')
                 return datetime.now()
             return datetime.combine(date_val.date(), datetime.now().time())
         elif 'DATE_OFFSET' in self._config and isinstance(self._config['DATE_OFFSET'], int):
@@ -483,7 +484,8 @@ class NPPProcessor:
             merged_ndvi = next(m for m in merged_ndvi if os.path.isfile(m.output_file))
         except StopIteration:
             if len(merged_ndvi) == 1:
-                logger.error(f'Нашел композит за период {merged_ndvi.date_text}, но файл не найден: {merged_ndvi.output_file}')
+                logger.error(
+                    f'Нашел композит за период {merged_ndvi.date_text}, но файл не найден: {merged_ndvi.output_file}')
             else:
                 logger.error(f'Нашел {len(merged_ndvi)} композитов, но все композиты не были найдены в '
                              f'файловой системе: ' + ', '.join(m.output_file for m in merged_ndvi))
@@ -522,7 +524,6 @@ class NPPProcessor:
                              date_text=date_text, builder=NDVIDynamicsMapBuilder)
 
         self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-
 
     @staticmethod
     def _mp_produce_images(v):

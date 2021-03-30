@@ -1,7 +1,6 @@
 import numpy as np
 from matplotlib import patches
 from matplotlib.colors import ListedColormap, BoundaryNorm
-from rasterio import DatasetReader
 
 from gdal_viirs.maps.rcpod import RCPODMapBuilder
 

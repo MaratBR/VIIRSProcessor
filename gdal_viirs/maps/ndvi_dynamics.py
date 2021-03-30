@@ -1,7 +1,6 @@
 import numpy as np
 from matplotlib import patches
 from matplotlib.colors import ListedColormap, BoundaryNorm
-from rasterio import DatasetReader
 
 from gdal_viirs.maps.rcpod import RCPODMapBuilder
 
@@ -28,7 +27,8 @@ class NDVIDynamicsMapBuilder(RCPODMapBuilder):
         return [
             patches.Patch(color='#3b7a17',
                           label=f'Значительное улучшение >45%  ({round(10000 * sign_impr_count / all_count) / 100}%)'),
-            patches.Patch(color='#98e600', label=f'Улучшение 15 - 45% ({round(10000 * impr_count / all_count) / 100}%)'),
+            patches.Patch(color='#98e600',
+                          label=f'Улучшение 15 - 45% ({round(10000 * impr_count / all_count) / 100}%)'),
             patches.Patch(color='#ffff00',
                           label=f'Незначительное изменение (-15) - 15% ({round(10000 * min_change_count / all_count) / 100}%)'),
             patches.Patch(color='#ffaa00',

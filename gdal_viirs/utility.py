@@ -155,7 +155,7 @@ def get_intersection(x1: float, y1: float, w1: int, h1: int,
     bottom2 = max(0.0, y1 // abs(scalex) - y2 // abs(scalex))
 
     return (round(top1), round(right1), round(bottom1), round(left1)), (
-    round(top2), round(right2), round(bottom2), round(left2))
+        round(top2), round(right2), round(bottom2), round(left2))
 
 
 def get_data_intersection(data1: np.ndarray,

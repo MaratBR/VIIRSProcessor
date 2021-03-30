@@ -1,5 +1,7 @@
 import os
+
 from gdal_viirs.config import req_resource_path as __resource_path
+
 __BASE_DIR = os.path.dirname(__file__)
 
 
@@ -43,7 +45,6 @@ SINGLE_CLOUD_MASK_FILE = False
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
 SCALE_MULTIPLIER = 10
-
 
 LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
