@@ -1,4 +1,5 @@
 import numpy as np
+from loguru import logger
 from matplotlib import patches
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
@@ -26,8 +27,28 @@ class NDVIMapBuilder(RCPODMapBuilder):
     bottom_title = 'Мониторинг состояния посевов зерновых культур'
 
     def init(self):
-        self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
-        self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
+        norm = [-2, -1, .4, .7]
+        if self.gradation_value:
+            try:
+                gradation = list(self.gradation_value)
+                assert len(gradation) == 2
+                # -2 - облака, -1 - нижняя граница значений
+                norm = [-2, -1, gradation[0], gradation[1]]
+            except Exception as exc:
+                logger.error('Не удалось применить градацию: ' + str(exc))
+
+        self.cmap = ListedColormap([NDVI_CLOUD, NDVI_BAD, NDVI_OK, NDVI_GOOD])
+        self.norm = BoundaryNorm(norm, 4)
+
+    def get_image_metadata(self):
+        if self.gradation_value:
+            try:
+                return {
+                    'gradation': f'{self.gradation_value[0]};{self.gradation_value[1]}'
+                }
+            except:
+                pass
+        return {}
 
     def get_legend_handles(self):
         data = self.file.read(1)

@@ -13,6 +13,7 @@ import gdal_viirs.hl.utility as _hlutil
 from gdal_viirs import process as _process, misc
 from gdal_viirs.config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException
+from gdal_viirs.hl.csv import read_cvs_gradation_file
 from gdal_viirs.maps import produce_image
 from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
 from gdal_viirs.merge import merge_files2tiff
@@ -57,6 +58,10 @@ def _check_config_values(config):
     if 'HEIGHT' not in config or not isinstance(config['HEIGHT'], int):
         raise TypeError('значение HEIGHT должно быть указано в конфигурации и должно быть целым числом')
 
+    if 'GRADATIONS' in config:
+        if not isinstance(config['GRADATIONS'], dict) and config['GRADATIONS'] is not None:
+            raise TypeError('значение GRADATIONS в конфигурации должно быть или None или словарем')
+
     if 'SCALE_MULTIPLIER' in config:
         if config['SCALE_MULTIPLIER'] < 1:
             logger.warning('коэфициент масштаба (SCALE_MULTIPLIER в конфигурации) меньше 1 и будет проигнорирован')
@@ -82,9 +87,8 @@ class NPPProcessor:
         config = ConfigWrapper(CONFIG, config)
         _validate_config(config)
 
-        config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
-        config_dir.mkdir(parents=True, exist_ok=True)
-
+        self._config = config
+        self._init_logger()
         self._viirs_data_input = config.get_input('data')
 
         # путь к папке с готовыми тифами, которые программа сгенерирует
@@ -93,12 +97,15 @@ class NPPProcessor:
         self._ndvi_output = _mkpath(config.get_output('ndvi'))
         # папка для карт динамики, будет создана, если её еще нет
         self._ndvi_dynamics_output = _mkpath(config.get_output('ndvi_dynamics'))
-        self._config = config
-
-        self._init_logger()
 
         if 'DATE' in self._config and self._config['DATE'] is not None:
             logger.info('DATE = {}', self._config['DATE'])
+
+        self._ndvi_gradations = {}
+        self._init_gradations()
+
+        config_dir = Path(os.path.expandvars(os.path.expanduser(config['CONFIG_DIR'])))
+        config_dir.mkdir(parents=True, exist_ok=True)
 
     def _init_logger(self):
         logger_dir = self._config.get('LOG_PATH', 'viirs_logs')
@@ -476,6 +483,24 @@ class NPPProcessor:
 
     # region maps
 
+    def _init_gradations(self):
+        config = self._config.get('GRADATIONS')
+        if config is not None:
+            for k, v in config.items():
+                if not isinstance(v, str) and v is not None:
+                    logger.warning(f'Значение конфигурации GRADATIONS["{k}"] имеет тип {type(v)}, хотя ожидается строка')
+                    continue
+                if v is None:
+                    continue
+                if not os.path.isfile(v):
+                    logger.error(f'Не удалось найти CSV файл, указанный в GRADATIONS["{k}"]: {v}')
+                    continue
+
+                try:
+                    self._ndvi_gradations[k] = read_cvs_gradation_file(v)
+                except Exception as exc:
+                    logger.error(f'Ошибка при чтении и обработки файла с градациями {v}: {exc}')
+
     def _produce_ndvi_maps(self):
         """"""
         merged_ndvi = list(NDVIComposite.select().where(NDVIComposite.ends_at == self.now.date()))
@@ -486,6 +511,8 @@ class NPPProcessor:
             if len(merged_ndvi) == 1:
                 logger.error(
                     f'Нашел композит за период {merged_ndvi.date_text}, но файл не найден: {merged_ndvi.output_file}')
+            elif len(merged_ndvi) == 0:
+                logger.error('Не нашел ни одного композита')
             else:
                 logger.error(f'Нашел {len(merged_ndvi)} композитов, но все композиты не были найдены в '
                              f'файловой системе: ' + ', '.join(m.output_file for m in merged_ndvi))
@@ -576,6 +603,14 @@ class NPPProcessor:
             dpi = 100
             w, h = w / dpi, h / dpi
 
+            # градация
+            if 'gradation' in png_entry:
+                gradation = self._ndvi_gradations.get(
+                    png_entry['gradation'],
+                    self._ndvi_gradations.get('default'))
+            else:
+                gradation = self._ndvi_gradations.get('default')
+
             value = index, len(png_config), filepath, (input_file, filepath), dict(
                 builder=builder,
                 expected_width=w,
@@ -585,6 +620,7 @@ class NPPProcessor:
                 iso_sign_path=self._config['ISO_QUALITY_SIGN'],
                 shp_mask_file=shapefile,
                 spacecraft_name=self._config.get('SPACECRAFT_NAME', ''),
+                gradation_value=gradation,
                 **props
             )
             arguments.append(value)
@@ -614,3 +650,4 @@ class NPPProcessor:
             pool.join()
 
     # endregion
+

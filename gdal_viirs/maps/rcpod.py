@@ -21,12 +21,11 @@ class RCPODMapBuilder(MapBuilder):
     spacecraft_name = ''
     iso_sign_path = None
     logo_path = None
+    gradation_value = None
 
     def __init__(self, file, **kwargs):
         super(RCPODMapBuilder, self).__init__(file, **kwargs)
         self.margin = cm(1)
-        self.cmap = ListedColormap(['#aaa', "red", "yellow", 'greenyellow'])
-        self.norm = BoundaryNorm([-2, -1, .4, .7], 4)
         self.outer_size = cm(6.5), self.margin * 2, cm(10), self.margin + cm(17)
         self.min_height = cm(26)
         self.min_width = cm(22)

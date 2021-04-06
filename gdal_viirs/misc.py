@@ -1,6 +1,8 @@
 import importlib
 import json
 import os
+import re
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -38,3 +40,8 @@ def get_proj_version():
         return stderr.decode('ascii').split('\n')[0]
     except Exception as exc:
         return f'exception: {exc}'
+
+
+def julian2date(julian_date: str) -> date:
+    return datetime.strptime(julian_date, '%j').date()
+

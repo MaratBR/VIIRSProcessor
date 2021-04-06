@@ -44,7 +44,7 @@ SINGLE_CLOUD_MASK_FILE = False
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
-SCALE_MULTIPLIER = 10
+SCALE_MULTIPLIER = 1
 
 LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
@@ -60,6 +60,12 @@ MULTIPROCESSING_PROCESSES = 1
 # ширина и высота (по-умолчанию, горизонтальный макет)
 WIDTH = 3500
 HEIGHT = 2695
+
+# градации значений на карте
+GRADATIONS = {
+    'default': __resource('Gradatsii_VIIRS_2021.csv'),
+    'krasnoyarsk': __resource('Gradatsii_VIIRS_2021_Krasnoyarsk.csv')
+}
 
 # входые данные и папка с выходными
 OUTPUTS = {
@@ -612,7 +618,8 @@ PNG_CONFIG = [
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
         ],
-        'invert_ratio': True
+        'invert_ratio': True,
+        'gradation': 'krasnoyarsk'
     },
     {
         'name': 'Kansk',
@@ -629,7 +636,8 @@ PNG_CONFIG = [
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
         ],
-        'invert_ratio': True
+        'invert_ratio': True,
+        'gradation': 'krasnoyarsk'
     },
     {
         'name': 'Krasn_Gr',
@@ -646,7 +654,8 @@ PNG_CONFIG = [
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
         ],
-        'invert_ratio': True
+        'invert_ratio': True,
+        'gradation': 'krasnoyarsk'
     },
     {
         'name': 'Achinsk',
@@ -663,7 +672,8 @@ PNG_CONFIG = [
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
         ],
-        'invert_ratio': True
+        'invert_ratio': True,
+        'gradation': 'krasnoyarsk'
     },
     {
         'name': 'Minusinsk',
@@ -680,7 +690,8 @@ PNG_CONFIG = [
             __KRASN_GROUPS_BORDER_LAYER,
             __KRASN_BORDER_LAYER
         ],
-        'invert_ratio': False
+        'invert_ratio': False,
+        'gradation': 'krasnoyarsk'
     },
     {
         'name': 'omsk',
