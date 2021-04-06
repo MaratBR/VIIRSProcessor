@@ -44,7 +44,7 @@ SINGLE_CLOUD_MASK_FILE = False
 
 # число на которуе будет умножен масштаб при подсчете
 # не может быть меньше 1
-SCALE_MULTIPLIER = 1
+SCALE_MULTIPLIER = 10
 
 LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
@@ -52,7 +52,7 @@ IS_DEBUG = True
 
 # дата обработки
 # DATE_OFFSET = 0
-# DATE = '22-02-2021'
+DATE = '22-02-2021'
 
 # кол-во процессов для создания карт
 MULTIPROCESSING_PROCESSES = 1

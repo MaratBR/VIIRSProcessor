@@ -17,8 +17,8 @@ def read_cvs_gradation_file(filename, delimiter=';') -> typing.Dict[str, typing.
         for row in rows:
             try:
                 d = julian2date(row[0])
-                bad = float(row[0])
-                good = float(row[1])
+                bad = float(row[1])
+                good = float(row[2])
                 gradations[d.strftime('%m%d')] = bad, good
                 line += 1
             except Exception as exc:
