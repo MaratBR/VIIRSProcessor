@@ -611,6 +611,9 @@ class NPPProcessor:
             else:
                 gradation = self._ndvi_gradations.get('default')
 
+            if gradation is not None:
+                gradation = gradation.get(self.now.strftime('%m%d'))
+
             value = index, len(png_config), filepath, (input_file, filepath), dict(
                 builder=builder,
                 expected_width=w,

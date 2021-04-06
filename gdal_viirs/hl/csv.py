@@ -8,8 +8,8 @@ from loguru import logger
 from gdal_viirs.misc import julian2date
 
 
-def read_cvs_gradation_file(filename, delimiter=';') -> typing.List[typing.Tuple[date, float, float]]:
-    gradations = []
+def read_cvs_gradation_file(filename, delimiter=';') -> typing.Dict[str, typing.Tuple[float, float]]:
+    gradations = {}
     with open(filename) as f:
         reader = csv.reader(f, delimiter=delimiter)
         line = 1
@@ -19,7 +19,7 @@ def read_cvs_gradation_file(filename, delimiter=';') -> typing.List[typing.Tuple
                 d = julian2date(row[0])
                 bad = float(row[0])
                 good = float(row[1])
-                gradations.append((d, bad, good))
+                gradations[d.strftime('%m%d')] = bad, good
                 line += 1
             except Exception as exc:
                 logger.error(f'Не удалось обработать строку {line} из файла {filename}: {exc}')
