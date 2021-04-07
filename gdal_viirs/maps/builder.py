@@ -1,4 +1,5 @@
 import os
+import time
 from functools import lru_cache
 from typing import Tuple, Optional
 
@@ -16,6 +17,7 @@ from matplotlib.colors import to_rgb
 from matplotlib.ticker import Formatter
 from rasterio import DatasetReader
 
+from gdal_viirs import misc
 from gdal_viirs.maps.cartopy_utils import CARTOPY_LCC, get_lonlat_lim_range
 from gdal_viirs.types import Number
 
@@ -273,6 +275,11 @@ class MapBuilder:
             if hasattr(self, k):
                 setattr(self, k, v)
 
+    def read_data(self):
+        if not hasattr(self, '_data'):
+            setattr(self, '_data', self.file.read(self.band))
+        return getattr(self, '_data')
+
     def _get_font_props(self, **kwargs):
         if self.font_family:
             if os.path.isfile(self.font_family):
@@ -286,15 +293,10 @@ class MapBuilder:
         xlim, ylim = self._lims  # границы растра в координатах проекции
         size = self._full_plot_size
         fig = pyplot.figure(figsize=size, dpi=self.dpi)
-
-        data = self.file.read(1)
+        data = self.read_data()
         crs = self.get_projection()
 
         # получаем реальный размер
-        plot_size = self._raster_size_inches
-        plot_ratio = plot_size[0] / plot_size[1]
-        del plot_size
-
         image_size, image_pos = self._raster_size_rect
 
         # сконвертировать координаты изображения в пиксели (можно просто помножить на dpi)
@@ -304,8 +306,8 @@ class MapBuilder:
         plot_size_ax = fig.transFigure.inverted().transform(fig.dpi_scale_trans.transform(image_size))
         ax0 = fig.add_axes([0, 0, 1, 1])
         ax0.set_axis_off()
-        # _plot_rect_with_outside_border(image_pos_ax, plot_size_ax, ax0)
         ax1 = fig.add_axes([*image_pos_ax, *plot_size_ax], projection=crs)
+
         self._build_figure(data, crs, ax1, xlim, ylim)
         plot_marks(self.points, crs, ax1)
 

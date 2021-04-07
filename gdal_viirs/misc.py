@@ -1,7 +1,6 @@
 import importlib
 import json
 import os
-import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -10,7 +9,7 @@ def to_path(path) -> Path:
     if isinstance(path, Path):
         path = str(path)
     path = os.path.expandvars(os.path.expanduser(path))
-    return Path(path)
+    return Path(path)PACKAGES
 
 
 def get_gdal_viirs_directory() -> Path:
@@ -20,10 +19,10 @@ def get_gdal_viirs_directory() -> Path:
 def gather_packages():
     try:
         versions = {}
-        PACKAGES = 'pyproj', 'rasterio', 'peewee', 'matplotlib', 'numpy'
-        for p in PACKAGES:
+        packages = 'pyproj', 'rasterio', 'peewee', 'matplotlib', 'numpy'
+        for p in packages:
             try:
-                ver = importlib.import_module(p).__version__
+                ver = importlib.import_module(p).__version__ # noqa
                 versions[p] = ver
             except Exception as exc:
                 versions[p] = f'failed: {exc}'
@@ -44,4 +43,3 @@ def get_proj_version():
 
 def julian2date(julian_date: str) -> date:
     return datetime.strptime(julian_date, '%j').date()
-

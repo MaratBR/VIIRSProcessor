@@ -1,11 +1,12 @@
 import fiona
 import rasterio
+from rasterio import DatasetReader
 from rasterio.mask import mask
 
 from gdal_viirs.maps.ndvi import NDVIMapBuilder
 
 
-def produce_image(ndvi_file, output_file, shp_mask_file=None, builder=None, **kwargs):
+def produce_image(ndvi_file: DatasetReader, output_file, shp_mask_file=None, builder=None, **kwargs):
     def _build(file):
         builder_instance = (builder or NDVIMapBuilder)(file, **kwargs)
         builder_instance.plot_to_file(output_file)
@@ -14,14 +15,8 @@ def produce_image(ndvi_file, output_file, shp_mask_file=None, builder=None, **kw
         # прочитать данные маски и применить её
         with fiona.open(shp_mask_file) as shp_file:
             geoms = [feature["geometry"] for feature in shp_file]
-
-        if isinstance(ndvi_file, str):
-            with rasterio.open(ndvi_file) as input_file:
-                out_image, out_transform = mask(input_file, geoms, all_touched=False)
-                meta = input_file.meta.copy()
-        else:
-            out_image, out_transform = mask(ndvi_file, geoms, all_touched=False)
-            meta = ndvi_file.meta.copy()
+        out_image, out_transform = mask(ndvi_file, geoms, all_touched=False)
+        meta = ndvi_file.meta.copy()
 
         with rasterio.MemoryFile() as memf:
             meta.update({

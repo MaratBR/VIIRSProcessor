@@ -1,9 +1,7 @@
 import os
-import signal
 import sys
 from datetime import datetime, timedelta, date
 from glob import glob
-from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional
 
@@ -147,8 +145,12 @@ class NPPProcessor:
         :return:
         """
         self._on_start('all')
-        self._produce_products()
-        self._produce_maps()
+        try:
+            self._produce_products()
+            self._produce_maps()
+        except Exception as exc:
+            logger.exception(exc)
+            exit(1)
 
     @logger.catch
     def produce_maps(self):
@@ -157,12 +159,20 @@ class NPPProcessor:
         :return:
         """
         self._on_start('maps')
-        self._produce_maps()
+        try:
+            self._produce_maps()
+        except Exception as exc:
+            logger.exception(exc)
+            exit(1)
 
     @logger.catch
     def produce_products(self):
         self._on_start('products')
-        self._produce_products()
+        try:
+            self._produce_products()
+        except Exception as exc:
+            logger.exception(exc)
+            exit(1)
 
     def _produce_products(self):
         self._on_start()
@@ -549,81 +559,73 @@ class NPPProcessor:
 
         self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
-    @staticmethod
-    def _mp_produce_images(v):
-        index, total, path, args, kwargs = v
-        try:
-            logger.debug(f'обработка изображения ({index + 1}/{total}) {path}')
-            produce_image(*args, **kwargs)
-        except Exception as e:
-            logger.exception(e)
-
-    def _produce_images(self, input_file, output_directory, date_text=None, builder=None):
+    def _produce_images(self, input_file: str, output_directory, date_text=None, builder=None):
         png_config = self._config.get("PNG_CONFIG")
 
-        for index, png_entry in enumerate(png_config):
-            name = png_entry['name']
-            filename = f'{name}.png'
-            filepath = os.path.join(output_directory, filename)
-            force_regeneration = self._config.get('FORCE_MAPS_REGENERATION', True)
-            if os.path.isfile(filepath) and not force_regeneration:
-                continue
-            display_name = png_entry.get('display_name')
-            xlim = png_entry.get('xlim')
-            ylim = png_entry.get('ylim')
-            props = {
-                'bottom_subtitle': display_name,
-                'map_points': self._config.get('MAP_POINTS'),
-                'date_text': date_text
-            }
-            if 'FONT_FAMILY' in self._config:
-                props['font_family'] = self._config['FONT_FAMILY']
-            if xlim:
-                props['xlim'] = xlim
-            if ylim:
-                props['ylim'] = ylim
-            props['water_shp_file'] = png_entry.get('water_shapefile')
-            props['points'] = png_entry.get('points')
-            props['layers'] = png_entry.get('layers')
-            shapefile = png_entry.get('mask_shapefile')
-            if shapefile is None:
-                logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
+        with rasterio.open(input_file) as f:
+            for index, png_entry in enumerate(png_config):
+                name = png_entry['name']
+                filename = f'{name}.png'
+                filepath = os.path.join(output_directory, filename)
+                force_regeneration = self._config.get('FORCE_MAPS_REGENERATION', True)
+                if os.path.isfile(filepath) and not force_regeneration:
+                    continue
+                display_name = png_entry.get('display_name')
+                xlim = png_entry.get('xlim')
+                ylim = png_entry.get('ylim')
+                props = {
+                    'bottom_subtitle': display_name,
+                    'map_points': self._config.get('MAP_POINTS'),
+                    'date_text': date_text
+                }
+                if 'FONT_FAMILY' in self._config:
+                    props['font_family'] = self._config['FONT_FAMILY']
+                if xlim:
+                    props['xlim'] = xlim
+                if ylim:
+                    props['ylim'] = ylim
+                props['water_shp_file'] = png_entry.get('water_shapefile')
+                props['points'] = png_entry.get('points')
+                props['layers'] = png_entry.get('layers')
+                shapefile = png_entry.get('mask_shapefile')
+                if shapefile is None:
+                    logger.warning(f'изображение с идентификатором {name} (png_config[{index}]) не имеет mask_shapefile')
 
-            w, h = self._config['WIDTH'], self._config['HEIGHT']
+                w, h = self._config['WIDTH'], self._config['HEIGHT']
 
-            if 'invert_ratio' in png_entry:
-                rotate90 = png_entry['invert_ratio']
-                if rotate90:
-                    w, h = h, w
+                if 'invert_ratio' in png_entry:
+                    rotate90 = png_entry['invert_ratio']
+                    if rotate90:
+                        w, h = h, w
 
-            dpi = 100
-            w, h = w / dpi, h / dpi
+                dpi = 100
+                w, h = w / dpi, h / dpi
 
-            # градация
-            if 'gradation' in png_entry:
-                gradation = self._ndvi_gradations.get(
-                    png_entry['gradation'],
-                    self._ndvi_gradations.get('default'))
-            else:
-                gradation = self._ndvi_gradations.get('default')
+                # градация
+                if 'gradation' in png_entry:
+                    gradation = self._ndvi_gradations.get(
+                        png_entry['gradation'],
+                        self._ndvi_gradations.get('default'))
+                else:
+                    gradation = self._ndvi_gradations.get('default')
 
-            if gradation is not None:
-                gradation = gradation.get(self.now.strftime('%m%d'))
+                if gradation is not None:
+                    gradation = gradation.get(self.now.strftime('%m%d'))
 
-            logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
-            produce_image(
-                input_file, filepath,
-                builder=builder,
-                expected_width=w,
-                expected_height=h,
-                dpi=dpi,
-                logo_path=self._config['LOGO_PATH'],
-                iso_sign_path=self._config['ISO_QUALITY_SIGN'],
-                shp_mask_file=shapefile,
-                spacecraft_name=self._config.get('SPACECRAFT_NAME', ''),
-                gradation_value=gradation,
-                **props
-            )
+                logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
+                produce_image(
+                    f, filepath,
+                    builder=builder,
+                    expected_width=w,
+                    expected_height=h,
+                    dpi=dpi,
+                    logo_path=self._config['LOGO_PATH'],
+                    iso_sign_path=self._config['ISO_QUALITY_SIGN'],
+                    shp_mask_file=shapefile,
+                    spacecraft_name=self._config.get('SPACECRAFT_NAME', ''),
+                    gradation_value=gradation,
+                    **props
+                )
 
     # endregion
 

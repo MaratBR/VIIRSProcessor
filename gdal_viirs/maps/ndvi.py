@@ -51,7 +51,7 @@ class NDVIMapBuilder(RCPODMapBuilder):
         return {}
 
     def get_legend_handles(self):
-        data = self.file.read(1)
+        data = self.read_data()
         data_mask = ~np.isnan(data)
         all_count = max(1, np.count_nonzero(data_mask))
         bad_count = np.count_nonzero(data_mask * (data < self._norm[2]) * (data >= self._norm[1]))
