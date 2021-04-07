@@ -25,20 +25,20 @@ NDVI_CLOUD = '#8c8c8c'
 
 class NDVIMapBuilder(RCPODMapBuilder):
     bottom_title = 'Мониторинг состояния посевов зерновых культур'
+    _norm = [-2, -1, .4, .7]
 
     def init(self):
-        norm = [-2, -1, .4, .7]
         if self.gradation_value:
             try:
                 gradation = list(self.gradation_value)
                 assert len(gradation) == 2
                 # -2 - облака, -1 - нижняя граница значений
-                norm = [-2, -1, gradation[0], gradation[1]]
+                self._norm = [-2, -1, gradation[0], gradation[1]]
             except Exception as exc:
                 logger.error('Не удалось применить градацию: ' + str(exc))
 
         self.cmap = ListedColormap([NDVI_CLOUD, NDVI_BAD, NDVI_OK, NDVI_GOOD])
-        self.norm = BoundaryNorm(norm, 4)
+        self.norm = BoundaryNorm(self._norm, 4)
 
     def get_image_metadata(self):
         if self.gradation_value:
@@ -54,10 +54,10 @@ class NDVIMapBuilder(RCPODMapBuilder):
         data = self.file.read(1)
         data_mask = ~np.isnan(data)
         all_count = max(1, np.count_nonzero(data_mask))
-        bad_count = np.count_nonzero(data_mask * (data < 0.3) * (data >= -1))
-        ok_count = np.count_nonzero(data_mask * (data < 0.7) * (data >= 0.3))
-        good_count = np.count_nonzero(data_mask * (data >= 0.7))
-        clouds_count = np.count_nonzero(data == -2)
+        bad_count = np.count_nonzero(data_mask * (data < self._norm[2]) * (data >= self._norm[1]))
+        ok_count = np.count_nonzero(data_mask * (data < self._norm[3]) * (data >= self._norm[2]))
+        good_count = np.count_nonzero(data_mask * (data >= self._norm[3]))
+        clouds_count = np.count_nonzero(data == self._norm[0])
         del data
 
         return [
