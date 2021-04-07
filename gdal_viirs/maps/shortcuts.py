@@ -14,9 +14,14 @@ def produce_image(ndvi_file, output_file, shp_mask_file=None, builder=None, **kw
         # прочитать данные маски и применить её
         with fiona.open(shp_mask_file) as shp_file:
             geoms = [feature["geometry"] for feature in shp_file]
-        with rasterio.open(ndvi_file) as input_file:
-            out_image, out_transform = mask(input_file, geoms, all_touched=False)
-            meta = input_file.meta.copy()
+
+        if isinstance(ndvi_file, str):
+            with rasterio.open(ndvi_file) as input_file:
+                out_image, out_transform = mask(input_file, geoms, all_touched=False)
+                meta = input_file.meta.copy()
+        else:
+            out_image, out_transform = mask(ndvi_file, geoms, all_touched=False)
+            meta = ndvi_file.meta.copy()
 
         with rasterio.MemoryFile() as memf:
             meta.update({

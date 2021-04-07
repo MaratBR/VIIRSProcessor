@@ -54,9 +54,6 @@ IS_DEBUG = True
 # DATE_OFFSET = 0
 # DATE = '22-02-2021'
 
-# кол-во процессов для создания карт
-MULTIPROCESSING_PROCESSES = 1
-
 # ширина и высота (по-умолчанию, горизонтальный макет)
 WIDTH = 3500
 HEIGHT = 2695

@@ -7,6 +7,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional
 
+import rasterio
 from loguru import logger
 
 import gdal_viirs.hl.utility as _hlutil
@@ -527,10 +528,6 @@ class NPPProcessor:
                 return
 
         if not os.path.isfile(merged_ndvi.output_file):
-            logger.error(f'Не соответствие БД, файл не найден: {merged_ndvi.output_file}')
-            return
-
-        if not os.path.isfile(merged_ndvi.output_file):
             logger.error('Не удалось найти файл: ' + merged_ndvi.output_file)
             return
         png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
@@ -563,7 +560,6 @@ class NPPProcessor:
 
     def _produce_images(self, input_file, output_directory, date_text=None, builder=None):
         png_config = self._config.get("PNG_CONFIG")
-        arguments = []
 
         for index, png_entry in enumerate(png_config):
             name = png_entry['name']
@@ -614,7 +610,9 @@ class NPPProcessor:
             if gradation is not None:
                 gradation = gradation.get(self.now.strftime('%m%d'))
 
-            value = index, len(png_config), filepath, (input_file, filepath), dict(
+            logger.debug(f'обработка изображения ({index + 1}/{len(png_config)}) {filepath}')
+            produce_image(
+                input_file, filepath,
                 builder=builder,
                 expected_width=w,
                 expected_height=h,
@@ -626,31 +624,6 @@ class NPPProcessor:
                 gradation_value=gradation,
                 **props
             )
-            arguments.append(value)
-
-        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        processes = self._config.get('MULTIPROCESSING_PROCESSES', 2)
-        if processes == 1:
-            for v in arguments:
-                index, total, path, args, kwargs = v
-                logger.debug(f'обработка изображения ({index + 1}/{total}) {path}')
-                produce_image(*args, **kwargs)
-        else:
-            pool = Pool(processes)
-            signal.signal(signal.SIGINT, original_sigint_handler)
-
-            logger.debug('начинаю обработку карт с {} дочерними процессами', processes)
-            res = pool.map_async(self._mp_produce_images, arguments)
-
-            try:
-                res.get(3600000)
-            except KeyboardInterrupt:
-                print('\n* Ctrl-C: останавливаю пул процессов...')
-                pool.terminate()
-                exit(2)
-            else:
-                pool.close()
-            pool.join()
 
     # endregion
 
