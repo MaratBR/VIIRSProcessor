@@ -387,11 +387,11 @@ class MapBuilder:
                     return
 
                 im = Image.open(output_file)
-                meta = PngImagePlugin.PngInfo()
+                png_info = PngImagePlugin.PngInfo()
 
                 for x in meta:
-                    meta.add_text(x, meta[x])
-                im.save(output_file, "png", pnginfo=meta)
+                    png_info.add_text(x, meta[x])
+                im.save(output_file, "png", pnginfo=png_info)
             except Exception as exc:
                 logger.warning(f'Не удалось записать метаданные в файл изображения: {exc}')
 
