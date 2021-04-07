@@ -18,7 +18,7 @@ from matplotlib.ticker import Formatter
 from rasterio import DatasetReader
 
 from gdal_viirs import misc
-from gdal_viirs.maps.cartopy_utils import CARTOPY_LCC, get_lonlat_lim_range
+from gdal_viirs.maps.utils import CARTOPY_LCC, get_lonlat_lim_range
 from gdal_viirs.types import Number
 
 _CM = 1 / 2.54

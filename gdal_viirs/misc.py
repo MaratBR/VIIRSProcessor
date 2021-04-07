@@ -9,7 +9,7 @@ def to_path(path) -> Path:
     if isinstance(path, Path):
         path = str(path)
     path = os.path.expandvars(os.path.expanduser(path))
-    return Path(path)PACKAGES
+    return Path(path)
 
 
 def get_gdal_viirs_directory() -> Path:
