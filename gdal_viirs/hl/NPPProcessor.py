@@ -228,7 +228,7 @@ class NPPProcessor:
 
         for fs in filesets:
             # обработка данных с level1
-            typ = fs.geoloc_file.file_type.upper()
+            typ = fs.geoloc_file.file_type_out.upper()
             l1_output_file = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id) \
                              / f'{fs.root_dir.parts[-1]}.{typ}.tiff'
             if not l1_output_file.is_file():

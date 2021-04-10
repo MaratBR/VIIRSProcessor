@@ -40,16 +40,6 @@ class NDVIMapBuilder(RCPODMapBuilder):
         self.cmap = ListedColormap([NDVI_CLOUD, NDVI_BAD, NDVI_OK, NDVI_GOOD])
         self.norm = BoundaryNorm(self._norm, 4)
 
-    def get_image_metadata(self):
-        if self.gradation_value:
-            try:
-                return {
-                    'gradation': f'{self.gradation_value[0]};{self.gradation_value[1]}'
-                }
-            except:
-                pass
-        return {}
-
     def get_legend_handles(self):
         data = self.read_data()
         data_mask = ~np.isnan(data)

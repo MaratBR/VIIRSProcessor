@@ -9,7 +9,6 @@ import cartopy.mpl.gridliner
 import matplotlib.font_manager as _fm
 import numpy as np
 import rasterio.plot
-from PIL import Image, PngImagePlugin
 from adjustText import adjust_text
 from loguru import logger
 from matplotlib import pyplot, patches, offsetbox, patheffects
@@ -379,24 +378,6 @@ class MapBuilder:
         figure, _1 = self.plot()
         figure.savefig(output_file, bbox_inches=None, pad_inches=0, transparent=False)
         pyplot.close(figure)
-
-        if output_file.endswith('.png'):
-            try:
-                meta = self.get_image_metadata()
-                if len(meta) == 0:
-                    return
-
-                im = Image.open(output_file)
-                png_info = PngImagePlugin.PngInfo()
-
-                for x in meta:
-                    png_info.add_text(x, meta[x])
-                im.save(output_file, "png", pnginfo=png_info)
-            except Exception as exc:
-                logger.warning(f'Не удалось записать метаданные в файл изображения: {exc}')
-
-    def get_image_metadata(self):
-        return {}
 
     def get_projection(self):
         return CARTOPY_LCC
