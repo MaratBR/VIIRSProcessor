@@ -72,7 +72,7 @@ OUTPUTS = {
 }
 
 INPUTS = {
-    'data': '/media/marat/Quack/Projects/GDAL_Data/NPP/'
+    'data': '/home/marat/Documents'
 }
 
 # КА заголовок

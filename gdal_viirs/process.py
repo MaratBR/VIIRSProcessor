@@ -13,7 +13,7 @@ from loguru import logger
 
 from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
-from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData
+from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData, CorruptedFile
 from gdal_viirs.types import GeofileInfo, Number, \
     ProcessedGeolocFile, ViirsFileset
 
@@ -30,6 +30,18 @@ def _fill_nodata(arr: np.ndarray, *, nd_value=ND_OBPT, smoothing_iterations=5,
                                     max_search_distance=max_search_dist)
 
 
+def _try_open_fileset(fileset: ViirsFileset):
+    files = [b.path for b in fileset.band_files]
+    files.append(fileset.geoloc_file.path)
+
+    for file in files:
+        try:
+            f = rasterio.open(file)
+            f.close()
+        except rasterio.errors.RasterioIOError as e:
+            raise CorruptedFile(e)
+
+
 def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=True, proj=None):
     """
     Обрабатывает набор файлов, начиная с файла геолокации (широта/долгота) и затем файлы каналов (SVI/SVM),
@@ -43,6 +55,9 @@ def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=Tr
     """
     if len(fileset.band_files) == 0:
         raise InvalidData('Band-файлы не найдены')
+
+    _try_open_fileset(fileset)
+
     logger.info(f'Обработка набора файлов {fileset.geoloc_file.name} scale={scale}')
 
     crs = rasterio.crs.CRS.from_wkt(proj or PROJ_LCC, morph_from_esri_dialect=True)

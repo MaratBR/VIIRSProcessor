@@ -11,7 +11,7 @@ from loguru import logger
 import gdal_viirs.hl.utility as _hlutil
 from gdal_viirs import process as _process, misc
 from gdal_viirs.config import CONFIG, ConfigWrapper
-from gdal_viirs.exceptions import ProcessingException
+from gdal_viirs.exceptions import ProcessingException, CorruptedFile
 from gdal_viirs.hl.csv import read_cvs_gradation_file
 from gdal_viirs.maps import produce_image
 from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
@@ -235,9 +235,10 @@ class NPPProcessor:
                 self._on_before_processing(str(l1_output_file), typ)
                 try:
                     _process.process_fileset(fs, str(l1_output_file), self._get_scale(fs.geoloc_file.band))
+                except CorruptedFile as exc:
+                    logger.error(f'Датасет {fs.geoloc_file} имеет поврежденные файлы: {exc.inner}')
                 except Exception as exc:
                     self._on_exception(exc)
-                    raise
 
                 self._on_after_processing(str(l1_output_file), typ)
 
@@ -346,14 +347,18 @@ class NPPProcessor:
         :param based_on: запись обработанного датасета для которого следует создать NDVI файлы
         :return: экземпляр NDVITiff, сохранённый в БД
         """
-        if not based_on.is_of_type('GIMGO'):
-            raise ProcessingException('невозможно обработать NDVI')
+        if not based_on.is_of_type('GIMGO') and not based_on.is_of_type('VIMGO'):
+            raise ProcessingException(f'невозможно обработать NDVI, тип файла {based_on.type} не поддерживается для обработки NDVI')
+        elif based_on.is_of_type('GIMGO'):
+            based_on.type = 'VIMGO'
+            based_on.save()
+            logger.debug('Замена типа GIMGO на VIMGO')
 
         ndvi_file = _mkpath(
             self._processed_output / based_on.dataset_date.strftime('%Y%m%d') / based_on.swath_id
         ) / f'{based_on.directory_name}.NDVI.tiff'
 
-        ndvi_record: NDVITiff = NDVITiff.get_or_none(NDVITiff.based_on == based_on)
+        ndvi_record: NDVITiff = NDVITiff.get_or_none(NDVITiff.output_file == str(ndvi_file))
 
         # создаем NDVI файл, но только если его еще нет, не перезаписываем
         if not ndvi_file.is_file():

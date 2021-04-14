@@ -60,3 +60,8 @@ class DriverNotFound(ViirsException):
 
 class ProcessingException(ViirsException):
     pass
+
+
+class CorruptedFile(ViirsException):
+    def __init__(self, inner):
+        self.inner = inner
