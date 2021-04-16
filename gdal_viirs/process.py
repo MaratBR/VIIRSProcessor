@@ -66,33 +66,24 @@ def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=Tr
     height, width = geoloc_file.out_image_shape
 
     bands = _process_band_files_gen(geoloc_file, fileset.band_files)
+    bands = np.array(list(bands))
     transform = geoloc_file.transform
 
     if trim:
-        # обработаем все файлы и запишем их в MemoryFile
-        meta = utility.make_rasterio_meta(height, width, len(fileset.band_files))
-        meta.update({
-            'transform': geoloc_file.transform,
-            'crs': crs
-        })
-        with rasterio.MemoryFile() as f:
-            with f.open(**meta) as ds:
-                for index, band in enumerate(bands):
-                    ds.write(band, index + 1)
-                # обрезаем nodata
-                transform, data = utility.trim_nodata(ds.read(), geoloc_file.transform)
-            height, width = data.shape[1:]
+        # обрезаем nodata
+        transform, data = utility.trim_nodata(bands, geoloc_file.transform)
+        height, width = data.shape[1:]
     else:
         data = bands
+    del bands
 
-    meta = utility.make_rasterio_meta(height, width, len(fileset.band_files))
+    meta = utility.make_rasterio_meta(height, width, data.shape[0])
     meta.update({
         'transform': transform,
         'crs': crs
     })
     with rasterio.open(output_file, 'w', **meta) as f:
-        for index, processed_band in enumerate(data):
-            f.write(processed_band.data, index + 1)
+        f.write(data)
 
 
 def process_geoloc_file(geofile: GeofileInfo, scale: Number, proj=None) -> ProcessedGeolocFile:
