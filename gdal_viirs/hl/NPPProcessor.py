@@ -237,6 +237,7 @@ class NPPProcessor:
                     _process.process_fileset(fs, str(l1_output_file), self._get_scale(fs.geoloc_file.band))
                 except CorruptedFile as exc:
                     logger.error(f'Датасет {fs.geoloc_file} имеет поврежденные файлы: {exc.inner}')
+                    continue
                 except Exception as exc:
                     self._on_exception(exc)
 
