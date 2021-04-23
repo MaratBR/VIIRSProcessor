@@ -13,7 +13,7 @@ from loguru import logger
 
 from gdal_viirs import utility
 from gdal_viirs.const import GIMGO, ND_OBPT, PROJ_LCC, ND_NA
-from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData, CorruptedFile
+from gdal_viirs.exceptions import SubDatasetNotFound, InvalidData, CorruptedFile, ProcessingException
 from gdal_viirs.types import GeofileInfo, Number, \
     ProcessedGeolocFile, ViirsFileset
 
@@ -65,8 +65,7 @@ def process_fileset(fileset: ViirsFileset, output_file: str, scale=2000, trim=Tr
     geoloc_file = process_geoloc_file(fileset.geoloc_file, scale, proj=proj)
     height, width = geoloc_file.out_image_shape
 
-    bands = _process_band_files_gen(geoloc_file, fileset.band_files)
-    bands = np.array(list(bands))
+    bands = _process_band_files(geoloc_file, fileset.band_files)
     transform = geoloc_file.transform
 
     if trim:
@@ -218,14 +217,34 @@ def process_band_file(geofile: GeofileInfo,
     return image
 
 
-def _process_band_files_gen(geoloc_file: ProcessedGeolocFile,
-                            files: List[GeofileInfo]) -> Iterable[np.ndarray]:
+def _process_band_files(geoloc_file: ProcessedGeolocFile,
+                        files: List[GeofileInfo]) -> np.ndarray:
     assert len(files) > 0, 'bands list is empty'
     assert len(
         set(b.band for b in files)) == 1, 'bands passed to _process_band_files_gen belong to different band types'
 
+    arrays = []
+
     for index, file in enumerate(files):
-        yield process_band_file(file, geoloc_file)
+        try:
+            arr = process_band_file(file, geoloc_file)
+            arrays.append(arr)
+        except Exception as e:
+            logger.warning('Не удалось обработать файл ' + file.path + ' - исключение будет отправлено в лог (см. ниже)')
+            logger.error(e)
+            arrays.append(None)
+
+    if all(v is None for v in arrays):
+        raise ProcessingException('Не удалось обработать файл: все каналы датасета повреждены (см. ошибки выше)')
+
+    assert len(set(v.shape for v in arrays if v is not None)), \
+        'Неправильные размеры выходных данных (не все размеры одинаковы): ' + str([v.shape for v in arrays if v is not None])
+    shape = next(v.shape for v in arrays if v is not None)
+    for i in range(len(arrays)):
+        if arrays[i] is None:
+            logger.debug(f'Канал {i+1} поврежден (см. выше) - заполнение nan')
+            arrays[i] = np.full(shape, np.nan)
+    return np.array(arrays)
 
 
 def process_ndvi(input_file: str, output_file: str, cloud_mask_file: str = None):
