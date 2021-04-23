@@ -51,9 +51,14 @@ ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
 
 
-MAPS_FILENAME_PATTERN = '%(yymmdd)s2359_%(ka)s_%(name)s.png'
+MAPS_FILENAME_PATTERN = {
+    'ndvi': '{yymmdd}2359_{ka}_{ndvi}_{name}.png',
+    'ndvi_dynamics': '{yymmdd}2359_{ka}_{ndvi_dynamics}_{name}.png'
+}
 MAPS_PARAMS = {
-    'ka': 's_d'
+    'ka': 's',
+    'ndvi_dynamics': 'd',
+    'ndvi': 'c'
 }
 
 # дата обработки

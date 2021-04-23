@@ -548,7 +548,12 @@ class NPPProcessor:
             return
         png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
         date_text = merged_ndvi.date_text
-        self._produce_images(merged_ndvi.output_file, png_dir, merged_ndvi.ends_at, date_text)
+        self._produce_images(
+            merged_ndvi.output_file,
+            png_dir,
+            merged_ndvi.ends_at,
+            self._config.getpath('MAPS_FILENAME_PATTERN.ndvi'),
+            date_text)
 
     def _produce_ndvi_dynamics_maps(self):
         ndvi_dynamics = self._process_ndvi_dynamics_for_today()
@@ -563,6 +568,7 @@ class NPPProcessor:
         self._produce_images(ndvi_dynamics.output_file,
                              str(ndvi_dynamics_dir),
                              ndvi_dynamics.b2_composite.ends_at,
+                             self._config.getpath('MAPS_FILENAME_PATTERN.ndvi_dynamics'),
                              date_text=date_text,
                              builder=NDVIDynamicsMapBuilder)
 
@@ -572,7 +578,9 @@ class NPPProcessor:
                         input_file: str,
                         output_directory,
                         date: datetime,
-                        date_text=None, builder=None):
+                        filename_pattern: str,
+                        date_text=None,
+                        builder=None):
         png_config = self._config.get("PNG_CONFIG")
 
         with rasterio.open(input_file) as f:
@@ -586,14 +594,12 @@ class NPPProcessor:
                     cfg = {}
 
                 # получаем имя выходного файла
-                if 'MAPS_FILENAME_PATTERN' in self._config:
-                    pattern = self._config['MAPS_FILENAME_PATTERN']
-                    cfg.update({
-                        'name': name,
-                        'yymmdd': date.strftime('%y%m%d'),
-                        'hhmm': date.strftime('%H%M'),
-                    })
-                    filename = pattern % cfg
+                cfg.update({
+                    'name': name,
+                    'yymmdd': date.strftime('%y%m%d'),
+                    'hhmm': date.strftime('%H%M'),
+                })
+                filename = filename_pattern.format(**cfg)
 
                 filepath = os.path.join(output_directory, filename)
                 force_regeneration = self._config.get('FORCE_MAPS_REGENERATION', True)
