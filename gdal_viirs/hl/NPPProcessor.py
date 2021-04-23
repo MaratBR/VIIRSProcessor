@@ -548,7 +548,7 @@ class NPPProcessor:
             return
         png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
         date_text = merged_ndvi.date_text
-        self._produce_images(merged_ndvi.output_file, png_dir, date_text)
+        self._produce_images(merged_ndvi.output_file, png_dir, merged_ndvi.ends_at, date_text)
 
     def _produce_ndvi_dynamics_maps(self):
         ndvi_dynamics = self._process_ndvi_dynamics_for_today()
@@ -560,18 +560,41 @@ class NPPProcessor:
         # создание карт динамики
         self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
         date_text = ndvi_dynamics.date_text
-        self._produce_images(ndvi_dynamics.output_file, str(ndvi_dynamics_dir),
-                             date_text=date_text, builder=NDVIDynamicsMapBuilder)
+        self._produce_images(ndvi_dynamics.output_file,
+                             str(ndvi_dynamics_dir),
+                             ndvi_dynamics.b2_composite.ends_at,
+                             date_text=date_text,
+                             builder=NDVIDynamicsMapBuilder)
 
         self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
-    def _produce_images(self, input_file: str, output_directory, date_text=None, builder=None):
+    def _produce_images(self,
+                        input_file: str,
+                        output_directory,
+                        date: datetime,
+                        date_text=None, builder=None):
         png_config = self._config.get("PNG_CONFIG")
 
         with rasterio.open(input_file) as f:
             for index, png_entry in enumerate(png_config):
                 name = png_entry['name']
                 filename = f'{name}.png'
+
+                if 'MAPS_PARAMS' in self._config and isinstance(self._config['MAPS_PARAMS'], dict):
+                    cfg = self._config['MAPS_PARAMS']
+                else:
+                    cfg = {}
+
+                # получаем имя выходного файла
+                if 'MAPS_FILENAME_PATTERN' in self._config:
+                    pattern = self._config['MAPS_FILENAME_PATTERN']
+                    cfg.update({
+                        'name': name,
+                        'yymmdd': date.strftime('%y%m%d'),
+                        'hhmm': date.strftime('%H%M'),
+                    })
+                    filename = pattern % cfg
+
                 filepath = os.path.join(output_directory, filename)
                 force_regeneration = self._config.get('FORCE_MAPS_REGENERATION', True)
                 if os.path.isfile(filepath) and not force_regeneration:

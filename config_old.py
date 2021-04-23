@@ -50,6 +50,12 @@ LOGO_PATH = __resource('logo.png')
 ISO_QUALITY_SIGN = __resource('iso_sign.jpg')
 IS_DEBUG = True
 
+
+MAPS_FILENAME_PATTERN = '%(yymmdd)s2359_%(ka)s_%(name)s.png'
+MAPS_PARAMS = {
+    'ka': 's_d'
+}
+
 # дата обработки
 # DATE_OFFSET = 0
 DATE = '22-02-2021'
