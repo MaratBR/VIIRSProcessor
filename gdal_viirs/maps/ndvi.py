@@ -38,7 +38,7 @@ class NDVIMapBuilder(RCPODMapBuilder):
                 logger.error('Не удалось применить градацию: ' + str(exc))
 
         self.cmap = ListedColormap([NDVI_CLOUD, NDVI_BAD, NDVI_OK, NDVI_GOOD])
-        self.norm = BoundaryNorm(self._norm, 4)
+        self.norm = BoundaryNorm(self._norm, len(self._norm) - 1)
 
     def get_legend_handles(self):
         data = self.read_data()

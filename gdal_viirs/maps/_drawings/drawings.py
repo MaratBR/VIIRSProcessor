@@ -22,7 +22,6 @@ __all__ = (
 
 
 def _mkfig(**kwargs):
-    # TODO понять, почему данная функция иногда
     f = pyplot.figure(**kwargs)
     ax = f.add_axes([0, 0, 1, 1])
     ax.set_axis_off()
