@@ -20,7 +20,7 @@ class NPPViirsFileset(ViirsFileset):
 
 
 def extract_swath_id(dirname):
-    match = re.match(r'^[a-zA-Z]+_(\d+)_.*', dirname)
+    match = re.match(r'^[a-zA-Z0-9]+_(\d+)_.*', dirname)
     if match:
         return match.group(1)
     return None
