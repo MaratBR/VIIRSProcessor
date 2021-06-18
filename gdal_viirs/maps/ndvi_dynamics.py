@@ -10,7 +10,7 @@ class NDVIDynamicsMapBuilder(RCPODMapBuilder):
 
     def init(self):
         self.cmap = ListedColormap(['#8c8c8c', "#a11f14", "#ffaa00", '#ffff00', '#98e600', '#3b7a17'])
-        self.norm = BoundaryNorm([-999, -998, -45, -15, 15, 45, 999], 6)
+        self.norm = BoundaryNorm([-999, -998.999, -45, -15, 15, 45, 999], 6)
 
     def get_legend_handles(self):
         data = self.read_data()
