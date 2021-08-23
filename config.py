@@ -14,6 +14,9 @@ def __resource(res):
     return str(__resource_path(res))
 
 
+# import datetime
+# SKIP_FILES_BEFORE = datetime.datetime(year=2021, month=8, day=5)
+
 # сколько дней приходит на один композит NDVI
 # например, если поставить 3 дня то прога будет каждый день
 # делать композит за последние 3 дня
@@ -77,9 +80,9 @@ GRADATIONS = {
 
 # входые данные и папка с выходными
 OUTPUTS = {
-    'ndvi': '/mnt/100Tb/Suomi_NPP/Products/NDVI_maps',
-    'ndvi_dynamics': '/mnt/100Tb/Suomi_NPP/Products/Dynamics_of_crops_ndvi_maps',
-    'processed_data': '/mnt/100Tb/Suomi_NPP/Products/Processed_files_series'
+    'ndvi': '/mnt/100Tb/Suomi_NPP/Products_NEW/NDVI_maps',
+    'ndvi_dynamics': '/mnt/100Tb/Suomi_NPP/Products_NEW/Dynamics_of_crops_ndvi_maps',
+    'processed_data': '/mnt/100Tb/Suomi_NPP/Products_NEW/Processed_files_series'
 }
 
 INPUTS = {

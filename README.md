@@ -38,3 +38,5 @@ python3 products_processor.py
 sudo apt install python3-dev libproj-dev proj-data proj-bin libgeos-dev
 pip3 install wheel numpy cartopy
 ```
+
+g++ gdal-bin libgdal-dev libproj-dev proj-bin

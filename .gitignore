@@ -3,3 +3,4 @@ venv/
 viirs_processor_cfg/
 viirs_logs/
 test.py
+test*.py

@@ -3,7 +3,7 @@ import sys
 from datetime import datetime, timedelta, date
 from glob import glob
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Type
 
 import rasterio
 from loguru import logger
@@ -14,6 +14,7 @@ from gdal_viirs.config import CONFIG, ConfigWrapper
 from gdal_viirs.exceptions import ProcessingException, CorruptedFile
 from gdal_viirs.hl.csv import read_cvs_gradation_file
 from gdal_viirs.maps import produce_image
+from gdal_viirs.maps.builder import MapBuilder
 from gdal_viirs.maps.ndvi_dynamics import NDVIDynamicsMapBuilder
 from gdal_viirs.merge import merge_files2tiff
 from gdal_viirs.persistence.models import *
@@ -227,6 +228,9 @@ class NPPProcessor:
         logger.debug(f'найдено {len(filesets)} в папке {input_directory}')
 
         for fs in filesets:
+            if 'SKIP_FILES_BEFORE' in self._config and fs.geoloc_file.date < self._config['SKIP_FILES_BEFORE']:
+                logger.debug(f'SKIP_FILES_BEFORE: Пропускаем {fs.geoloc_file.name}')
+                continue
             # обработка данных с level1
             typ = fs.geoloc_file.file_type_out.upper()
             l1_output_file = _mkpath(self._processed_output / fs.geoloc_file.date.strftime('%Y%m%d') / fs.swath_id) \
@@ -276,23 +280,23 @@ class NPPProcessor:
 
     def _process__gimgo(self, processed: ProcessedViirsL1):
         # обработка NDVI
-        self._process_ndvi_files(processed)
+        self.produce_ndvi_file(processed)
 
     def _produce_daily_products(self):
         logger.info('обработка ежедневных продуктов...')
         try:
-            self._produce_merged_ndvi_file_for_today()
-            self._process_ndvi_dynamics_for_today()
+            self.produce_merged_ndvi_file()
+            self.get_or_make_ndvi_dynamics()
         except Exception as e:
             self._on_exception(e)
 
     def _produce_maps(self):
-        self._produce_ndvi_maps()
-        self._produce_ndvi_dynamics_maps()
+        self.make_ndvi_maps()
+        self.make_ndvi_dynamics_maps()
 
     # region ndvi / ndvi dynamics
 
-    def _process_cloud_mask(self, processed: ProcessedViirsL1) -> Optional[Path]:
+    def reproject_cloud_mask(self, processed: ProcessedViirsL1) -> Optional[Path]:
         """
         Обрабатывает маску облачности для данного обработанного датасета.
         :param processed: запись обработанного датасета
@@ -342,7 +346,7 @@ class NPPProcessor:
 
         return clouds_file
 
-    def _process_ndvi_files(self, based_on: ProcessedViirsL1) -> NDVITiff:
+    def produce_ndvi_file(self, based_on: ProcessedViirsL1) -> NDVITiff:
         """
         Создать NDVI файлы для указанного датасета
         :param based_on: запись обработанного датасета для которого следует создать NDVI файлы
@@ -363,7 +367,7 @@ class NPPProcessor:
 
         # создаем NDVI файл, но только если его еще нет, не перезаписываем
         if not ndvi_file.is_file():
-            clouds_file = self._process_cloud_mask(based_on)
+            clouds_file = self.reproject_cloud_mask(based_on)
 
             # проверяем, что исходный файл (VIMGO/GIMGO) существует, если нет - ошибка
             if os.path.isfile(based_on.output_file):
@@ -396,15 +400,15 @@ class NPPProcessor:
             ndvi_record.save()
         return ndvi_record
 
-    def _produce_merged_ndvi_file_for_today(self) -> Optional[NDVIComposite]:
+    def produce_merged_ndvi_file(self, now: date = None, merge_period: int = None) -> Optional[NDVIComposite]:
         """
         Обрабатывает композит для сегодняшнего дня
 
         :raises: ProcessingException - если не найден ни один NDVI tiff
         :return: NDVIComposite
         """
-        days = self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5)
-        now = datetime.combine(self.now.date(), datetime.max.time())
+        days = merge_period or self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5)
+        now = datetime.combine(now or self.now.date(), datetime.max.time())
         past_day = now - timedelta(days=days - 1)
         past_day = datetime.combine(past_day.date(), datetime.min.time())
 
@@ -449,8 +453,8 @@ class NPPProcessor:
 
         return composite
 
-    def _process_ndvi_dynamics_for_today(self) -> Optional[NDVIDynamicsTiff]:
-        now = self.now.date()
+    def get_or_make_ndvi_dynamics(self, now: date = None) -> Optional[NDVIDynamicsTiff]:
+        now = now or self.now.date()
         days = self._config.get(
             'NDVI_DYNAMICS_PERIOD',
             self._config.get('NDVI_MERGE_PERIOD_IN_DAYS', 5) * 2
@@ -518,8 +522,7 @@ class NPPProcessor:
                 except Exception as exc:
                     logger.error(f'Ошибка при чтении и обработки файла с градациями {v}: {exc}')
 
-    def _produce_ndvi_maps(self):
-        """"""
+    def make_ndvi_maps(self):
         merged_ndvi = list(NDVIComposite.select().where(NDVIComposite.ends_at == self.now.date()))
 
         try:
@@ -537,7 +540,7 @@ class NPPProcessor:
 
         if merged_ndvi is None:
             logger.debug('не удалось найти композит на сегодня в БД, композит будет сгенерирован')
-            merged_ndvi = self._produce_merged_ndvi_file_for_today()
+            merged_ndvi = self.produce_merged_ndvi_file()
 
             if merged_ndvi is None:
                 logger.warning('не удалось сгенерировать композит на сегодня, карты не будут созданы')
@@ -548,46 +551,46 @@ class NPPProcessor:
             return
         png_dir = str(_mkpath(self._ndvi_output / self.now.strftime('%Y%m%d')))
         date_text = merged_ndvi.date_text
-        self._produce_images(
+        self._make_images(
             merged_ndvi.output_file,
             png_dir,
             merged_ndvi.ends_at,
             self._config.getpath('MAPS_FILENAME_PATTERN.ndvi'),
             date_text)
 
-    def _produce_ndvi_dynamics_maps(self):
-        ndvi_dynamics = self._process_ndvi_dynamics_for_today()
+    def make_ndvi_dynamics_maps(self, now: date = None):
+        now = now or self.now.date()
+        ndvi_dynamics = self.get_or_make_ndvi_dynamics(now)
         if ndvi_dynamics is None:
             logger.warning(f'не могу создать карты динамки посевов т. к. не удалось создать динамику на сегодня')
             return
-        ndvi_dynamics_dir = self._ndvi_dynamics_output / self.now.strftime('%Y%m%d')
+
+        ndvi_dynamics_dir = self._ndvi_dynamics_output / now.strftime('%Y%m%d')
         _mkpath(ndvi_dynamics_dir)
         # создание карт динамики
         self._on_before_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
-        date_text = ndvi_dynamics.date_text
-        self._produce_images(ndvi_dynamics.output_file,
-                             str(ndvi_dynamics_dir),
-                             ndvi_dynamics.b2_composite.ends_at,
-                             self._config.getpath('MAPS_FILENAME_PATTERN.ndvi_dynamics'),
-                             date_text=date_text,
-                             builder=NDVIDynamicsMapBuilder)
-
+        self.make_ndvi_dynamics_maps_source(
+            ndvi_dynamics.output_file, str(ndvi_dynamics_dir), ndvi_dynamics.b2_composite.ends_at,
+            self._config.getpath('MAPS_FILENAME_PATTERN.ndvi_dynamics'), ndvi_dynamics.date_text, NDVIDynamicsMapBuilder
+        )
         self._on_after_processing(str(ndvi_dynamics_dir), 'maps_ndvi_dynamics')
 
-    def _produce_images(self,
-                        input_file: str,
-                        output_directory,
-                        date: datetime,
-                        filename_pattern: str,
-                        date_text=None,
-                        builder=None):
+    def make_ndvi_dynamics_maps_source(self, source: str, output_directory: str, dt: date, file_pattern: str,
+                                       bottom_description: str = None, builder: Type[MapBuilder] = None):
+        self._make_images(source,
+                          output_directory,
+                          dt,
+                          file_pattern,
+                          date_text=bottom_description,
+                          builder=builder)
+
+    def _make_images(self, input_file: str, output_directory: str, dt: date, filename_pattern: str,
+                     date_text=None, builder=None):
         png_config = self._config.get("PNG_CONFIG")
 
         with rasterio.open(input_file) as f:
             for index, png_entry in enumerate(png_config):
                 name = png_entry['name']
-                filename = f'{name}.png'
-
                 if 'MAPS_PARAMS' in self._config and isinstance(self._config['MAPS_PARAMS'], dict):
                     cfg = self._config['MAPS_PARAMS']
                 else:
@@ -596,8 +599,8 @@ class NPPProcessor:
                 # получаем имя выходного файла
                 cfg.update({
                     'name': name,
-                    'yymmdd': date.strftime('%y%m%d'),
-                    'hhmm': date.strftime('%H%M'),
+                    'yymmdd': dt.strftime('%y%m%d'),
+                    'hhmm': dt.strftime('%H%M'),
                 })
                 filename = filename_pattern.format(**cfg)
 
